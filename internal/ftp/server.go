@@ -83,7 +83,7 @@ type ftpSession struct {
 }
 
 func (s *Server) handleConn(conn net.Conn) {
-	defer conn.Close() // nolint:errcheck
+	defer conn.Close()
 
 	session := &ftpSession{
 		server:  s,
@@ -315,7 +315,7 @@ func (s *ftpSession) doPassiveTransfer(writeFn func(io.Writer) error) {
 		s.reply(425, "Can't open data connection")
 		return
 	}
-	defer conn.Close() // nolint:errcheck
+	defer conn.Close()
 	s.closePasv()
 
 	err = writeFn(conn)
@@ -334,7 +334,7 @@ func (s *ftpSession) doActiveTransfer(writeFn func(io.Writer) error) {
 		s.reply(425, "Can't open data connection")
 		return
 	}
-	defer conn.Close() // nolint:errcheck
+	defer conn.Close()
 
 	err = writeFn(conn)
 	if err != nil {

@@ -64,7 +64,6 @@ func ExtractLayer(cachePath, rootfsDir string) error {
 		return fmt.Errorf("gzip: %w", err)
 	}
 	defer gzr.Close()
-	// nolint:errcheck
 
 	tr := tar.NewReader(gzr)
 	for {

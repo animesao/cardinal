@@ -9,6 +9,15 @@ linters:
     - ineffassign
     - typecheck
 
+linters-settings:
+  errcheck:
+    exclude-functions:
+      - (io.Closer).Close
+      - (net.Listener).Close
+      - os.Remove
+      - os.MkdirAll
+      - os.Setenv
+
 issues:
   exclude-use-default: false
   exclude:
