@@ -119,13 +119,13 @@ func createLayer(rootfsDir, outputPath string) error {
 	if err != nil {
 		return err
 	}
-	defer outFile.Close()
+	defer outFile.Close() // nolint:errcheck
 
 	gw := gzip.NewWriter(outFile)
-	defer gw.Close()
+	defer gw.Close() // nolint:errcheck
 
 	tw := tar.NewWriter(gw)
-	defer tw.Close()
+	defer tw.Close() // nolint:errcheck
 
 	return filepath.Walk(rootfsDir, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {

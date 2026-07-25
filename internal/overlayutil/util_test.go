@@ -33,8 +33,8 @@ func makeTarGz(t *testing.T, files map[string]string) string {
 			t.Fatal(err)
 		}
 	}
-	tw.Close()
-	gw.Close()
+	_ = tw.Close()
+	_ = gw.Close()
 	return path
 }
 
@@ -60,7 +60,7 @@ func TestHashFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.txt")
 	content := "hello world"
-	os.WriteFile(path, []byte(content), 0644)
+	_ = os.WriteFile(path, []byte(content), 0644)
 
 	hash, size := HashFile(path)
 	if size != int64(len(content)) {

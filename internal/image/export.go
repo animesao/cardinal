@@ -33,10 +33,10 @@ func Export(ref, outputPath string) error {
 	defer f.Close()
 
 	gw := gzip.NewWriter(f)
-	defer gw.Close()
+	defer gw.Close() // nolint:errcheck
 
 	tw := tar.NewWriter(gw)
-	defer tw.Close()
+	defer tw.Close() // nolint:errcheck
 
 	imageDir := state.ImageDir(name, tag)
 
@@ -93,7 +93,7 @@ func Import(path string) error {
 	if err != nil {
 		return fmt.Errorf("gzip: %w", err)
 	}
-	defer gr.Close()
+	defer gr.Close() // nolint:errcheck
 
 	tr := tar.NewReader(gr)
 
@@ -139,22 +139,22 @@ func Import(path string) error {
 	}
 
 	// Rewind
-	f.Seek(0, 0)
-	gr.Close()
-	f.Close()
+	_, _ = f.Seek(0, 0)
+	_ = gr.Close()
+	_ = f.Close()
 
 	// Re-open and extract
 	f2, err := os.Open(path)
 	if err != nil {
 		return err
 	}
-	defer f2.Close()
+	defer f2.Close() // nolint:errcheck
 
 	gr2, err := gzip.NewReader(f2)
 	if err != nil {
 		return err
 	}
-	defer gr2.Close()
+	defer gr2.Close() // nolint:errcheck
 
 	tr2 := tar.NewReader(gr2)
 	destDir := state.ImageDir(manifestName, manifestTag)

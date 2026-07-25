@@ -21,7 +21,7 @@ func DataDir() string {
 func init() {
 	// Ensure Home is set for root when running under systemd
 	if os.Getuid() == 0 {
-		os.Setenv("HOME", "/root")
+		_ = os.Setenv("HOME", "/root")
 	}
 }
 

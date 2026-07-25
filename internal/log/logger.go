@@ -68,9 +68,9 @@ func (l *Logger) log(level Level, format string, args ...interface{}) {
 
 	if l.jsonMode {
 		escaped := strings.ReplaceAll(msg, "\"", "\\\"")
-		fmt.Fprintf(out, "{\"time\":\"%s\",\"level\":\"%s\",\"msg\":\"%s\"}\n", timestamp, levelNames[level], escaped)
+		_, _ = fmt.Fprintf(out, "{\"time\":\"%s\",\"level\":\"%s\",\"msg\":\"%s\"}\n", timestamp, levelNames[level], escaped)
 	} else {
-		fmt.Fprintf(out, "[%s] %-5s %s\n", timestamp, levelNames[level], msg)
+		_, _ = fmt.Fprintf(out, "[%s] %-5s %s\n", timestamp, levelNames[level], msg)
 	}
 }
 

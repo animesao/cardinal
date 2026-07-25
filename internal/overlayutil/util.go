@@ -18,7 +18,7 @@ func MountOverlay(lower, upper, work, merged string) error {
 		return nil
 	}
 
-	os.RemoveAll(work)
+	_ = os.RemoveAll(work)
 	os.MkdirAll(work, 0755)
 
 	opts := fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", lower, upper, work)
@@ -48,7 +48,7 @@ func UnmountOverlay(merged string) {
 		return
 	}
 	if err := exec.Command("umount", merged).Run(); err != nil {
-		exec.Command("umount", "-l", merged).Run()
+		_ = exec.Command("umount", "-l", merged).Run()
 	}
 }
 
@@ -64,6 +64,7 @@ func ExtractLayer(cachePath, rootfsDir string) error {
 		return fmt.Errorf("gzip: %w", err)
 	}
 	defer gzr.Close()
+	// nolint:errcheck
 
 	tr := tar.NewReader(gzr)
 	for {
@@ -95,11 +96,11 @@ func ExtractLayer(cachePath, rootfsDir string) error {
 			}
 			f.Close()
 		case tar.TypeSymlink:
-			os.Remove(path)
-			os.Symlink(hdr.Linkname, path)
+			_ = os.Remove(path)
+			_ = os.Symlink(hdr.Linkname, path)
 		case tar.TypeLink:
-			os.Remove(path)
-			os.Link(filepath.Join(rootfsDir, hdr.Linkname), path)
+			_ = os.Remove(path)
+			_ = os.Link(filepath.Join(rootfsDir, hdr.Linkname), path)
 		}
 	}
 	return nil

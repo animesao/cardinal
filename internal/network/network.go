@@ -21,7 +21,7 @@ func EnsureSysctl() {
 		fmt.Fprintf(os.Stderr, "Warning: sysctl route_localnet: %v\n", err)
 	}
 
-	os.MkdirAll("/etc/sysctl.d", 0755)
+	_ = os.MkdirAll("/etc/sysctl.d", 0755)
 	confPath := "/etc/sysctl.d/99-dck.conf"
 	var entries []string
 	data, err := os.ReadFile(confPath)
@@ -49,13 +49,13 @@ func EnsureSysctl() {
 	if write {
 		f, err := os.OpenFile(confPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err == nil {
-			f.WriteString("# dck: container networking sysctls\n")
+			_, _ = f.WriteString("# dck: container networking sysctls\n")
 			for _, e := range entries {
 				if e != "" {
-					f.WriteString(e + "\n")
+					_, _ = f.WriteString(e + "\n")
 				}
 			}
-			f.Close()
+			_ = f.Close()
 		}
 	}
 }
@@ -75,7 +75,7 @@ func EnsureUFW() {
 func EnsureNetBase() {
 	EnsureSysctl()
 	EnsureUFW()
-	EnsureBridge()
+	_ = EnsureBridge()
 }
 
 const (
@@ -99,7 +99,7 @@ func loadPool() *ipPool {
 		path := filepath.Join(state.DataDir(), "networks", "ips.json")
 		p := &ipPool{Allocated: make(map[string]bool)}
 		if data, err := os.ReadFile(path); err == nil {
-			json.Unmarshal(data, p)
+			_ = json.Unmarshal(data, p)
 		}
 		globalPool = p
 	})
@@ -108,9 +108,9 @@ func loadPool() *ipPool {
 
 func savePool(p *ipPool) {
 	path := filepath.Join(state.DataDir(), "networks", "ips.json")
-	os.MkdirAll(filepath.Dir(path), 0755)
+	_ = os.MkdirAll(filepath.Dir(path), 0755)
 	data, _ := json.Marshal(p)
-	os.WriteFile(path, data, 0644)
+	_ = os.WriteFile(path, data, 0644)
 }
 
 func AllocateIP() (string, error) {
@@ -241,8 +241,8 @@ func SetupVeth(containerID string, pid int, containerIP string) error {
 		return fmt.Errorf("set host veth up: %w", err)
 	}
 
-	runInNetns(pid, "ip", "link", "set", "lo", "up")
-	runInNetns(pid, "ip", "link", "set", contIf, "name", "eth0")
+	_ = runInNetns(pid, "ip", "link", "set", "lo", "up")
+	_ = runInNetns(pid, "ip", "link", "set", contIf, "name", "eth0")
 	runInNetns(pid, "ip", "addr", "add", fmt.Sprintf("%s/24", containerIP), "dev", "eth0")
 	runInNetns(pid, "ip", "link", "set", "eth0", "up")
 	runInNetns(pid, "ip", "route", "add", "default", "via", BridgeIP)
@@ -325,7 +325,7 @@ func AddPortForwarding(containerIP string, hostPort, containerPort int, protocol
 	}
 	if err := exec.Command("iptables", output...).Run(); err != nil {
 		rollback := append([]string{"-t", "nat", "-D"}, dnat[3:]...)
-		exec.Command("iptables", rollback...).Run()
+		_ = exec.Command("iptables", rollback...).Run()
 		return fmt.Errorf("OUTPUT DNAT: %w", err)
 	}
 

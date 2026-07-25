@@ -362,7 +362,7 @@ func parseCPUs(v interface{}) float64 {
 		return float64(val)
 	case string:
 		var c float64
-		fmt.Sscanf(val, "%f", &c)
+		_, _ = fmt.Sscanf(val, "%f", &c)
 		return c
 	}
 	return 0

@@ -56,7 +56,7 @@ func (s *Server) acceptLoop() {
 
 func (s *Server) Stop() {
 	if s.ln != nil {
-		s.ln.Close()
+		_ = s.ln.Close()
 		<-s.done
 	}
 }
@@ -83,7 +83,7 @@ type ftpSession struct {
 }
 
 func (s *Server) handleConn(conn net.Conn) {
-	defer conn.Close()
+	defer conn.Close() // nolint:errcheck
 
 	session := &ftpSession{
 		server:  s,
@@ -111,20 +111,19 @@ func (s *Server) handleConn(conn net.Conn) {
 }
 
 func (s *ftpSession) reply(code int, msg string) {
-	s.writer.WriteString(fmt.Sprintf("%d %s\r\n", code, msg))
-	s.writer.Flush()
+	_, _ = s.writer.WriteString(fmt.Sprintf("%d %s\r\n", code, msg))
+	_ = s.writer.Flush()
 }
 
 func (s *ftpSession) replyMultiline(code int, msg string) {
 	lines := strings.Split(msg, "\n")
 	for i, line := range lines {
-		if i == len(lines)-1 {
-			s.writer.WriteString(fmt.Sprintf("%d %s\r\n", code, line))
-		} else {
-			s.writer.WriteString(fmt.Sprintf("%d-%s\r\n", code, line))
+		if i == len(lines)-1 {				_, _ = s.writer.WriteString(fmt.Sprintf("%d %s\r\n", code, line))
+			} else {
+				_, _ = s.writer.WriteString(fmt.Sprintf("%d-%s\r\n", code, line))
 		}
 	}
-	s.writer.Flush()
+	_ = s.writer.Flush()
 }
 
 func (s *ftpSession) handleCommand(cmd string) bool {
@@ -210,7 +209,7 @@ func (s *ftpSession) handleCommand(cmd string) bool {
 			}
 			if command == "NLST" {
 				for _, e := range entries {
-					fmt.Fprintln(w, e.Name())
+					_, _ = fmt.Fprintln(w, e.Name())
 				}
 			} else {
 				for _, e := range entries {
@@ -218,7 +217,7 @@ func (s *ftpSession) handleCommand(cmd string) bool {
 					if err != nil {
 						continue
 					}
-					fmt.Fprintln(w, formatListEntry(info, e.Name()))
+					_, _ = fmt.Fprintln(w, formatListEntry(info, e.Name()))
 				}
 			}
 			return nil
@@ -231,15 +230,16 @@ func (s *ftpSession) handleCommand(cmd string) bool {
 				return err
 			}
 			defer f.Close()
+	// nolint:errcheck
 			_, err = io.Copy(w, f)
 			return err
 		})
 	case "STOR":
 		path := s.resolvePath(arg)
-		os.MkdirAll(filepath.Dir(path), 0755)
-		s.transfer(func(w io.Writer) error {
-			return nil
-		})
+	_ = os.MkdirAll(filepath.Dir(path), 0755)
+	s.transfer(func(w io.Writer) error {
+		return nil
+	})
 	case "SIZE":
 		path := s.resolvePath(arg)
 		info, err := os.Stat(path)
@@ -315,7 +315,7 @@ func (s *ftpSession) doPassiveTransfer(writeFn func(io.Writer) error) {
 		s.reply(425, "Can't open data connection")
 		return
 	}
-	defer conn.Close()
+	defer conn.Close() // nolint:errcheck
 	s.closePasv()
 
 	err = writeFn(conn)
@@ -334,7 +334,7 @@ func (s *ftpSession) doActiveTransfer(writeFn func(io.Writer) error) {
 		s.reply(425, "Can't open data connection")
 		return
 	}
-	defer conn.Close()
+	defer conn.Close() // nolint:errcheck
 
 	err = writeFn(conn)
 	if err != nil {
@@ -364,7 +364,7 @@ func (s *ftpSession) cleanPath(p string) string {
 
 func (s *ftpSession) closePasv() {
 	if s.pasvLn != nil {
-		s.pasvLn.Close()
+		_ = s.pasvLn.Close()
 		s.pasvLn = nil
 	}
 }
