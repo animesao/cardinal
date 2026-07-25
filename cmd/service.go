@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -219,7 +220,7 @@ func serviceUpdate(args []string) {
 		os.Exit(1)
 	}
 
-	svc, err := orchestrator.UpdateService(name, image, orchestrator.ServiceOpts{})
+	svc, err := orchestrator.UpdateService(context.Background(), name, image, orchestrator.ServiceOpts{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

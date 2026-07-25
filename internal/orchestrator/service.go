@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"dck/internal/log"
 	"dck/internal/state"
 )
 
@@ -167,7 +169,7 @@ func ScaleService(name string, replicas int) (*Service, error) {
 }
 
 // UpdateService applies a rolling update to a service
-func UpdateService(name, image string, opts ServiceOpts) (*Service, error) {
+func UpdateService(ctx context.Context, name, image string, opts ServiceOpts) (*Service, error) {
 	serviceLock.Lock()
 	defer serviceLock.Unlock()
 
@@ -205,7 +207,7 @@ func UpdateService(name, image string, opts ServiceOpts) (*Service, error) {
 
 	saveServices()
 
-	fmt.Printf("Updated service %s: %s -> %s\n", name, oldImage, image)
+	log.Info("Updated service %s: %s -> %s", name, oldImage, image)
 	return svc, nil
 }
 
@@ -245,7 +247,7 @@ func GetServiceReplicas(name string) ([]ServiceReplica, error) {
 // --- service reconciliation ---
 
 // ReconcileServices ensures the desired state matches actual state
-func ReconcileServices() {
+func ReconcileServices(ctx context.Context) {
 	serviceLock.RLock()
 	services := make(map[string]*Service)
 	for k, v := range clusterConf.Services {
@@ -263,30 +265,36 @@ func ReconcileServices() {
 		}
 
 		if running < svc.Replicas {
-			reconcileScaleUp(name, svc, svc.Replicas-running)
+			reconcileScaleUp(ctx, name, svc, svc.Replicas-running)
 		} else if running > svc.Replicas {
-			reconcileScaleDown(name, replicas, running-svc.Replicas)
+			reconcileScaleDown(ctx, name, replicas, running-svc.Replicas)
 		}
 	}
 }
 
-func reconcileScaleUp(name string, svc *Service, count int) {
+func reconcileScaleUp(ctx context.Context, name string, svc *Service, count int) {
 	for i := 0; i < count; i++ {
-		if err := ScheduleReplica(name, svc); err != nil {
-			fmt.Fprintf(os.Stderr, "[reconcile] error scheduling replica of %s: %v\n", name, err)
+		if ctx.Err() != nil {
+			return
+		}
+		if err := ScheduleReplica(ctx, name, svc); err != nil {
+			log.Error("[reconcile] error scheduling replica of %s: %v", name, err)
 		}
 	}
 }
 
-func reconcileScaleDown(name string, replicas []ServiceReplica, count int) {
+func reconcileScaleDown(ctx context.Context, name string, replicas []ServiceReplica, count int) {
 	sort.Slice(replicas, func(i, j int) bool {
 		return replicas[i].CreatedAt.After(replicas[j].CreatedAt)
 	})
 
 	for i := 0; i < count && i < len(replicas); i++ {
-		fmt.Printf("[reconcile] removing replica %s of %s\n", replicas[i].ID, name)
-		if err := RemoveRemoteReplica(replicas[i].NodeID, replicas[i].ContainerID); err != nil {
-			fmt.Fprintf(os.Stderr, "[reconcile] error removing replica %s: %v\n", replicas[i].ID, err)
+		if ctx.Err() != nil {
+			return
+		}
+		log.Info("[reconcile] removing replica %s of %s", replicas[i].ID, name)
+		if err := RemoveRemoteReplica(ctx, replicas[i].NodeID, replicas[i].ContainerID); err != nil {
+			log.Error("[reconcile] error removing replica %s: %v", replicas[i].ID, err)
 		}
 	}
 }

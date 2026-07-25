@@ -3,11 +3,11 @@ linters:
     - gosimple
     - staticcheck
     - unused
-  disable:
     - errcheck
+    - govet
+  disable:
     - ineffassign
     - typecheck
-    - govet
 
 issues:
   exclude-use-default: false

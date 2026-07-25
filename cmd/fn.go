@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -95,7 +96,7 @@ func fnDeploy(args []string) {
 		Replicas:    *warm,
 	}
 
-	fn, err := orchestrator.DeployFunction(*name, image, *port, opts)
+	fn, err := orchestrator.DeployFunction(context.Background(), *name, image, *port, opts)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -139,7 +140,7 @@ func fnRemove(args []string) {
 	}
 
 	for _, name := range args {
-		if err := orchestrator.RemoveFunction(name); err != nil {
+		if err := orchestrator.RemoveFunction(context.Background(), name); err != nil {
 			fmt.Fprintf(os.Stderr, "Error removing function %q: %v\n", name, err)
 		} else {
 			fmt.Printf("Removed function %s\n", name)
@@ -174,7 +175,7 @@ func fnCall(args []string) {
 		}
 	}
 
-	result, err := orchestrator.InvokeFunction(name, payload)
+	result, err := orchestrator.InvokeFunction(context.Background(), name, payload)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

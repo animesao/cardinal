@@ -10,6 +10,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"dck/internal/state"
 )
 
@@ -46,6 +48,9 @@ func StartServer(port int, host string) error {
 	// Cluster endpoints (for cross-node orchestration)
 	mux.HandleFunc("/cluster/", handleClusterRouter)
 	mux.HandleFunc("/cluster/containers", handleListContainersOnNode)
+
+	// Prometheus metrics endpoint
+	mux.Handle("/metrics", promhttp.Handler())
 
 	// Raw handler
 	mux.HandleFunc("/", handleRoot)

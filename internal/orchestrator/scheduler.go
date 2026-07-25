@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,11 +15,12 @@ import (
 	"dck/internal/builder"
 	"dck/internal/container"
 	"dck/internal/image"
+	"dck/internal/log"
 	"dck/internal/state"
 )
 
 // ScheduleReplica places a container on a node and starts it
-func ScheduleReplica(serviceName string, svc *Service) error {
+func ScheduleReplica(ctx context.Context, serviceName string, svc *Service) error {
 	nodes, err := ListNodes()
 	if err != nil || len(nodes) == 0 {
 		return fmt.Errorf("no available nodes")
@@ -45,18 +47,18 @@ func ScheduleReplica(serviceName string, svc *Service) error {
 	})
 
 	target := active[0]
-	fmt.Printf("[scheduler] placing replica of %s on %s (%s:%d)\n",
+	log.Info("[scheduler] placing replica of %s on %s (%s:%d)",
 		serviceName, target.Name, target.Address, target.APIPort)
 
 	if target.ID == clusterConf.NodeID {
-		return startLocalReplica(serviceName, svc)
+		return startLocalReplica(ctx, serviceName, svc)
 	}
 
-	return startRemoteReplica(serviceName, svc, target)
+	return startRemoteReplica(ctx, serviceName, svc, target)
 }
 
-func startLocalReplica(serviceName string, svc *Service) error {
-	fmt.Printf("[scheduler] starting local replica of %s\n", serviceName)
+func startLocalReplica(ctx context.Context, serviceName string, svc *Service) error {
+	log.Info("[scheduler] starting local replica of %s", serviceName)
 
 	img, err := image.Pull(svc.Image)
 	if err != nil {
@@ -133,11 +135,11 @@ func startLocalReplica(serviceName string, svc *Service) error {
 
 	saveReplica(serviceName, replicaID, c.ID, clusterConf.NodeID)
 
-	fmt.Printf("[scheduler] local replica %s running (container %s)\n", replicaID[:8], c.ID[:12])
+	log.Info("[scheduler] local replica %s running (container %s)", replicaID[:8], c.ID[:12])
 	return nil
 }
 
-func startRemoteReplica(serviceName string, svc *Service, node *Node) error {
+func startRemoteReplica(ctx context.Context, serviceName string, svc *Service, node *Node) error {
 	replicaID := generateID()
 
 	reqBody, _ := json.Marshal(map[string]interface{}{
@@ -152,7 +154,12 @@ func startRemoteReplica(serviceName string, svc *Service, node *Node) error {
 	})
 
 	url := fmt.Sprintf("http://%s:%d/cluster/replicas", node.Address, node.APIPort)
-	resp, err := http.Post(url, "application/json", bytes.NewReader(reqBody))
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(reqBody))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("schedule on %s: %w", node.Name, err)
 	}
@@ -171,13 +178,13 @@ func startRemoteReplica(serviceName string, svc *Service, node *Node) error {
 
 	saveReplica(serviceName, replicaID, result.ContainerID, node.ID)
 
-	fmt.Printf("[scheduler] remote replica %s on %s (container %s)\n",
+	log.Info("[scheduler] remote replica %s on %s (container %s)",
 		replicaID[:8], node.Name, result.ContainerID[:12])
 	return nil
 }
 
 // RemoveRemoteReplica stops a container on a remote node
-func RemoveRemoteReplica(nodeID, containerID string) error {
+func RemoveRemoteReplica(ctx context.Context, nodeID, containerID string) error {
 	clusterLock.RLock()
 	node, ok := clusterConf.Nodes[nodeID]
 	clusterLock.RUnlock()
@@ -193,13 +200,16 @@ func RemoveRemoteReplica(nodeID, containerID string) error {
 		if err := c.Remove(true); err != nil {
 			return fmt.Errorf("remove local container %s: %w", containerID, err)
 		}
-		fmt.Printf("[scheduler] stopped local container %s\n", containerID[:12])
+		log.Info("[scheduler] stopped local container %s", containerID[:12])
 		return nil
 	}
 
-	req, _ := http.NewRequest("DELETE",
+	req, err := http.NewRequestWithContext(ctx, "DELETE",
 		fmt.Sprintf("http://%s:%d/cluster/replicas/%s", node.Address, node.APIPort, containerID),
 		nil)
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -211,12 +221,13 @@ func RemoveRemoteReplica(nodeID, containerID string) error {
 		return fmt.Errorf("remove on %s: status %d", node.Name, resp.StatusCode)
 	}
 
-	fmt.Printf("[scheduler] removed remote container %s on %s\n", containerID[:12], node.Name)
+	log.Info("[scheduler] removed remote container %s on %s", containerID[:12], node.Name)
 	return nil
 }
 
 // AutoHealServices checks service replicas and replaces failed ones
-func AutoHealServices() {
+func AutoHealServices(ctx context.Context) {
+	AutoHealTotal.Inc()
 	clusterLock.RLock()
 	services := make(map[string]*Service)
 	for k, v := range clusterConf.Services {
@@ -236,36 +247,53 @@ func AutoHealServices() {
 
 		if running < svc.Replicas {
 			needed := svc.Replicas - running
-			fmt.Printf("[heal] service %s: running=%d desired=%d, scheduling %d new replicas\n",
+			log.Info("[heal] service %s: running=%d desired=%d, scheduling %d new replicas",
 				name, running, svc.Replicas, needed)
+			AutoHealReplicasCreated.Add(float64(needed))
 
 			for i := 0; i < needed; i++ {
-				if err := ScheduleReplica(name, svc); err != nil {
-					fmt.Fprintf(os.Stderr, "[heal] schedule error for %s: %v\n", name, err)
+				if ctx.Err() != nil {
+					return
 				}
-				time.Sleep(500 * time.Millisecond)
+	if err := ScheduleReplica(ctx, name, svc); err != nil {
+			reason := "unknown"
+			if strings.Contains(err.Error(), "no available nodes") || strings.Contains(err.Error(), "no active nodes") {
+				reason = "no_nodes"
+			} else if strings.Contains(err.Error(), "pull image") {
+				reason = "image_pull"
+			} else if strings.Contains(err.Error(), "container") {
+				reason = "container_error"
+			}
+			ScheduleReplicaErrors.WithLabelValues(name, reason).Inc()
+			log.Error("[heal] schedule error for %s: %v", name, err)
+		}
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(500 * time.Millisecond):
+				}
 			}
 		}
 	}
 }
 
 // StartAutoHealer runs the auto-heal loop
-func StartAutoHealer(stop chan struct{}) {
+func StartAutoHealer(ctx context.Context) {
 	ticker := time.NewTicker(15 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			AutoHealServices()
-		case <-stop:
+			AutoHealServices(ctx)
+		case <-ctx.Done():
 			return
 		}
 	}
 }
 
 // RollingUpdateService performs a rolling update of a service
-func RollingUpdateService(name, newImage string, opts ServiceOpts) error {
+func RollingUpdateService(ctx context.Context, name, newImage string, opts ServiceOpts) error {
 	svc, err := GetService(name)
 	if err != nil {
 		return err
@@ -287,7 +315,7 @@ func RollingUpdateService(name, newImage string, opts ServiceOpts) error {
 	}
 
 	replicas, _ := GetServiceReplicas(name)
-	fmt.Printf("[rolling] updating %s: %s -> %s (parallel=%d, order=%s)\n",
+	log.Info("[rolling] updating %s: %s -> %s (parallel=%d, order=%s)",
 		name, svc.Image, newImage, parallelism, order)
 
 	batch := 0
@@ -300,27 +328,34 @@ func RollingUpdateService(name, newImage string, opts ServiceOpts) error {
 		batch++
 
 		batchReps := replicas[i:end]
-		fmt.Printf("[rolling] batch %d: updating %d replicas\n", batch, len(batchReps))
+		log.Info("[rolling] batch %d: updating %d replicas", batch, len(batchReps))
 
 		for _, r := range batchReps {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
 			if order == "start-first" {
-				fmt.Printf("[rolling] starting new replica of %s (image: %s)\n", name, newImage)
+				log.Info("[rolling] starting new replica of %s (image: %s)", name, newImage)
 				oldSvc := *svc
 				oldSvc.Image = newImage
-				ScheduleReplica(name, &oldSvc)
-				RemoveRemoteReplica(r.NodeID, r.ContainerID)
+				ScheduleReplica(ctx, name, &oldSvc)
+				RemoveRemoteReplica(ctx, r.NodeID, r.ContainerID)
 			} else {
-				fmt.Printf("[rolling] stopping replica %s\n", r.ID)
-				RemoveRemoteReplica(r.NodeID, r.ContainerID)
+				log.Info("[rolling] stopping replica %s", r.ID)
+				RemoveRemoteReplica(ctx, r.NodeID, r.ContainerID)
 				oldSvc := *svc
 				oldSvc.Image = newImage
-				ScheduleReplica(name, &oldSvc)
+				ScheduleReplica(ctx, name, &oldSvc)
 			}
 		}
 
 		if delaySec > 0 && batch < (len(replicas)+parallelism-1)/parallelism {
-			fmt.Printf("[rolling] waiting %ds before next batch...\n", delaySec)
-			time.Sleep(time.Duration(delaySec) * time.Second)
+			log.Info("[rolling] waiting %ds before next batch...", delaySec)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(time.Duration(delaySec) * time.Second):
+			}
 		}
 	}
 
@@ -332,7 +367,7 @@ func RollingUpdateService(name, newImage string, opts ServiceOpts) error {
 	saveServices()
 	serviceLock.Unlock()
 
-	fmt.Printf("[rolling] update complete: %s now using %s\n", name, newImage)
+	log.Info("[rolling] update complete: %s now using %s", name, newImage)
 	return nil
 }
 

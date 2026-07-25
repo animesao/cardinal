@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 
 	"dck/internal/container"
 	"dck/internal/image"
+	"dck/internal/log"
 	"dck/internal/state"
 )
 
@@ -23,9 +25,17 @@ var fnLock sync.RWMutex
 var functionContainers = make(map[string][]string)
 
 // DeployFunction deploys a serverless function
-func DeployFunction(name, imageName string, port int, opts FnOpts) (*Function, error) {
+func DeployFunction(ctx context.Context, name, imageName string, port int, opts FnOpts) (*Function, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	fnLock.Lock()
 	defer fnLock.Unlock()
+
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 
 	_ = loadFunctions()
 
@@ -114,7 +124,7 @@ func GetFunction(name string) (*Function, error) {
 }
 
 // RemoveFunction removes a deployed function
-func RemoveFunction(name string) error {
+func RemoveFunction(ctx context.Context, name string) error {
 	fnLock.Lock()
 	defer fnLock.Unlock()
 
@@ -127,7 +137,7 @@ func RemoveFunction(name string) error {
 		return fmt.Errorf("function %q not found", name)
 	}
 
-	scaleDownFunction(fn)
+	scaleDownFunction(ctx, fn)
 
 	delete(allFunctions, name)
 	saveFunctions()
@@ -136,7 +146,7 @@ func RemoveFunction(name string) error {
 }
 
 // InvokeFunction calls a deployed function (starts container if needed)
-func InvokeFunction(name string, payload []byte) ([]byte, error) {
+func InvokeFunction(ctx context.Context, name string, payload []byte) ([]byte, error) {
 	fn, err := GetFunction(name)
 	if err != nil {
 		return nil, err
@@ -151,13 +161,18 @@ func InvokeFunction(name string, payload []byte) ([]byte, error) {
 		if replicas < 1 {
 			replicas = 1
 		}
-		if err := scaleUpFunction(fn, replicas); err != nil {
-			return nil, fmt.Errorf("scale up function %s: %w", name, err)
-		}
+	if err := scaleUpFunction(ctx, fn, replicas); err != nil {
+		FaaSInvokeErrors.WithLabelValues(name, "scale_up").Inc()
+		return nil, fmt.Errorf("scale up function %s: %w", name, err)
+	}
 	}
 
-	result, err := forwardToFunction(fn, payload)
+	invokeStart := time.Now()
+	result, err := forwardToFunction(ctx, fn, payload)
+	FaaSInvokeCount.WithLabelValues(name).Inc()
+	FaaSInvokeDuration.WithLabelValues(name).Observe(time.Since(invokeStart).Seconds())
 	if err != nil {
+		FaaSInvokeErrors.WithLabelValues(name, "forward").Inc()
 		return nil, err
 	}
 
@@ -170,21 +185,21 @@ func InvokeFunction(name string, payload []byte) ([]byte, error) {
 }
 
 // StartFunctionGC starts a background goroutine for function auto-scaling
-func StartFunctionGC(stop chan struct{}) {
+func StartFunctionGC(ctx context.Context) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			gcFunctions()
-		case <-stop:
+			gcFunctions(ctx)
+		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func gcFunctions() {
+func gcFunctions(ctx context.Context) {
 	fnLock.RLock()
 	fns := make([]*Function, 0, len(allFunctions))
 	for _, f := range allFunctions {
@@ -193,28 +208,41 @@ func gcFunctions() {
 	fnLock.RUnlock()
 
 	for _, fn := range fns {
+		if ctx.Err() != nil {
+			return
+		}
 		if fn.ActiveContainers > fn.Replicas {
-			scaleDownFunction(fn)
+			scaleDownFunction(ctx, fn)
 		}
 		if fn.IdleTimeout > 0 && fn.ActiveContainers > 0 && !fn.LastUsed.IsZero() {
 			if time.Since(fn.LastUsed) > time.Duration(fn.IdleTimeout)*time.Second {
-				fmt.Printf("[faas] scaling down %s (idle for >%ds)\n", fn.Name, fn.IdleTimeout)
-				scaleDownFunction(fn)
+				log.Info("[faas] scaling down %s (idle for >%ds)", fn.Name, fn.IdleTimeout)
+				scaleDownFunction(ctx, fn)
 			}
 		}
 	}
 }
 
-func scaleUpFunction(fn *Function, count int) error {
-	fmt.Printf("[faas] scaling up %s: +%d\n", fn.Name, count)
+func scaleUpFunction(ctx context.Context, fn *Function, count int) error {
+	if err := ctx.Err(); err != nil {
+		ScaleUpErrors.WithLabelValues(fn.Name, "function").Inc()
+		return err
+	}
+
+	start := time.Now()
+	log.Info("[faas] scaling up %s: +%d", fn.Name, count)
 
 	img, err := image.Pull(fn.Image)
 	if err != nil {
+		ScaleUpErrors.WithLabelValues(fn.Name, "function").Inc()
 		return fmt.Errorf("pull image %s: %w", fn.Image, err)
 	}
 
 	created := 0
 	for i := 0; i < count; i++ {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		replicaID := generateID()
 		cName := fmt.Sprintf("fn_%s_%s", fn.Name, replicaID[:8])
 
@@ -251,9 +279,11 @@ func scaleUpFunction(fn *Function, count int) error {
 
 		c := container.New(img, opts)
 		if err := c.Save(); err != nil {
+			ScaleUpErrors.WithLabelValues(fn.Name, "function").Inc()
 			return fmt.Errorf("save container: %w", err)
 		}
 		if err := c.Start(); err != nil {
+			ScaleUpErrors.WithLabelValues(fn.Name, "function").Inc()
 			return fmt.Errorf("start container: %w", err)
 		}
 
@@ -262,27 +292,38 @@ func scaleUpFunction(fn *Function, count int) error {
 		created++
 	}
 
-	fmt.Printf("[faas] scaled up %s: %d containers running\n", fn.Name, created)
+	log.Info("[faas] scaled up %s: %d containers running", fn.Name, created)
+	RecordScaleUp(fn.Name, "function", time.Since(start).Seconds(), nil)
 	return nil
 }
 
-func scaleDownFunction(fn *Function) {
+func scaleDownFunction(ctx context.Context, fn *Function) {
+	start := time.Now()
 	containers := functionContainers[fn.Name]
+	removed := 0
 	for _, cid := range containers {
+		if ctx.Err() != nil {
+			log.Warn("[faas] context cancelled, %d/%d containers removed for %s", removed, len(containers), fn.Name)
+			RecordScaleDown(fn.Name, "function", time.Since(start).Seconds(), ctx.Err())
+			return
+		}
 		c, err := container.Load(cid)
 		if err == nil {
 			if err := c.Remove(true); err != nil {
-				fmt.Fprintf(os.Stderr, "[faas] error removing container %s: %v\n", cid[:12], err)
+				log.Error("[faas] error removing container %s: %v", cid[:12], err)
+			} else {
+				removed++
 			}
 		}
 	}
 	delete(functionContainers, fn.Name)
 	fn.ActiveContainers = 0
 
-	fmt.Printf("[faas] scaled down %s\n", fn.Name)
+	log.Info("[faas] scaled down %s (%d containers)", fn.Name, removed)
+	RecordScaleDown(fn.Name, "function", time.Since(start).Seconds(), nil)
 }
 
-func forwardToFunction(fn *Function, payload []byte) ([]byte, error) {
+func forwardToFunction(ctx context.Context, fn *Function, payload []byte) ([]byte, error) {
 	containers := functionContainers[fn.Name]
 	if len(containers) == 0 {
 		return nil, fmt.Errorf("no active containers for function %s", fn.Name)
@@ -303,7 +344,7 @@ func forwardToFunction(fn *Function, payload []byte) ([]byte, error) {
 		targetURL = fmt.Sprintf("http://127.0.0.1:%d", port)
 	}
 
-	req, err := http.NewRequest("POST", targetURL, bytes.NewReader(payload))
+	req, err := http.NewRequestWithContext(ctx, "POST", targetURL, bytes.NewReader(payload))
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
@@ -363,7 +404,7 @@ func saveFunctions() error {
 }
 
 // CleanIdleFunctions stops functions that have been idle too long
-func CleanIdleFunctions() {
+func CleanIdleFunctions(ctx context.Context) {
 	fnLock.RLock()
 	fns := make([]*Function, 0, len(allFunctions))
 	for _, f := range allFunctions {
@@ -372,14 +413,17 @@ func CleanIdleFunctions() {
 	fnLock.RUnlock()
 
 	for _, fn := range fns {
+		if ctx.Err() != nil {
+			return
+		}
 		if fn.IdleTimeout > 0 && fn.ActiveContainers > 0 && !fn.LastUsed.IsZero() {
 			if time.Since(fn.LastUsed) > time.Duration(fn.IdleTimeout)*time.Second {
-				fmt.Printf("[faas] auto-scaling down %s (idle)\n", fn.Name)
-				scaleDownFunction(fn)
+				log.Info("[faas] auto-scaling down %s (idle)", fn.Name)
+				scaleDownFunction(ctx, fn)
 			}
 		}
 		if fn.ActiveContainers > fn.Replicas {
-			scaleDownFunction(fn)
+			scaleDownFunction(ctx, fn)
 		}
 	}
 }

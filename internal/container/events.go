@@ -2,15 +2,12 @@ package container
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"sync"
 	"time"
 
 	"dck/internal/state"
 )
-
-var _ = fmt.Println
 
 // Event types
 const (
@@ -171,5 +168,4 @@ func getEventsSince(since time.Time) []Event {
 	return result
 }
 
-// Ensure state is imported
-var _ = fmt.Println
+

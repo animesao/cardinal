@@ -1,3 +1,5 @@
+//go:build linux
+
 package cmd
 
 import (
@@ -5,11 +7,14 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
 
 	"dck/internal/api"
+	"dck/internal/container"
+	"dck/internal/log"
 )
 
 func Serve(args []string) {
@@ -56,8 +61,29 @@ func Serve(args []string) {
 		os.Exit(0)
 	}
 
+	// Graceful shutdown: wait for SIGINT/SIGTERM, then cleanup
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigCh
+		log.Info("Received shutdown signal, stopping all containers...")
+		containers, err := container.List(true)
+		if err == nil {
+			for _, c := range containers {
+				if c.Status == container.Running {
+					log.Info("Stopping %s (%s)...", c.Name, c.ID[:12])
+					c.Stop()
+				}
+			}
+		}
+		container.CloseEvents()
+		log.Info("Shutdown complete")
+		os.Exit(0)
+	}()
+
 	if err := api.StartServer(*port, *host); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		log.Error("Server error: %v", err)
 		os.Exit(1)
 	}
 }

@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -15,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"dck/internal/log"
 	"dck/internal/state"
 )
 
@@ -73,10 +75,10 @@ func InitCluster(name string, bindAddr string, bindPort int) error {
 		return fmt.Errorf("save cluster config: %w", err)
 	}
 
-	fmt.Printf("Initialized cluster %s (%s)\n", clusterConf.ClusterName, clusterConf.ClusterID)
-	fmt.Printf("  Node ID: %s\n", node.ID)
-	fmt.Printf("  Node name: %s\n", node.Name)
-	fmt.Printf("  Bind address: %s:%d\n", bindAddr, bindPort)
+	log.Info("Initialized cluster %s (%s)", clusterConf.ClusterName, clusterConf.ClusterID)
+	log.Info("  Node ID: %s", node.ID)
+	log.Info("  Node name: %s", node.Name)
+	log.Info("  Bind address: %s:%d", bindAddr, bindPort)
 
 	return nil
 }
@@ -144,9 +146,9 @@ func JoinCluster(peerAddr string, bindAddr string, bindPort int) error {
 		return fmt.Errorf("save cluster config: %w", err)
 	}
 
-	fmt.Printf("Joined cluster %s (%s)\n", clusterConf.ClusterName, clusterConf.ClusterID)
-	fmt.Printf("  Node ID: %s\n", clusterConf.NodeID)
-	fmt.Printf("  Peers: %d\n", len(clusterConf.Nodes))
+	log.Info("Joined cluster %s (%s)", clusterConf.ClusterName, clusterConf.ClusterID)
+	log.Info("  Node ID: %s", clusterConf.NodeID)
+	log.Info("  Peers: %d", len(clusterConf.Nodes))
 
 	return nil
 }
@@ -185,7 +187,7 @@ func LeaveCluster() error {
 	}
 	saveClusterConfig()
 
-	fmt.Printf("Left cluster %s\n", clusterConf.ClusterName)
+	log.Info("Left cluster %s", clusterConf.ClusterName)
 	return nil
 }
 
@@ -358,7 +360,7 @@ func propagateHeartbeat(nodeID string) {
 }
 
 // StartHeartbeat starts periodic heartbeat to cluster peers
-func StartHeartbeat(stop chan struct{}) {
+func StartHeartbeat(ctx context.Context) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
@@ -366,7 +368,7 @@ func StartHeartbeat(stop chan struct{}) {
 		select {
 		case <-ticker.C:
 			sendHeartbeat()
-		case <-stop:
+		case <-ctx.Done():
 			return
 		}
 	}
