@@ -16,7 +16,7 @@ type DNSRegistry struct {
 	path string
 }
 
-var dnsRegistry = &DNSRegistry{path: filepath.Join(state.DataDir(), "dns-registry.json")}
+var dnsRegistry = &DNSRegistry{}
 
 type dnsEntry struct {
 	Name string `json:"name"`
@@ -75,7 +75,8 @@ func ListDNSNames() []dnsEntry {
 }
 
 func (r *DNSRegistry) read() []dnsEntry {
-	data, err := os.ReadFile(r.path)
+	path := filepath.Join(state.DataDir(), "dns-registry.json")
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil
 	}
@@ -91,8 +92,14 @@ func (r *DNSRegistry) write(entries []dnsEntry) {
 	if err != nil {
 		return
 	}
-	os.MkdirAll(filepath.Dir(r.path), 0755)
-	os.WriteFile(r.path, data, 0644)
+	path := filepath.Join(state.DataDir(), "dns-registry.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return
+	}
+	if err := os.Chmod(filepath.Dir(path), 0700); err != nil {
+		return
+	}
+	_ = state.WriteFileAtomic(path, data, 0600)
 }
 
 // EnsureContainerHosts writes container name -> IP mappings to the container's

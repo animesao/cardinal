@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.22.7 (2026-08-06)
+
+- Isolated tests with `DCK_DATA_DIR` and made JSON state writes atomic.
+- Secured API defaults, Bearer authentication, and image metadata storage.
+- Standardized Go 1.25 across CI and release tooling.
+
 ## 1.22.4 (2026-07-14)
 
 - CI auto-bump after install script fix

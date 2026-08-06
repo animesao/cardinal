@@ -19,7 +19,9 @@ func MountOverlay(lower, upper, work, merged string) error {
 	}
 
 	_ = os.RemoveAll(work)
-	os.MkdirAll(work, 0755)
+	if err := os.MkdirAll(work, 0755); err != nil {
+		return err
+	}
 
 	opts := fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", lower, upper, work)
 	if err := tryMount(merged, opts); err != nil {
@@ -65,6 +67,14 @@ func ExtractLayer(cachePath, rootfsDir string) error {
 	}
 	defer gzr.Close()
 
+	root, err := filepath.Abs(rootfsDir)
+	if err != nil {
+		return fmt.Errorf("resolve rootfs: %w", err)
+	}
+	if err := os.MkdirAll(root, 0700); err != nil {
+		return fmt.Errorf("create rootfs: %w", err)
+	}
+
 	tr := tar.NewReader(gzr)
 	for {
 		hdr, err := tr.Next()
@@ -75,32 +85,171 @@ func ExtractLayer(cachePath, rootfsDir string) error {
 			return err
 		}
 
-		path := filepath.Join(rootfsDir, hdr.Name)
-		if !strings.HasPrefix(path, filepath.Clean(rootfsDir)+string(os.PathSeparator)) {
-			continue
+		path, err := safeTarPath(root, hdr.Name)
+		if err != nil {
+			return fmt.Errorf("unsafe tar path %q: %w", hdr.Name, err)
 		}
 
 		switch hdr.Typeflag {
 		case tar.TypeDir:
-			os.MkdirAll(path, os.FileMode(hdr.Mode))
-		case tar.TypeReg:
-			os.MkdirAll(filepath.Dir(path), 0755)
-			f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(hdr.Mode))
+			if err := ensureNoSymlinkAncestors(root, path, true); err != nil {
+				return fmt.Errorf("directory %q: %w", hdr.Name, err)
+			}
+			mode := os.FileMode(hdr.Mode) & 07777
+			if err := os.MkdirAll(path, mode); err != nil {
+				return err
+			}
+			if err := os.Chmod(path, mode); err != nil {
+				return err
+			}
+
+		case tar.TypeReg, tar.TypeRegA:
+			if err := ensureNoSymlinkAncestors(root, path, true); err != nil {
+				return fmt.Errorf("file %q: %w", hdr.Name, err)
+			}
+			if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+				return err
+			}
+			out, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(hdr.Mode)&07777)
 			if err != nil {
 				return err
 			}
-			if _, err := io.Copy(f, tr); err != nil {
-				f.Close()
+			if _, err := io.Copy(out, tr); err != nil {
+				_ = out.Close()
 				return err
 			}
-			f.Close()
+			if err := out.Chmod(os.FileMode(hdr.Mode) & 07777); err != nil {
+				_ = out.Close()
+				return err
+			}
+			if err := out.Close(); err != nil {
+				return err
+			}
+
 		case tar.TypeSymlink:
-			_ = os.Remove(path)
-			_ = os.Symlink(hdr.Linkname, path)
+			if err := ensureNoSymlinkAncestors(root, path, false); err != nil {
+				return fmt.Errorf("symlink %q: %w", hdr.Name, err)
+			}
+			if err := validateSymlinkTarget(root, path, hdr.Linkname); err != nil {
+				return fmt.Errorf("symlink %q -> %q: %w", hdr.Name, hdr.Linkname, err)
+			}
+			if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+			if err := os.Symlink(hdr.Linkname, path); err != nil {
+				return err
+			}
+
 		case tar.TypeLink:
-			_ = os.Remove(path)
-			_ = os.Link(filepath.Join(rootfsDir, hdr.Linkname), path)
+			if err := ensureNoSymlinkAncestors(root, path, false); err != nil {
+				return fmt.Errorf("hardlink %q: %w", hdr.Name, err)
+			}
+			source, err := safeTarPath(root, hdr.Linkname)
+			if err != nil {
+				return fmt.Errorf("hardlink target %q: %w", hdr.Linkname, err)
+			}
+			if err := ensureNoSymlinkAncestors(root, source, true); err != nil {
+				return fmt.Errorf("hardlink target %q: %w", hdr.Linkname, err)
+			}
+			info, err := os.Lstat(source)
+			if err != nil {
+				return fmt.Errorf("hardlink target %q: %w", hdr.Linkname, err)
+			}
+			if info.Mode()&os.ModeSymlink != 0 {
+				return fmt.Errorf("hardlink target %q is a symlink", hdr.Linkname)
+			}
+			if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+			if err := os.Link(source, path); err != nil {
+				return err
+			}
 		}
+	}
+	return nil
+}
+
+func safeTarPath(root, name string) (string, error) {
+	if name == "" {
+		return "", fmt.Errorf("empty path")
+	}
+	if strings.IndexByte(name, 0) >= 0 {
+		return "", fmt.Errorf("NUL byte in path")
+	}
+	converted := filepath.FromSlash(name)
+	if filepath.IsAbs(converted) || strings.HasPrefix(name, "/") || strings.HasPrefix(name, "\\") {
+		return "", fmt.Errorf("absolute path")
+	}
+	for _, part := range strings.FieldsFunc(name, func(r rune) bool { return r == '/' || r == '\\' }) {
+		if part == ".." {
+			return "", fmt.Errorf("parent traversal")
+		}
+	}
+	clean := filepath.Clean(converted)
+	if clean == "." || clean == string(filepath.Separator) {
+		return "", fmt.Errorf("invalid root entry")
+	}
+	path := filepath.Join(root, clean)
+	rel, err := filepath.Rel(root, path)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("path escapes rootfs")
+	}
+	return path, nil
+}
+
+func ensureNoSymlinkAncestors(root, path string, includeTarget bool) error {
+	rel, err := filepath.Rel(root, path)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("path escapes rootfs")
+	}
+	parts := []string{}
+	if rel != "." {
+		parts = strings.Split(rel, string(filepath.Separator))
+	}
+	limit := len(parts)
+	if !includeTarget && limit > 0 {
+		limit--
+	}
+	current := root
+	for i, part := range parts {
+		current = filepath.Join(current, part)
+		if i >= limit {
+			break
+		}
+		info, err := os.Lstat(current)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("component %q is a symlink", current)
+		}
+	}
+	return nil
+}
+
+func validateSymlinkTarget(root, linkPath, target string) error {
+	if target == "" || strings.IndexByte(target, 0) >= 0 {
+		return fmt.Errorf("invalid target")
+	}
+	converted := filepath.FromSlash(target)
+	if filepath.IsAbs(converted) || strings.HasPrefix(target, "/") || strings.HasPrefix(target, "\\") {
+		return fmt.Errorf("absolute target")
+	}
+	resolved := filepath.Join(filepath.Dir(linkPath), converted)
+	rel, err := filepath.Rel(root, resolved)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("target escapes rootfs")
+	}
+	if evaluated, err := filepath.EvalSymlinks(resolved); err == nil {
+		evaluatedRel, relErr := filepath.Rel(root, evaluated)
+		if relErr != nil || evaluatedRel == ".." || strings.HasPrefix(evaluatedRel, ".."+string(filepath.Separator)) {
+			return fmt.Errorf("target resolves outside rootfs")
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("resolve target: %w", err)
 	}
 	return nil
 }

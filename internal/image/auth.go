@@ -141,10 +141,15 @@ func loadAuth() ([]AuthEntry, error) {
 
 func saveAuth(entries []AuthEntry) error {
 	dir := filepath.Dir(authPath())
-	os.MkdirAll(dir, 0700)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	if err := os.Chmod(dir, 0700); err != nil {
+		return err
+	}
 	data, err := json.MarshalIndent(entries, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(authPath(), data, 0600)
+	return state.WriteFileAtomic(authPath(), data, 0600)
 }

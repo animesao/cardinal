@@ -11,22 +11,34 @@ import (
 
 func SaveToStore(img *Image) error {
 	imgDir := state.ImageDir(img.Name, img.Tag)
-	if err := os.MkdirAll(imgDir, 0755); err != nil {
+	if err := os.MkdirAll(imgDir, 0700); err != nil {
 		return fmt.Errorf("mkdir image dir: %w", err)
 	}
-	return state.WriteJSON(filepath.Join(imgDir, "manifest.json"), img)
+	if err := os.Chmod(imgDir, 0700); err != nil {
+		return fmt.Errorf("chmod image dir: %w", err)
+	}
+	return state.WriteJSON(filepath.Join(imgDir, "image.json"), img)
 }
 
 func LoadFromStore(name, tag string) *Image {
-	path := filepath.Join(state.ImageDir(name, tag), "manifest.json")
-	if !state.FileExists(path) {
-		return nil
-	}
+	path := filepath.Join(state.ImageDir(name, tag), "image.json")
 	var img Image
-	if err := state.ReadJSON(path, &img); err != nil {
-		return nil
+	if state.FileExists(path) {
+		if err := state.ReadJSON(path, &img); err == nil && img.Name != "" {
+			return &img
+		}
 	}
-	return &img
+
+	// Read legacy internal metadata written to manifest.json by older releases.
+	// OCI manifests are rejected by requiring the internal name and tag fields.
+	legacyPath := filepath.Join(state.ImageDir(name, tag), "manifest.json")
+	if state.FileExists(legacyPath) {
+		var legacy Image
+		if err := state.ReadJSON(legacyPath, &legacy); err == nil && legacy.Name != "" && legacy.Tag != "" {
+			return &legacy
+		}
+	}
+	return nil
 }
 
 func ListImages() ([]Image, error) {
@@ -77,7 +89,7 @@ func RemoveImage(name, tag string) error {
 }
 
 func HasImage(name, tag string) bool {
-	return state.FileExists(filepath.Join(state.ImageDir(name, tag), "manifest.json"))
+	return state.FileExists(filepath.Join(state.ImageDir(name, tag), "image.json"))
 }
 
 func parseRef(ref string) (name, tag string) {

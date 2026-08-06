@@ -1,7 +1,10 @@
 package image
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
+	"strings"
 	"testing"
 
 	"dck/internal/state"
@@ -98,6 +101,18 @@ func TestRemoveImage(t *testing.T) {
 	loaded := LoadFromStore("test-img", "latest")
 	if loaded != nil {
 		t.Error("Image should be removed")
+	}
+}
+
+func TestVerifyDigest(t *testing.T) {
+	data := []byte("layer bytes")
+	hash := sha256.Sum256(data)
+	good := "sha256:" + hex.EncodeToString(hash[:])
+	if err := verifyDigest(data, good); err != nil {
+		t.Fatalf("verifyDigest(valid): %v", err)
+	}
+	if err := verifyDigest(data, "sha256:"+strings.Repeat("0", 64)); err == nil {
+		t.Fatal("verifyDigest(invalid) unexpectedly succeeded")
 	}
 }
 

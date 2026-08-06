@@ -109,25 +109,32 @@ func Import(path string) error {
 			return fmt.Errorf("tar: %w", err)
 		}
 
-		if header.Name == "manifest.json" {
-			var data []byte
-			data, err = io.ReadAll(tr)
-			if err != nil {
-				return err
+		if header.Name == "image.json" {
+			data, readErr := io.ReadAll(tr)
+			if readErr != nil {
+				return readErr
 			}
-			// Try to read RepoTags from a config dump
+			var metadata Image
+			if json.Unmarshal(data, &metadata) == nil && metadata.Name != "" {
+				manifestName, manifestTag = metadata.Name, metadata.Tag
+				if manifestTag == "" {
+					manifestTag = "latest"
+				}
+			}
+			break
+		}
+		if header.Name == "manifest.json" {
+			data, readErr := io.ReadAll(tr)
+			if readErr != nil {
+				return readErr
+			}
+			// Also accept Docker-style exported manifests.
 			var cfg struct {
 				RepoTags []string `json:"RepoTags"`
 			}
 			if json.Unmarshal(data, &cfg) == nil && len(cfg.RepoTags) > 0 {
 				manifestName, manifestTag = parseRef(cfg.RepoTags[0])
 			}
-			if manifestName == "" {
-				// Fallback: use tag.txt or directory name
-				manifestName = "imported"
-				manifestTag = "latest"
-			}
-			break
 		}
 	}
 
@@ -159,7 +166,9 @@ func Import(path string) error {
 	tr2 := tar.NewReader(gr2)
 	destDir := state.ImageDir(manifestName, manifestTag)
 	os.RemoveAll(destDir)
-	os.MkdirAll(destDir, 0755)
+	if err := os.MkdirAll(destDir, 0700); err != nil {
+		return err
+	}
 
 	for {
 		header, err := tr2.Next()
@@ -181,8 +190,16 @@ func Import(path string) error {
 		if err != nil {
 			return err
 		}
-		if err := os.WriteFile(target, data, os.FileMode(header.Mode)); err != nil {
+		if err := os.WriteFile(target, data, 0600); err != nil {
 			return err
+		}
+	}
+
+	// Ensure imported archives have dck's internal metadata even when they
+	// originated from a Docker-style archive.
+	if LoadFromStore(manifestName, manifestTag) == nil {
+		if err := SaveToStore(&Image{Name: manifestName, Tag: manifestTag}); err != nil {
+			return fmt.Errorf("save imported image metadata: %w", err)
 		}
 	}
 

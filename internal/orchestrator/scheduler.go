@@ -159,6 +159,9 @@ func startRemoteReplica(ctx context.Context, serviceName string, svc *Service, n
 		return fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if auth := clusterAuthHeader(); auth != "" {
+		req.Header.Set("Authorization", auth)
+	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("schedule on %s: %w", node.Name, err)
@@ -210,6 +213,9 @@ func RemoveRemoteReplica(ctx context.Context, nodeID, containerID string) error 
 	if err != nil {
 		return fmt.Errorf("create request: %w", err)
 	}
+	if auth := clusterAuthHeader(); auth != "" {
+		req.Header.Set("Authorization", auth)
+	}
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -255,18 +261,18 @@ func AutoHealServices(ctx context.Context) {
 				if ctx.Err() != nil {
 					return
 				}
-	if err := ScheduleReplica(ctx, name, svc); err != nil {
-			reason := "unknown"
-			if strings.Contains(err.Error(), "no available nodes") || strings.Contains(err.Error(), "no active nodes") {
-				reason = "no_nodes"
-			} else if strings.Contains(err.Error(), "pull image") {
-				reason = "image_pull"
-			} else if strings.Contains(err.Error(), "container") {
-				reason = "container_error"
-			}
-			ScheduleReplicaErrors.WithLabelValues(name, reason).Inc()
-			log.Error("[heal] schedule error for %s: %v", name, err)
-		}
+				if err := ScheduleReplica(ctx, name, svc); err != nil {
+					reason := "unknown"
+					if strings.Contains(err.Error(), "no available nodes") || strings.Contains(err.Error(), "no active nodes") {
+						reason = "no_nodes"
+					} else if strings.Contains(err.Error(), "pull image") {
+						reason = "image_pull"
+					} else if strings.Contains(err.Error(), "container") {
+						reason = "container_error"
+					}
+					ScheduleReplicaErrors.WithLabelValues(name, reason).Inc()
+					log.Error("[heal] schedule error for %s: %v", name, err)
+				}
 				select {
 				case <-ctx.Done():
 					return
@@ -375,19 +381,32 @@ func RollingUpdateService(ctx context.Context, name, newImage string, opts Servi
 
 func saveReplica(serviceName, replicaID, containerID, nodeID string) {
 	dir := filepath.Join(state.DataDir(), ServiceStateDir, serviceName)
-	os.MkdirAll(dir, 0755)
-
-	r := ServiceReplica{
-		ID:           replicaID,
-		ServiceName:  serviceName,
-		NodeID:       nodeID,
-		ContainerID:  containerID,
-		Status:       "running",
-		CreatedAt:    time.Now(),
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		log.Error("[scheduler] create replica state directory: %v", err)
+		return
+	}
+	if err := os.Chmod(dir, 0700); err != nil {
+		log.Error("[scheduler] secure replica state directory: %v", err)
+		return
 	}
 
-	data, _ := json.MarshalIndent(r, "", "  ")
-	os.WriteFile(filepath.Join(dir, replicaID+".json"), data, 0644)
+	r := ServiceReplica{
+		ID:          replicaID,
+		ServiceName: serviceName,
+		NodeID:      nodeID,
+		ContainerID: containerID,
+		Status:      "running",
+		CreatedAt:   time.Now(),
+	}
+
+	data, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		log.Error("[scheduler] marshal replica state: %v", err)
+		return
+	}
+	if err := state.WriteFileAtomic(filepath.Join(dir, replicaID+".json"), data, 0600); err != nil {
+		log.Error("[scheduler] save replica state: %v", err)
+	}
 }
 
 var httpClient = &http.Client{

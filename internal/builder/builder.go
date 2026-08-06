@@ -45,27 +45,27 @@ type buildLayer struct {
 }
 
 type imageConfig struct {
-	Created      string            `json:"created"`
-	Author       string            `json:"author,omitempty"`
-	Architecture string            `json:"architecture"`
-	OS           string            `json:"os"`
-	Config       imageConfigInner  `json:"config"`
-	History      []imageHistory    `json:"history"`
-	Rootfs       imageRootfs       `json:"rootfs"`
+	Created      string           `json:"created"`
+	Author       string           `json:"author,omitempty"`
+	Architecture string           `json:"architecture"`
+	OS           string           `json:"os"`
+	Config       imageConfigInner `json:"config"`
+	History      []imageHistory   `json:"history"`
+	Rootfs       imageRootfs      `json:"rootfs"`
 }
 
 type imageConfigInner struct {
-	Cmd         []string          `json:"Cmd,omitempty"`
-	Entrypoint  []string          `json:"Entrypoint,omitempty"`
-	Env         []string          `json:"Env,omitempty"`
-	WorkingDir  string            `json:"WorkingDir,omitempty"`
-	User        string            `json:"User,omitempty"`
-	Labels      map[string]string `json:"Labels,omitempty"`
+	Cmd          []string            `json:"Cmd,omitempty"`
+	Entrypoint   []string            `json:"Entrypoint,omitempty"`
+	Env          []string            `json:"Env,omitempty"`
+	WorkingDir   string              `json:"WorkingDir,omitempty"`
+	User         string              `json:"User,omitempty"`
+	Labels       map[string]string   `json:"Labels,omitempty"`
 	ExposedPorts map[string]struct{} `json:"ExposedPorts,omitempty"`
-	Volumes     map[string]struct{} `json:"Volumes,omitempty"`
-	StopSignal  string            `json:"StopSignal,omitempty"`
-	Healthcheck *healthConfig     `json:"Healthcheck,omitempty"`
-	Shell       []string          `json:"Shell,omitempty"`
+	Volumes      map[string]struct{} `json:"Volumes,omitempty"`
+	StopSignal   string              `json:"StopSignal,omitempty"`
+	Healthcheck  *healthConfig       `json:"Healthcheck,omitempty"`
+	Shell        []string            `json:"Shell,omitempty"`
 }
 
 type healthConfig struct {
@@ -769,7 +769,12 @@ func (bs *buildState) finalize(buildTmp string) (*image.Image, error) {
 	}
 
 	imgDir := state.ImageDir(name, tag)
-	os.MkdirAll(imgDir, 0755)
+	if err := os.MkdirAll(imgDir, 0700); err != nil {
+		return nil, fmt.Errorf("create image directory: %w", err)
+	}
+	if err := os.Chmod(imgDir, 0700); err != nil {
+		return nil, fmt.Errorf("secure image directory: %w", err)
+	}
 
 	fmt.Printf("---\nCreating image %s/%s:%s with %d layers\n", name, tag, bs.cfg.Tag, len(bs.layers))
 
@@ -794,7 +799,7 @@ func (bs *buildState) finalize(buildTmp string) (*image.Image, error) {
 	}
 	configHash := sha256.Sum256(configData)
 	configDigest := "sha256:" + hex.EncodeToString(configHash[:])
-	if err := os.WriteFile(filepath.Join(imgDir, "config.json"), configData, 0644); err != nil {
+	if err := state.WriteFileAtomic(filepath.Join(imgDir, "config.json"), configData, 0600); err != nil {
 		return nil, fmt.Errorf("write config: %w", err)
 	}
 
@@ -819,12 +824,13 @@ func (bs *buildState) finalize(buildTmp string) (*image.Image, error) {
 		})
 	}
 
-	manifestData, _ := json.Marshal(manifest)
-	if err := os.WriteFile(filepath.Join(imgDir, "manifest.json"), manifestData, 0644); err != nil {
+	manifestData, err := json.Marshal(manifest)
+	if err != nil {
+		return nil, fmt.Errorf("marshal manifest: %w", err)
+	}
+	if err := state.WriteFileAtomic(filepath.Join(imgDir, "manifest.json"), manifestData, 0600); err != nil {
 		return nil, fmt.Errorf("write manifest: %w", err)
 	}
-	// Also write oci-manifest.json for ReadManifest compatibility
-	os.WriteFile(filepath.Join(imgDir, "oci-manifest.json"), manifestData, 0644)
 
 	// Extract rootfs for runtime use
 	rootfsDir := state.ImageRootfsDir(name, tag)

@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Go 1.18+
+- Go 1.25+
 - Linux (for container execution features)
 - Optional: `git` (for version injection)
 

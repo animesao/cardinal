@@ -75,16 +75,16 @@ func CreateService(name, image string, replicas int, opts ServiceOpts) (*Service
 
 // ServiceOpts contains optional service configuration
 type ServiceOpts struct {
-	Ports       []ServicePort
-	Env         map[string]string
-	Volumes     []string
-	Command     string
-	Restart     string
-	Memory      string
-	CPUs        float64
-	Labels      map[string]string
+	Ports        []ServicePort
+	Env          map[string]string
+	Volumes      []string
+	Command      string
+	Restart      string
+	Memory       string
+	CPUs         float64
+	Labels       map[string]string
 	UpdateConfig *UpdateConfig
-	Healthcheck *ServiceHealthcheck
+	Healthcheck  *ServiceHealthcheck
 }
 
 // ListServices returns all services
@@ -303,7 +303,12 @@ func reconcileScaleDown(ctx context.Context, name string, replicas []ServiceRepl
 
 func loadServices() error {
 	dir := filepath.Join(state.DataDir(), ServiceStateDir)
-	os.MkdirAll(dir, 0755)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	if err := os.Chmod(dir, 0700); err != nil {
+		return err
+	}
 	path := filepath.Join(dir, "services.json")
 
 	data, err := os.ReadFile(path)
@@ -331,12 +336,17 @@ func loadServices() error {
 
 func saveServices() error {
 	dir := filepath.Join(state.DataDir(), ServiceStateDir)
-	os.MkdirAll(dir, 0755)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	if err := os.Chmod(dir, 0700); err != nil {
+		return err
+	}
 
 	data, err := json.MarshalIndent(clusterConf.Services, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(filepath.Join(dir, "services.json"), data, 0644)
+	return state.WriteFileAtomic(filepath.Join(dir, "services.json"), data, 0600)
 }

@@ -161,10 +161,10 @@ func InvokeFunction(ctx context.Context, name string, payload []byte) ([]byte, e
 		if replicas < 1 {
 			replicas = 1
 		}
-	if err := scaleUpFunction(ctx, fn, replicas); err != nil {
-		FaaSInvokeErrors.WithLabelValues(name, "scale_up").Inc()
-		return nil, fmt.Errorf("scale up function %s: %w", name, err)
-	}
+		if err := scaleUpFunction(ctx, fn, replicas); err != nil {
+			FaaSInvokeErrors.WithLabelValues(name, "scale_up").Inc()
+			return nil, fmt.Errorf("scale up function %s: %w", name, err)
+		}
 	}
 
 	invokeStart := time.Now()
@@ -368,7 +368,12 @@ func forwardToFunction(ctx context.Context, fn *Function, payload []byte) ([]byt
 
 func loadFunctions() error {
 	dir := filepath.Join(state.DataDir(), FunctionStateDir)
-	os.MkdirAll(dir, 0755)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	if err := os.Chmod(dir, 0700); err != nil {
+		return err
+	}
 	path := filepath.Join(dir, "functions.json")
 
 	data, err := os.ReadFile(path)
@@ -393,14 +398,19 @@ func loadFunctions() error {
 
 func saveFunctions() error {
 	dir := filepath.Join(state.DataDir(), FunctionStateDir)
-	os.MkdirAll(dir, 0755)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	if err := os.Chmod(dir, 0700); err != nil {
+		return err
+	}
 
 	data, err := json.MarshalIndent(allFunctions, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(filepath.Join(dir, "functions.json"), data, 0644)
+	return state.WriteFileAtomic(filepath.Join(dir, "functions.json"), data, 0600)
 }
 
 // CleanIdleFunctions stops functions that have been idle too long

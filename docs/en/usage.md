@@ -807,7 +807,7 @@ dck down --rmi            # also remove images
 Start a Docker-compatible REST API server.
 
 ```bash
-dck serve -p 2375
+dck serve -p 2375  # localhost only by default; use --token for external bind
 ```
 
 Compatible with Docker clients, Portainer, VS Code Dev Containers, and CI tools.
@@ -851,7 +851,7 @@ For full documentation, see [cluster.md](cluster.md).
 
 ```bash
 # Initialize a cluster
-dck cluster init --name prod --bind 0.0.0.0 --port 2375
+dck cluster init --name prod --bind 0.0.0.0 --port 2375 --token '<strong-random-token>'
 
 # Join a cluster
 dck cluster join 10.0.0.1:2375

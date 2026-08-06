@@ -2,12 +2,16 @@ package state
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
 func DataDir() string {
+	if dir := strings.TrimSpace(os.Getenv("DCK_DATA_DIR")); dir != "" {
+		return filepath.Clean(dir)
+	}
 	if os.Getuid() == 0 {
 		return "/root/.dck"
 	}
@@ -99,20 +103,61 @@ func ConsolePath(containerID string) string {
 
 func EnsureDirs() error {
 	for _, d := range []string{DataDir(), ImagesDir(), ContainersDir(), LogsDir(), OverlayDir(), ConsolesDir(), VolumesDir(), CacheDir(), LayerCacheDir()} {
-		if err := os.MkdirAll(d, 0755); err != nil {
+		if err := os.MkdirAll(d, 0700); err != nil {
+			return err
+		}
+		if err := os.Chmod(d, 0700); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func WriteJSON(path string, v interface{}) error {
-	f, err := os.Create(path)
+// WriteFileAtomic writes data to a temporary file in the destination directory,
+// syncs it, and atomically replaces the destination.
+func WriteFileAtomic(path string, data []byte, mode os.FileMode) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	if err := os.Chmod(dir, 0700); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(dir, ".dck-atomic-*")
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	return json.NewEncoder(f).Encode(v)
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+
+	if err := tmp.Chmod(mode); err != nil {
+		tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return err
+	}
+	return os.Chmod(path, mode)
+}
+
+func WriteJSON(path string, v interface{}) error {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Errorf("marshal JSON: %w", err)
+	}
+	data = append(data, '\n')
+	return WriteFileAtomic(path, data, 0600)
 }
 
 func ReadJSON(path string, v interface{}) error {

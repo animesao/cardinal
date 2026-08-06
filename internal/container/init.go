@@ -14,6 +14,8 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"dck/internal/log"
 	"dck/internal/state"
 )
@@ -75,8 +77,8 @@ var capMap = map[string]uintptr{
 }
 
 const (
-	PR_CAPBSET_READ  = 0x16
-	PR_CAPBSET_DROP  = 0x15
+	PR_CAPBSET_READ     = 0x16
+	PR_CAPBSET_DROP     = 0x15
 	PR_SET_NO_NEW_PRIVS = 0x26
 )
 
@@ -112,6 +114,62 @@ func dropAllCapabilities() error {
 
 func setNoNewPrivileges() error {
 	return prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)
+}
+
+func applyCapabilities(c *Container) error {
+	// Start with no capabilities. Only explicitly requested capabilities are
+	// retained; SETUID/SETGID are kept when the container explicitly switches
+	// user so the requested identity can be applied before exec.
+	keep := make(map[string]bool)
+	for _, capName := range c.CapAdd {
+		name := strings.ToUpper(strings.TrimPrefix(capName, "CAP_"))
+		if name == "ALL" {
+			for capName := range capMap {
+				keep[capName] = true
+			}
+			continue
+		}
+		if _, ok := capMap[name]; !ok {
+			return fmt.Errorf("unknown capability: %s", capName)
+		}
+		keep[name] = true
+	}
+	if c.User != "" {
+		keep["SETUID"] = true
+		keep["SETGID"] = true
+	}
+	for _, capName := range c.CapDrop {
+		name := strings.ToUpper(strings.TrimPrefix(capName, "CAP_"))
+		if name == "ALL" {
+			keep = map[string]bool{}
+			continue
+		}
+		delete(keep, name)
+	}
+
+	var data [2]unix.CapUserData
+	for name := range keep {
+		value := capMap[name]
+		word := value / 32
+		bit := value % 32
+		data[word].Effective |= 1 << bit
+		data[word].Permitted |= 1 << bit
+	}
+	header := unix.CapUserHeader{Version: unix.LINUX_CAPABILITY_VERSION_3}
+	if err := unix.Capset(&header, &data[0]); err != nil {
+		return fmt.Errorf("apply capabilities: %w", err)
+	}
+
+	// Also remove every capability from the bounding set unless it is in the
+	// effective allow-list; descendants cannot regain a dropped capability.
+	for name, value := range capMap {
+		if !keep[name] {
+			if err := prctl(PR_CAPBSET_DROP, value, 0, 0, 0); err != nil {
+				return fmt.Errorf("drop capability %s: %w", name, err)
+			}
+		}
+	}
+	return nil
 }
 
 // RLIMIT constants (not all are exported in Go's syscall on linux/amd64)
@@ -374,6 +432,12 @@ func InitContainer(id, merged string) error {
 		}
 	}
 
+	// Set the effective/permitted capability sets before switching away from root.
+	// The bounding-set drops below make these removals irreversible for children.
+	if err := applyCapabilities(c); err != nil {
+		return err
+	}
+
 	// Apply user switching
 	if c.User != "" {
 		var uid, gid int
@@ -390,53 +454,11 @@ func InitContainer(id, merged string) error {
 		}
 	}
 
-	// Capability security model:
-	// 1. Start with all capabilities in bounding set (from unshare'd root)
-	// 2. Drop dangerous capabilities by default (safe default)
-	// 3. If user --cap-add'd specific caps, skip dropping those
-	// 4. Apply user's --cap-drop (override)
-	// Note: PR_CAPBSET_DROP is one-way, caps can only be removed, never re-added
-
-	// Determine which dangerous caps user wants to keep (explicitly added back)
-	userKept := make(map[string]bool)
-	userAddAll := false
-	for _, capName := range c.CapAdd {
-		upper := strings.ToUpper(capName)
-		if upper == "ALL" || upper == "CAP_ALL" {
-			userAddAll = true
-		} else {
-			upper = strings.TrimPrefix(upper, "CAP_")
-			userKept[upper] = true
-		}
-	}
-
-	// Apply no_new_privs (prevents setuid/capability escalation for child processes)
-	// Enabled by default for security; disable with --no-new-privs=false or cap-add SETUID/SETGID
-	if !c.NoNewPrivileges {
-		if !userKept["SETUID"] && !userKept["SETGID"] {
-			setNoNewPrivileges()
-		}
-	} else {
-		setNoNewPrivileges()
-	}
-
-	// Drop dangerous capabilities by default (unless user asked to keep them)
-	if !userAddAll {
-		for _, capName := range dangerousCaps {
-			if !userKept[capName] {
-				dropCapability(capName)
-			}
-		}
-	}
-
-	// Apply user's explicit --cap-drop (overrides everything)
-	for _, capName := range c.CapDrop {
-		upper := strings.ToUpper(capName)
-		if upper == "ALL" || upper == "CAP_ALL" {
-			dropAllCapabilities()
-			break
-		}
-		dropCapability(capName)
+	// no_new_privs is always enabled for the container init process. This is
+	// intentionally a security default; the flag remains accepted for API
+	// compatibility but cannot weaken the runtime policy.
+	if err := setNoNewPrivileges(); err != nil {
+		return fmt.Errorf("set no-new-privileges: %w", err)
 	}
 
 	// Apply readonly rootfs (remount / as readonly after /proc is mounted)

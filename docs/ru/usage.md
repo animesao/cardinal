@@ -836,7 +836,7 @@ dck down --rmi            # также удалить образы
 Запустить Docker-совместимый REST API сервер.
 
 ```bash
-dck serve -p 2375
+dck serve -p 2375  # по умолчанию только localhost; для внешнего bind нужен --token
 ```
 
 Совместим с Docker-клиентами, Portainer, VS Code Dev Containers и CI.
@@ -878,7 +878,7 @@ dck поддерживает multi-node кластеризацию с управ
 
 ```bash
 # Инициализировать кластер
-dck cluster init --name prod --bind 0.0.0.0 --port 2375
+dck cluster init --name prod --bind 0.0.0.0 --port 2375 --token '<strong-random-token>'
 
 # Присоединиться
 dck cluster join 10.0.0.1:2375

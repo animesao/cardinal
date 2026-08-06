@@ -38,7 +38,7 @@ DNS-обнаружением сервисов и rolling updates — всё в �
 `--serve` сразу запускает API-сервер для приёма запросов на реплики.
 
 ```
-dck cluster init --name prod --bind 0.0.0.0 --port 7946 --api-port 2375 --serve
+DCK_TOKEN='<strong-random-token>' dck cluster init --name prod --bind 0.0.0.0 --port 7946 --api-port 2375 --serve --token '<strong-random-token>'
 ```
 
 Вывод:
@@ -48,7 +48,7 @@ Initialized cluster prod (a1b2c3d4e5f6)
   Node name: node-01
   Bind address: 0.0.0.0:7946
   API Port: 2375 (for remote replica requests)
-Starting API server on 0.0.0.0:2375...
+Starting API server on 0.0.0.0:2375 (требуется Bearer-токен)...
 ```
 
 ### `dck cluster join <узел>`
@@ -56,7 +56,7 @@ Starting API server on 0.0.0.0:2375...
 Присоединиться к существующему кластеру. `--serve` запускает API-сервер.
 
 ```
-dck cluster join 10.0.0.1:7946 --bind 0.0.0.0 --port 2375 --serve
+DCK_TOKEN='<strong-random-token>' dck cluster join 10.0.0.1:7946 --bind 0.0.0.0 --port 2375 --serve --token '<strong-random-token>'
 ```
 
 Присоединяющийся узел:
@@ -78,7 +78,7 @@ dck cluster leave
 Нужен на каждой ноде, которая должна запускать контейнеры по заданию планировщика.
 
 ```
-dck cluster serve -p 2375 -H 0.0.0.0
+dck cluster serve -p 2375 -H 0.0.0.0 --token '<strong-random-token>'
 ```
 
 API-сервер обрабатывает:

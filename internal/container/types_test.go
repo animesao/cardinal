@@ -1,3 +1,5 @@
+//go:build linux
+
 package container
 
 import (
@@ -64,6 +66,66 @@ func TestParseVolumeString(t *testing.T) {
 	}
 }
 
+func TestVolumeNameValidation(t *testing.T) {
+	for _, name := range []string{"", ".", "..", "../escape", "nested/name"} {
+		if err := validateVolumeName(name); err == nil {
+			t.Errorf("validateVolumeName(%q) unexpectedly succeeded", name)
+		}
+	}
+	if err := validateVolumeName("safe-volume"); err != nil {
+		t.Fatalf("validateVolumeName(safe-volume): %v", err)
+	}
+}
+
+func TestContainerTargetValidation(t *testing.T) {
+	for _, target := range []string{"", "relative", "/", "/../escape", `/\\escape`} {
+		if err := validateContainerTarget(target); err == nil {
+			t.Errorf("validateContainerTarget(%q) unexpectedly succeeded", target)
+		}
+	}
+	if err := validateContainerTarget("/var/lib/app"); err != nil {
+		t.Fatalf("validateContainerTarget(/var/lib/app): %v", err)
+	}
+}
+
+func TestBindSourceValidation(t *testing.T) {
+	if _, err := validateBindSource("/etc"); err == nil {
+		t.Fatal("validateBindSource(/etc) unexpectedly succeeded")
+	}
+	root := t.TempDir()
+	if resolved, err := validateBindSource(root); err != nil || resolved != root {
+		t.Fatalf("validateBindSource(%q) = %q, %v", root, resolved, err)
+	}
+}
+
+func TestRemoveKeepsNamedVolume(t *testing.T) {
+	origDataDir := os.Getenv("DCK_DATA_DIR")
+	tmpDir := t.TempDir()
+	if err := os.Setenv("DCK_DATA_DIR", tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Setenv("DCK_DATA_DIR", origDataDir)
+
+	vol, err := CreateVolume("persistent", "local", nil, nil)
+	if err != nil {
+		t.Fatalf("CreateVolume: %v", err)
+	}
+	c := &Container{
+		ID:      "remove-keeps-volume",
+		Status:  Stopped,
+		Volumes: []VolumeMount{{Source: vol.Name, Target: "/data"}},
+	}
+	if err := c.Save(); err != nil {
+		t.Fatalf("save container: %v", err)
+	}
+	if err := c.Remove(false); err != nil {
+		t.Fatalf("remove container: %v", err)
+	}
+	if _, err := os.Stat(vol.Mountpoint); err != nil {
+		t.Fatalf("named volume was removed with container: %v", err)
+	}
+}
+
 func TestNeedsNetwork(t *testing.T) {
 	tests := []struct {
 		mode string
@@ -92,9 +154,9 @@ func TestSaveAndLoad(t *testing.T) {
 	os.Setenv("DCK_DATA_DIR", tmpDir)
 
 	c := &Container{
-		ID:     "test-save-load",
-		Name:   "test-container",
-		Status: Created,
+		ID:        "test-save-load",
+		Name:      "test-container",
+		Status:    Created,
 		ImageName: "nginx",
 		ImageTag:  "latest",
 		Ports: []PortMap{

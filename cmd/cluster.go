@@ -63,11 +63,18 @@ Commands:
 func clusterInit(args []string) {
 	fs := flag.NewFlagSet("cluster init", flag.ExitOnError)
 	name := fs.String("name", "default", "Cluster name")
-	bind := fs.String("bind", "0.0.0.0", "Bind address")
+	bind := fs.String("bind", "127.0.0.1", "Cluster bind address")
 	port := fs.Int("port", 7946, "Cluster port")
 	apiPort := fs.Int("api-port", 2375, "API server port (for remote replica requests)")
 	startAPI := fs.Bool("serve", false, "Start API server after init")
+	token := fs.String("token", "", "API authentication token (or DCK_TOKEN env)")
 	fs.Parse(args)
+	if *token == "" {
+		*token = os.Getenv("DCK_TOKEN")
+	}
+	api.SetAuthToken(*token)
+	api.SetServerVersion(version)
+	orchestrator.SetAPIToken(*token)
 
 	if err := orchestrator.InitCluster(*name, *bind, *port); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -99,15 +106,23 @@ func clusterJoin(args []string) {
 	}
 
 	peerAddr := args[0]
-	bind := "0.0.0.0"
+	bind := "127.0.0.1"
 	port := 2375
 	startAPI := false
+	token := ""
 
 	fs := flag.NewFlagSet("cluster join", flag.ExitOnError)
-	fs.StringVar(&bind, "bind", "0.0.0.0", "Bind address")
+	fs.StringVar(&bind, "bind", "127.0.0.1", "Bind address")
 	fs.IntVar(&port, "port", 2375, "API port")
 	fs.BoolVar(&startAPI, "serve", false, "Start API server after join")
+	fs.StringVar(&token, "token", "", "API authentication token (or DCK_TOKEN env)")
 	fs.Parse(args[1:])
+	if token == "" {
+		token = os.Getenv("DCK_TOKEN")
+	}
+	api.SetAuthToken(token)
+	api.SetServerVersion(version)
+	orchestrator.SetAPIToken(token)
 
 	if err := orchestrator.JoinCluster(peerAddr, bind, port); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -342,8 +357,15 @@ func shortID(id string) string {
 func clusterServe(args []string) {
 	fs := flag.NewFlagSet("cluster serve", flag.ExitOnError)
 	port := fs.Int("p", 2375, "API port")
-	host := fs.String("H", "0.0.0.0", "API host")
+	host := fs.String("H", "127.0.0.1", "API host (external addresses require --token or DCK_TOKEN)")
+	token := fs.String("token", "", "API authentication token (or DCK_TOKEN env)")
 	fs.Parse(args)
+	if *token == "" {
+		*token = os.Getenv("DCK_TOKEN")
+	}
+	api.SetAuthToken(*token)
+	api.SetServerVersion(version)
+	orchestrator.SetAPIToken(*token)
 
 	fmt.Printf("Starting cluster API server on %s:%d...\n", *host, *port)
 	fmt.Println("  Accepting replica requests from cluster peers")

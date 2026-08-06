@@ -9,7 +9,7 @@ dck up                        dck cluster init
 dck serve                     dck fn deploy --name hello myfunc
 ```
 
-Version: `1.22.4` — [GitHub](https://github.com/animesao/dck)
+Version: `1.22.7` — [GitHub](https://github.com/animesao/dck)
 
 ## CLI Command Reference
 
@@ -133,7 +133,7 @@ Version: `1.22.4` — [GitHub](https://github.com/animesao/dck)
 ### System
 | Command | Description |
 |---------|-------------|
-| `dck serve [-p 2375] [-H host] [-d] [--token <key>]` | Start REST API server (daemon mode, auth token) |
+| `dck serve [-p 2375] [-H host] [-d] [--token <key>]` | Start REST API server (localhost by default; external bind requires Bearer token) |
 | `dck system prune` | Clean up unused resources |
 | `dck update [--check]` | Self-update |
 | `dck bootstrap [--install\|--remove]` | Auto-start on boot |
@@ -195,7 +195,7 @@ Version: `1.22.4` — [GitHub](https://github.com/animesao/dck)
 ## Architecture
 
 ```
-Storage: /root/.dck/
+Storage: `$DCK_DATA_DIR` (default: `/root/.dck/`)
 
 images/        OCI rootfs per tag
 containers/    State JSON files

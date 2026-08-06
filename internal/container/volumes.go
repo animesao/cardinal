@@ -26,17 +26,17 @@ const (
 
 // VolumeSpec is a parsed volume specification
 type VolumeSpec struct {
-	Type        VolumeType `json:"type"`
-	Source      string     `json:"source"`
-	Target      string     `json:"target"`
-	ReadOnly    bool       `json:"read_only,omitempty"`
-	Propagation string     `json:"propagation,omitempty"` // shared, slave, private, rshared, rslave, rprivate
-	SELinuxRelabel string  `json:"selinux_relabel,omitempty"` // Z or z
-	NoCopy      bool       `json:"no_copy,omitempty"`
+	Type           VolumeType `json:"type"`
+	Source         string     `json:"source"`
+	Target         string     `json:"target"`
+	ReadOnly       bool       `json:"read_only,omitempty"`
+	Propagation    string     `json:"propagation,omitempty"`     // shared, slave, private, rshared, rslave, rprivate
+	SELinuxRelabel string     `json:"selinux_relabel,omitempty"` // Z or z
+	NoCopy         bool       `json:"no_copy,omitempty"`
 	// NFS options
 	NFOptions string `json:"nfs_options,omitempty"`
 	// tmpfs options
-	TmpfsSize string `json:"tmpfs_size,omitempty"`
+	TmpfsSize string      `json:"tmpfs_size,omitempty"`
 	TmpfsMode os.FileMode `json:"tmpfs_mode,omitempty"`
 }
 
@@ -167,14 +167,75 @@ func VolumeDir(name string) string {
 	return filepath.Join(state.VolumesDir(), name)
 }
 
+func validateVolumeName(name string) error {
+	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, "/\\\\") {
+		return fmt.Errorf("invalid volume name %q", name)
+	}
+	return nil
+}
+
+func validateContainerTarget(target string) error {
+	if target == "" || !filepath.IsAbs(filepath.FromSlash(target)) {
+		return fmt.Errorf("container mount target must be absolute: %q", target)
+	}
+	for _, part := range strings.FieldsFunc(target, func(r rune) bool { return r == '/' || r == '\\' }) {
+		if part == ".." {
+			return fmt.Errorf("container mount target contains parent traversal: %q", target)
+		}
+	}
+	clean := filepath.Clean(filepath.FromSlash(target))
+	if clean == string(filepath.Separator) || clean == "." {
+		return fmt.Errorf("unsafe container mount target: %q", target)
+	}
+	rel, err := filepath.Rel(string(filepath.Separator), clean)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("container mount target escapes root: %q", target)
+	}
+	return nil
+}
+
+func validateBindSource(source string) (string, error) {
+	if source == "" || !filepath.IsAbs(filepath.FromSlash(source)) {
+		return "", fmt.Errorf("bind source must be an absolute host path: %q", source)
+	}
+	resolved, err := filepath.EvalSymlinks(source)
+	if err != nil {
+		return "", fmt.Errorf("resolve bind source %q: %w", source, err)
+	}
+	resolved, err = filepath.Abs(resolved)
+	if err != nil {
+		return "", fmt.Errorf("absolute bind source %q: %w", source, err)
+	}
+	for _, blocked := range []string{
+		"/", "/bin", "/boot", "/dev", "/etc", "/home", "/lib", "/lib64",
+		"/media", "/mnt", "/opt", "/proc", "/root", "/run", "/sbin", "/srv",
+		"/sys", "/usr", "/var", "/var/run",
+	} {
+		if resolved == blocked || strings.HasPrefix(resolved, blocked+string(filepath.Separator)) {
+			return "", fmt.Errorf("bind source %q is a protected host path", source)
+		}
+	}
+	info, err := os.Stat(resolved)
+	if err != nil {
+		return "", fmt.Errorf("stat bind source %q: %w", source, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("bind source %q is not a directory", source)
+	}
+	return resolved, nil
+}
+
 // CreateVolume creates a new named volume
 func CreateVolume(name, driver string, labels map[string]string, opts map[string]string) (*Volume, error) {
+	if err := validateVolumeName(name); err != nil {
+		return nil, err
+	}
 	volDir := VolumeDir(name)
 	if _, err := os.Stat(volDir); err == nil {
 		return nil, fmt.Errorf("volume %q already exists", name)
 	}
 
-	if err := os.MkdirAll(volDir, 0755); err != nil {
+	if err := os.MkdirAll(volDir, 0700); err != nil {
 		return nil, fmt.Errorf("create volume directory: %w", err)
 	}
 
@@ -220,6 +281,9 @@ func ListVolumes() ([]*Volume, error) {
 
 // RemoveVolume removes a named volume
 func RemoveVolume(name string) error {
+	if err := validateVolumeName(name); err != nil {
+		return err
+	}
 	volDir := VolumeDir(name)
 	if _, err := os.Stat(volDir); os.IsNotExist(err) {
 		return fmt.Errorf("volume %q not found", name)
@@ -267,13 +331,31 @@ func saveVolume(vol *Volume) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0644)
+	return state.WriteFileAtomic(path, data, 0600)
 }
 
 // MountVolume mounts a volume for a container
 func MountVolume(spec *VolumeSpec, containerRootfs string) error {
-	target := filepath.Join(containerRootfs, spec.Target)
-	os.MkdirAll(target, 0755)
+	if spec == nil {
+		return fmt.Errorf("volume specification is nil")
+	}
+	if err := validateContainerTarget(spec.Target); err != nil {
+		return err
+	}
+	root, err := filepath.Abs(containerRootfs)
+	if err != nil {
+		return fmt.Errorf("resolve container rootfs: %w", err)
+	}
+	target, err := safeContainerPath(root, spec.Target)
+	if err != nil {
+		return err
+	}
+	if err := rejectSymlinkAncestors(root, target); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(target, 0755); err != nil {
+		return err
+	}
 
 	switch spec.Type {
 	case VolumeTypeTmpfs:
@@ -322,11 +404,20 @@ func mountNFS(spec *VolumeSpec, target string) error {
 func mountBind(spec *VolumeSpec, target string) error {
 	source := spec.Source
 	if spec.Type == VolumeTypeVolume {
+		if err := validateVolumeName(spec.Source); err != nil {
+			return err
+		}
 		source = VolumeDir(spec.Source)
+		if err := os.MkdirAll(source, 0700); err != nil {
+			return fmt.Errorf("create volume source: %w", err)
+		}
+	} else {
+		var err error
+		source, err = validateBindSource(source)
+		if err != nil {
+			return err
+		}
 	}
-
-	// Ensure source exists
-	os.MkdirAll(source, 0755)
 
 	// Copy image content into empty volumes (Docker-compatible)
 	if spec.Type == VolumeTypeVolume && !spec.NoCopy {
@@ -372,7 +463,43 @@ func mountBind(spec *VolumeSpec, target string) error {
 
 // UmountVolume unmounts a volume
 func UmountVolume(target string) {
-	exec.Command("umount", target).Run()
+	_ = exec.Command("umount", target).Run()
+}
+
+func rejectSymlinkAncestors(root, target string) error {
+	rel, err := filepath.Rel(root, target)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("container mount target escapes rootfs: %q", target)
+	}
+	current := root
+	if rel == "." {
+		return nil
+	}
+	for _, part := range strings.Split(rel, string(filepath.Separator)) {
+		current = filepath.Join(current, part)
+		info, err := os.Lstat(current)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return fmt.Errorf("inspect mount target %q: %w", current, err)
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("mount target contains symlink: %q", current)
+		}
+	}
+	return nil
+}
+
+func safeContainerPath(root, target string) (string, error) {
+	target = filepath.FromSlash(target)
+	rel := strings.TrimPrefix(target, string(filepath.Separator))
+	path := filepath.Join(root, rel)
+	check, err := filepath.Rel(root, path)
+	if err != nil || check == ".." || strings.HasPrefix(check, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("container mount target escapes rootfs: %q", target)
+	}
+	return path, nil
 }
 
 // ParseVolumeString is a convenience for parsing the old-format volume string

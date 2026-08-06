@@ -3,11 +3,13 @@
 package api
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -17,7 +19,17 @@ import (
 
 const DockerAPIVersion = "1.44"
 
-var authToken string
+var (
+	authToken     string
+	serverVersion = "dev"
+)
+
+// SetServerVersion sets the application version returned by the API.
+func SetServerVersion(version string) {
+	if version != "" {
+		serverVersion = version
+	}
+}
 
 // SetAuthToken sets the Bearer token required for API access.
 // When empty, authentication is disabled.
@@ -26,6 +38,10 @@ func SetAuthToken(token string) {
 }
 
 func StartServer(port int, host string) error {
+	if isExternalHost(host) && authToken == "" {
+		return fmt.Errorf("refusing to expose API on %s without an authentication token; use --token or DCK_TOKEN", host)
+	}
+
 	mux := http.NewServeMux()
 
 	// Docker API compatibility layer
@@ -70,6 +86,23 @@ func StartServer(port int, host string) error {
 	return http.Serve(listener, authMiddleware(corsMiddleware(jsonContentType(mux))))
 }
 
+func isExternalHost(host string) bool {
+	host = strings.TrimSpace(host)
+	if host == "" {
+		return true
+	}
+	if host == "localhost" {
+		return false
+	}
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		host = strings.TrimSuffix(strings.TrimPrefix(host, "["), "]")
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return !ip.IsLoopback()
+	}
+	return true
+}
+
 func authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if authToken == "" {
@@ -77,11 +110,8 @@ func authMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		auth := r.Header.Get("Authorization")
-		if auth == "" {
-			auth = r.URL.Query().Get("token")
-		}
 		expected := "Bearer " + authToken
-		if auth == expected || auth == authToken {
+		if subtle.ConstantTimeCompare([]byte(auth), []byte(expected)) == 1 {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -130,14 +160,14 @@ func handlePing(w http.ResponseWriter, r *http.Request) {
 
 func handleVersion(w http.ResponseWriter, r *http.Request) {
 	v := VersionResponse{
-		Version:    "24.0.0",
-		APIVersion: DockerAPIVersion,
+		Version:       serverVersion,
+		APIVersion:    DockerAPIVersion,
 		MinAPIVersion: "1.24",
-		GitCommit:  "dck",
-		GoVersion:  "go1.18",
-		Os:         "linux",
-		Arch:       "amd64",
-		BuildTime:  "",
+		GitCommit:     "dck",
+		GoVersion:     runtime.Version(),
+		Os:            "linux",
+		Arch:          "amd64",
+		BuildTime:     "",
 	}
 	writeJSON(w, 200, v)
 }
@@ -195,32 +225,31 @@ func handleInfo(w http.ResponseWriter, r *http.Request) {
 			{"Backing Filesystem", "extfs"},
 			{"Supports d_type", "true"},
 		},
-		MemoryLimit:   true,
-		SwapLimit:     true,
-		CPUCfsPeriod:  true,
-		CPUCfsQuota:   true,
-		CPUShares:     true,
-		CPUSet:        true,
-		KernelVersion: kernelVer,
+		MemoryLimit:     true,
+		SwapLimit:       true,
+		CPUCfsPeriod:    true,
+		CPUCfsQuota:     true,
+		CPUShares:       true,
+		CPUSet:          true,
+		KernelVersion:   kernelVer,
 		OperatingSystem: readOSRelease(),
 		OSType:          "linux",
 		Architecture:    "x86_64",
 		NCPU:            readCPUCount(),
 		MemTotal:        readMemTotal(),
 		DockerRootDir:   state.DataDir(),
-		Name:            hostname,
-		ServerVersion:   "24.0.0-dck",
-		HTTPProxy:       os.Getenv("HTTP_PROXY"),
-		HTTPSProxy:      os.Getenv("HTTPS_PROXY"),
-		NoProxy:         os.Getenv("NO_PROXY"),
-		ExperimentalBuild: false,
-		DefaultRuntime:  "runc",
+		Name:            hostname, ServerVersion: serverVersion + "-dck",
+		HTTPProxy:          os.Getenv("HTTP_PROXY"),
+		HTTPSProxy:         os.Getenv("HTTPS_PROXY"),
+		NoProxy:            os.Getenv("NO_PROXY"),
+		ExperimentalBuild:  false,
+		DefaultRuntime:     "runc",
 		LiveRestoreEnabled: false,
 		IndexServerAddress: "https://index.docker.io/v1/",
-		InitBinary:      "",
-		SecurityOptions: []string{"name=seccomp,profile=default"},
-		CgroupDriver:    cgroupDriver,
-		CgroupVersion:   cgroupVer,
+		InitBinary:         "",
+		SecurityOptions:    []string{"name=seccomp,profile=default"},
+		CgroupDriver:       cgroupDriver,
+		CgroupVersion:      cgroupVer,
 		Runtimes: map[string]RuntimeInfo{
 			"runc": {Path: "runc"},
 		},

@@ -15,12 +15,13 @@ import (
 	"dck/internal/api"
 	"dck/internal/container"
 	"dck/internal/log"
+	"dck/internal/orchestrator"
 )
 
 func Serve(args []string) {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
 	port := fs.Int("p", 2375, "API port")
-	host := fs.String("H", "0.0.0.0", "API host")
+	host := fs.String("H", "127.0.0.1", "API host (external addresses require --token or DCK_TOKEN)")
 	daemon := fs.Bool("d", false, "Run as daemon (background)")
 	token := fs.String("token", "", "Authentication token (or DCK_TOKEN env)")
 
@@ -39,15 +40,16 @@ func Serve(args []string) {
 	if apiToken == "" {
 		apiToken = os.Getenv("DCK_TOKEN")
 	}
-	if apiToken != "" {
-		api.SetAuthToken(apiToken)
-	}
+	api.SetAuthToken(apiToken)
+	api.SetServerVersion(version)
+	orchestrator.SetAPIToken(apiToken)
 
 	if *daemon {
-		cmd := exec.Command("/proc/self/exe", append([]string{"serve",
-			"-H", *host,
-			"-p", fmt.Sprintf("%d", *port),
-		}, flag.Args()...)...)
+		childArgs := []string{"serve", "-H", *host, "-p", fmt.Sprintf("%d", *port)}
+		cmd := exec.Command("/proc/self/exe", append(childArgs, flag.Args()...)...)
+		if apiToken != "" {
+			cmd.Env = append(os.Environ(), "DCK_TOKEN="+apiToken)
+		}
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			Setpgid: true,
 		}

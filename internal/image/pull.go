@@ -1,6 +1,8 @@
 package image
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -32,7 +34,7 @@ func Pull(ref string) (*Image, error) {
 }
 
 func PullWithPlatform(ref, platformOS, platformArch string) (*Image, error) {
-	if err := os.MkdirAll(state.ImagesDir(), 0755); err != nil {
+	if err := os.MkdirAll(state.ImagesDir(), 0700); err != nil {
 		return nil, err
 	}
 
@@ -66,7 +68,9 @@ func PullWithPlatform(ref, platformOS, platformArch string) (*Image, error) {
 
 	rootfsDir := state.ImageRootfsDir(name, tag)
 	layersDir := filepath.Join(state.ImageDir(name, tag), "layers")
-	os.MkdirAll(layersDir, 0755)
+	if err := os.MkdirAll(layersDir, 0700); err != nil {
+		return nil, fmt.Errorf("create layers directory: %w", err)
+	}
 
 	isTerminal := isTerminalOutput()
 
@@ -79,7 +83,7 @@ func PullWithPlatform(ref, platformOS, platformArch string) (*Image, error) {
 		}
 		cachePath := filepath.Join(layersDir, strings.ReplaceAll(layer.Digest, ":", "_"))
 
-		if _, err := os.Stat(cachePath); os.IsNotExist(err) {
+		if err := verifyFileDigest(cachePath, layer.Digest); err != nil {
 			percentFn := func(pct int) {
 				if isTerminal {
 					fmt.Printf("  %s [%s%s] %d%%\r", label, bar(pct, 30), bar(100-pct, 30), pct)
@@ -114,10 +118,14 @@ func PullWithPlatform(ref, platformOS, platformArch string) (*Image, error) {
 		return nil, fmt.Errorf("save config: %w", err)
 	}
 
-	// Save OCI manifest for layer resolution
-	ociManifestPath := filepath.Join(state.ImageDir(name, tag), "oci-manifest.json")
-	ociManifestData, _ := json.Marshal(manifest)
-	os.WriteFile(ociManifestPath, ociManifestData, 0644)
+	// Save the OCI/Docker manifest separately from dck's internal image.json metadata.
+	manifestData, err := json.Marshal(manifest)
+	if err != nil {
+		return nil, fmt.Errorf("marshal manifest: %w", err)
+	}
+	if err := state.WriteFileAtomic(filepath.Join(state.ImageDir(name, tag), "manifest.json"), manifestData, 0600); err != nil {
+		return nil, fmt.Errorf("save manifest: %w", err)
+	}
 
 	img := &Image{Name: name, Tag: tag, Digest: manifest.Config.Digest}
 	if err := SaveToStore(img); err != nil {
@@ -216,7 +224,7 @@ func fetchRawManifest(repo, ref, token string) (*ManifestV2, []byte, error) {
 }
 
 func saveConfig(dir string, data []byte) error {
-	return os.WriteFile(filepath.Join(dir, "config.json"), data, 0644)
+	return state.WriteFileAtomic(filepath.Join(dir, "config.json"), data, 0600)
 }
 
 func ReadConfig(name, tag string) (*ContainerConfig, error) {
@@ -270,7 +278,14 @@ func downloadBlob(repo, digest, token string) ([]byte, error) {
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
 	}
 
-	return io.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if err := verifyDigest(data, digest); err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 func downloadBlobToFile(repo, digest, token, dest string, onProgress progressFn) error {
@@ -292,19 +307,26 @@ func downloadBlobToFile(repo, digest, token, dest string, onProgress progressFn)
 
 	contentLength := resp.ContentLength
 
-	f, err := os.Create(dest)
+	tmp, err := os.CreateTemp(filepath.Dir(dest), ".dck-layer-*")
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+	if err := tmp.Chmod(0600); err != nil {
+		_ = tmp.Close()
+		return err
+	}
 
+	hasher := sha256.New()
+	writer := io.MultiWriter(tmp, hasher)
 	if contentLength > 0 && onProgress != nil {
 		written := int64(0)
 		buf := make([]byte, 32*1024)
 		for {
 			n, readErr := resp.Body.Read(buf)
 			if n > 0 {
-				if _, writeErr := f.Write(buf[:n]); writeErr != nil {
+				if _, writeErr := writer.Write(buf[:n]); writeErr != nil {
 					return writeErr
 				}
 				written += int64(n)
@@ -317,11 +339,54 @@ func downloadBlobToFile(repo, digest, token, dest string, onProgress progressFn)
 				return readErr
 			}
 		}
-		return nil
+		if err := tmp.Sync(); err != nil {
+			_ = tmp.Close()
+			return err
+		}
+	} else {
+		if _, err := io.Copy(writer, resp.Body); err != nil {
+			_ = tmp.Close()
+			return err
+		}
 	}
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	actual := "sha256:" + hex.EncodeToString(hasher.Sum(nil))
+	if actual != digest {
+		return fmt.Errorf("digest mismatch: expected %s, got %s", digest, actual)
+	}
+	if err := os.Rename(tmpPath, dest); err != nil {
+		return err
+	}
+	return nil
+}
 
-	_, err = io.Copy(f, resp.Body)
-	return err
+func verifyFileDigest(path, expected string) error {
+	actual, size := overlayutil.HashFile(path)
+	if actual == "" {
+		return fmt.Errorf("layer cache unavailable: %s", path)
+	}
+	if expected != "sha256:"+actual {
+		return fmt.Errorf("cached layer digest mismatch: expected %s, got sha256:%s", expected, actual)
+	}
+	if size < 0 {
+		return fmt.Errorf("invalid cached layer size")
+	}
+	return nil
+}
+
+func verifyDigest(data []byte, expected string) error {
+	h := sha256.Sum256(data)
+	actual := "sha256:" + hex.EncodeToString(h[:])
+	if actual != expected {
+		return fmt.Errorf("digest mismatch: expected %s, got %s", expected, actual)
+	}
+	return nil
 }
 
 func extractLayer(cachePath, rootfsDir string) error {

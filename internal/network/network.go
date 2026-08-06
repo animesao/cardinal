@@ -29,7 +29,7 @@ func EnsureSysctl() {
 		entries = strings.Split(string(data), "\n")
 	}
 	need := map[string]string{
-		"net.ipv4.ip_forward":           "1",
+		"net.ipv4.ip_forward":              "1",
 		"net.ipv4.conf.all.route_localnet": "1",
 	}
 	write := false
@@ -90,8 +90,8 @@ type ipPool struct {
 }
 
 var (
-	globalPool  *ipPool
-	poolOnce    sync.Once
+	globalPool *ipPool
+	poolOnce   sync.Once
 )
 
 func loadPool() *ipPool {
@@ -108,9 +108,17 @@ func loadPool() *ipPool {
 
 func savePool(p *ipPool) {
 	path := filepath.Join(state.DataDir(), "networks", "ips.json")
-	_ = os.MkdirAll(filepath.Dir(path), 0755)
-	data, _ := json.Marshal(p)
-	_ = os.WriteFile(path, data, 0644)
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return
+	}
+	if err := os.Chmod(filepath.Dir(path), 0700); err != nil {
+		return
+	}
+	data, err := json.Marshal(p)
+	if err != nil {
+		return
+	}
+	_ = state.WriteFileAtomic(path, data, 0600)
 }
 
 func AllocateIP() (string, error) {

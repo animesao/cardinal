@@ -108,6 +108,79 @@ func TestExtractLayerEmptyTar(t *testing.T) {
 	}
 }
 
+func makeSpecialTarGz(t *testing.T, headers ...*tar.Header) string {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "special.tar.gz")
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gw := gzip.NewWriter(f)
+	tw := tar.NewWriter(gw)
+	for _, header := range headers {
+		if err := tw.WriteHeader(header); err != nil {
+			t.Fatal(err)
+		}
+		if header.Typeflag == tar.TypeReg {
+			if _, err := tw.Write([]byte("content")); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestExtractLayerRejectsTraversal(t *testing.T) {
+	for _, name := range []string{"../outside", "/absolute", "dir/../../outside", `dir\\..\\outside`} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			tarFile := makeTarGz(t, map[string]string{name: "blocked"})
+			if err := ExtractLayer(tarFile, root); err == nil {
+				t.Fatalf("expected traversal path %q to be rejected", name)
+			}
+		})
+	}
+}
+
+func TestExtractLayerRejectsUnsafeLinks(t *testing.T) {
+	root := t.TempDir()
+	tarFile := makeSpecialTarGz(t,
+		&tar.Header{Name: "escape", Typeflag: tar.TypeSymlink, Linkname: "../../outside", Mode: 0777},
+	)
+	if err := ExtractLayer(tarFile, root); err == nil {
+		t.Fatal("expected escaping symlink to be rejected")
+	}
+
+	root = t.TempDir()
+	tarFile = makeSpecialTarGz(t,
+		&tar.Header{Name: "escape", Typeflag: tar.TypeLink, Linkname: "../../outside", Mode: 0644},
+	)
+	if err := ExtractLayer(tarFile, root); err == nil {
+		t.Fatal("expected escaping hardlink to be rejected")
+	}
+}
+
+func TestExtractLayerRejectsSymlinkAncestor(t *testing.T) {
+	root := t.TempDir()
+	tarFile := makeSpecialTarGz(t,
+		&tar.Header{Name: "link", Typeflag: tar.TypeSymlink, Linkname: "real", Mode: 0777},
+		&tar.Header{Name: "link/blocked", Typeflag: tar.TypeReg, Size: int64(len("content")), Mode: 0644},
+	)
+	if err := ExtractLayer(tarFile, root); err == nil {
+		t.Fatal("expected file below symlink ancestor to be rejected")
+	}
+}
+
 func TestUnmountOverlay(t *testing.T) {
 	UnmountOverlay("/nonexistent/path/12345")
 }

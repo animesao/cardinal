@@ -40,14 +40,19 @@ func EnsureLayer(layerPath string) (digest string, size int, err error) {
 	}
 
 	// Copy to cache
-	os.MkdirAll(filepath.Dir(cachePath), 0755)
+	if err := os.MkdirAll(filepath.Dir(cachePath), 0700); err != nil {
+		return "", 0, err
+	}
+	if err := os.Chmod(filepath.Dir(cachePath), 0700); err != nil {
+		return "", 0, err
+	}
 	src, err := os.Open(layerPath)
 	if err != nil {
 		return "", 0, err
 	}
 	defer src.Close()
 
-	dst, err := os.Create(cachePath)
+	dst, err := os.OpenFile(cachePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return "", 0, err
 	}
@@ -135,8 +140,9 @@ func EnsureAllLayers(name, tag string) error {
 func ReadManifest(name, tag string) *ManifestV2 {
 	imgDir := state.ImageDir(name, tag)
 
-	// Try oci-manifest.json first (pulled images), fallback to manifest.json (built images)
-	for _, f := range []string{"oci-manifest.json", "manifest.json"} {
+	// The OCI/Docker manifest is kept separate from dck's internal image.json metadata.
+	// Keep a read-only fallback for images written by older dck versions.
+	for _, f := range []string{"manifest.json", "oci-manifest.json"} {
 		p := filepath.Join(imgDir, f)
 		if !state.FileExists(p) {
 			continue

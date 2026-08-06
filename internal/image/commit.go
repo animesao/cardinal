@@ -18,14 +18,20 @@ import (
 )
 
 func CommitContainer(rootfsDir, name, tag, author, message string) (*Image, error) {
-	if err := os.MkdirAll(state.ImagesDir(), 0755); err != nil {
+	if err := os.MkdirAll(state.ImagesDir(), 0700); err != nil {
+		return nil, err
+	}
+	if err := os.Chmod(state.ImagesDir(), 0700); err != nil {
 		return nil, err
 	}
 
 	ref, refTag := parseRef(name + ":" + tag)
 
 	imgDir := state.ImageDir(ref, refTag)
-	if err := os.MkdirAll(imgDir, 0755); err != nil {
+	if err := os.MkdirAll(imgDir, 0700); err != nil {
+		return nil, err
+	}
+	if err := os.Chmod(imgDir, 0700); err != nil {
 		return nil, err
 	}
 
@@ -38,24 +44,24 @@ func CommitContainer(rootfsDir, name, tag, author, message string) (*Image, erro
 	layerDigest := "sha256:" + layerHash
 
 	config := map[string]interface{}{
-		"created": time.Now().UTC().Format(time.RFC3339),
-		"author":  author,
+		"created":      time.Now().UTC().Format(time.RFC3339),
+		"author":       author,
 		"architecture": "amd64",
-		"os":       "linux",
+		"os":           "linux",
 		"config": map[string]interface{}{
 			"Cmd":        []string{"/bin/sh"},
 			"Entrypoint": nil,
 		},
 		"history": []map[string]interface{}{
 			{
-				"created":   time.Now().UTC().Format(time.RFC3339),
+				"created":    time.Now().UTC().Format(time.RFC3339),
 				"created_by": "dck commit",
-				"author":    author,
-				"comment":   message,
+				"author":     author,
+				"comment":    message,
 			},
 		},
 		"rootfs": map[string]interface{}{
-			"type": "layers",
+			"type":     "layers",
 			"diff_ids": []string{layerDigest},
 		},
 	}
@@ -67,7 +73,7 @@ func CommitContainer(rootfsDir, name, tag, author, message string) (*Image, erro
 	configHash := sha256.Sum256(configData)
 	configDigest := "sha256:" + hex.EncodeToString(configHash[:])
 
-	if err := os.WriteFile(filepath.Join(imgDir, "config.json"), configData, 0644); err != nil {
+	if err := state.WriteFileAtomic(filepath.Join(imgDir, "config.json"), configData, 0600); err != nil {
 		return nil, err
 	}
 
@@ -97,7 +103,7 @@ func CommitContainer(rootfsDir, name, tag, author, message string) (*Image, erro
 	}
 
 	manifestData, _ := json.Marshal(manifest)
-	if err := os.WriteFile(filepath.Join(imgDir, "manifest.json"), manifestData, 0644); err != nil {
+	if err := state.WriteFileAtomic(filepath.Join(imgDir, "manifest.json"), manifestData, 0600); err != nil {
 		return nil, err
 	}
 

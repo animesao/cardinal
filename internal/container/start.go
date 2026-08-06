@@ -39,7 +39,9 @@ func (c *Container) Start() error {
 	c.Status = Created
 	c.dataMu.Unlock()
 
-	state.EnsureDirs()
+	if err := state.EnsureDirs(); err != nil {
+		return err
+	}
 
 	merged, err := c.setupFilesystem()
 	if err != nil {
@@ -69,7 +71,6 @@ func (c *Container) Start() error {
 	childPID := c.resolveChildPID(cmd.Process.Pid)
 	c.setupContainerResources(childPID)
 
-	// Register DNS name and inject container hostnames
 	if c.IP != "" {
 		RegisterDNSName(c.Name, c.IP)
 	}
@@ -81,7 +82,9 @@ func (c *Container) Start() error {
 	c.PID = childPID
 	c.Status = Running
 	c.dataMu.Unlock()
-	c.Save()
+	if err := c.Save(); err != nil {
+		return err
+	}
 	EmitEvent(EventStart, c)
 
 	if c.Detach {
@@ -103,7 +106,9 @@ func (c *Container) setupFilesystem() (merged string, err error) {
 
 	rootfsDir := state.ImageRootfsDir(c.ImageName, c.ImageTag)
 	upper, work, mergedDir := c.OverlayDirs()
-	os.MkdirAll(filepath.Dir(upper), 0755)
+	if err := os.MkdirAll(filepath.Dir(upper), 0700); err != nil {
+		return "", err
+	}
 
 	if err := SetupDiskLimit(state.OverlayDir(), c.ID, c.DiskLimit); err != nil {
 		return "", fmt.Errorf("disk limit: %w", err)
@@ -145,11 +150,9 @@ func (c *Container) buildUnshareCmd(merged string) (*exec.Cmd, error) {
 		"--fork", "--pid", "--mount", "--uts", "--ipc", "--kill-child",
 		binPath, "init", c.ID, merged,
 	}
-
 	if c.NetworkMode != "host" {
 		unshareArgs = append([]string{"--net"}, unshareArgs...)
 	}
-
 	return exec.Command("unshare", unshareArgs...), nil
 }
 
@@ -167,8 +170,8 @@ func (c *Container) setupIO(cmd *exec.Cmd) (func(), error) {
 		}
 		stdoutR, stdoutW, err := os.Pipe()
 		if err != nil {
-			stdinR.Close()
-			stdinW.Close()
+			_ = stdinR.Close()
+			_ = stdinW.Close()
 			return nil, fmt.Errorf("stdout pipe: %w", err)
 		}
 
@@ -178,10 +181,16 @@ func (c *Container) setupIO(cmd *exec.Cmd) (func(), error) {
 
 		serve := exec.Command(binPath, "console-serve", c.ID)
 		serve.ExtraFiles = []*os.File{stdinW, stdoutR}
-		serve.Start()
+		if err := serve.Start(); err != nil {
+			_ = stdinR.Close()
+			_ = stdinW.Close()
+			_ = stdoutR.Close()
+			_ = stdoutW.Close()
+			return nil, fmt.Errorf("console serve: %w", err)
+		}
 		c.ConsoleServePID = serve.Process.Pid
-		stdinW.Close()
-		stdoutR.Close()
+		_ = stdinW.Close()
+		_ = stdoutR.Close()
 		return nil, nil
 	case c.Interactive || c.TTY:
 		cmd.Stdin = os.Stdin
@@ -190,13 +199,13 @@ func (c *Container) setupIO(cmd *exec.Cmd) (func(), error) {
 		return nil, nil
 	default:
 		RotateLogFile(c.LogFile())
-		logFile, err := os.OpenFile(c.LogFile(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		logFile, err := os.OpenFile(c.LogFile(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
 			return nil, fmt.Errorf("log: %w", err)
 		}
 		cmd.Stdout = io.MultiWriter(logFile, os.Stdout)
 		cmd.Stderr = io.MultiWriter(logFile, os.Stderr)
-		return func() { logFile.Close() }, nil
+		return func() { _ = logFile.Close() }, nil
 	}
 }
 
@@ -217,7 +226,7 @@ func (c *Container) setupContainerResources(childPID int) {
 	}
 
 	if c.NeedsNetwork() && runtime.GOOS == "linux" {
-				if IsRootless() {
+		if IsRootless() {
 			if ip, err := SetupRootlessNetwork(childPID, c.ID); err != nil {
 				log.Warn("Rootless network: %v (container will run without network)", err)
 			} else {
@@ -231,10 +240,8 @@ func (c *Container) setupContainerResources(childPID int) {
 					}
 				}
 			}
-		} else {
-			if err := setupNetworking(c, childPID); err != nil {
-				log.Warn("Network setup: %v (container will run without network)", err)
-			}
+		} else if err := setupNetworking(c, childPID); err != nil {
+			log.Warn("Network setup: %v (container will run without network)", err)
 		}
 	}
 }
@@ -246,21 +253,18 @@ func (c *Container) runForeground(cmd *exec.Cmd) error {
 	c.Status = Stopped
 	c.dataMu.Unlock()
 	c.cleanupNetwork()
-	c.Save()
+	_ = c.Save()
 
 	exitCode := 0
 	if exitErr, ok := err.(*exec.ExitError); ok {
 		exitCode = exitErr.ExitCode()
 	}
-
 	if shouldRestart(c.Restart, exitCode, c.StoppedByUser) {
 		return c.restart()
 	}
-
 	if c.RemoveOnExit {
 		cleanupContainer(c)
 	}
-
 	return err
 }
 
@@ -276,23 +280,15 @@ func newIgnoreErrWriter(w io.Writer) *ignoreErrWriter {
 }
 
 func (c *Container) NeedsNetwork() bool {
-	if c.NetworkMode == "none" || c.NetworkMode == "host" {
-		return false
-	}
-	return true
+	return c.NetworkMode != "none" && c.NetworkMode != "host"
 }
 
 func findChildPID(ppid int) int {
 	for i := 0; i < 100; i++ {
 		out, err := exec.Command("pgrep", "-P", strconv.Itoa(ppid)).Output()
 		if err == nil {
-			lines := strings.Split(string(out), "\n")
-			for _, line := range lines {
-				pidStr := strings.TrimSpace(line)
-				if pidStr == "" {
-					continue
-				}
-				pid, err := strconv.Atoi(pidStr)
+			for _, line := range strings.Split(string(out), "\n") {
+				pid, err := strconv.Atoi(strings.TrimSpace(line))
 				if err == nil && pid > 0 {
 					return pid
 				}
@@ -310,29 +306,24 @@ func findChildPID(ppid int) int {
 			}
 		}
 	}
-
 	return 0
 }
 
 func setupNetworking(c *Container, pid int) error {
 	network.EnsureNetBase()
-
 	ip, err := network.AllocateIP()
 	if err != nil {
 		return err
 	}
-
 	if err := network.SetupVeth(c.ID, pid, ip); err != nil {
 		network.ReleaseIP(ip)
 		return err
 	}
-
 	for _, p := range c.Ports {
 		if err := network.AddPortForwarding(ip, p.HostPort, p.ContainerPort, p.Protocol); err != nil {
 			log.Warn("  port %d -> %d: %v", p.HostPort, p.ContainerPort, err)
 		}
 	}
-
 	c.IP = ip
 	return nil
 }
@@ -351,7 +342,7 @@ func shouldRestart(policy string, exitCode int, stoppedByUser bool) bool {
 }
 
 func (c *Container) restart() error {
-	time.Sleep(1 * time.Second)
+	time.Sleep(time.Second)
 	c.Status = Created
 	return c.Start()
 }
@@ -360,20 +351,16 @@ func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 	if c.Healthcheck != nil {
 		go c.runHealthcheck(ctx)
 	}
-
 	go func() {
 		err := cmd.Wait()
 		exitCode := 0
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			exitCode = exitErr.ExitCode()
 		}
-
-		// Cancel healthcheck goroutine
 		if c.cancelHealth != nil {
 			c.cancelHealth()
 			c.cancelHealth = nil
 		}
-
 		c.mu.Lock()
 		if c.cleanupStarted {
 			c.mu.Unlock()
@@ -388,20 +375,19 @@ func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 				stoppedByUser = true
 			}
 		}
-
 		UnregisterDNSName(c.Name)
 		c.dataMu.Lock()
 		c.PID = 0
 		c.Status = Stopped
 		c.dataMu.Unlock()
 		c.cleanupNetwork()
-		c.Save()
+		_ = c.Save()
 
 		if shouldRestart(c.Restart, exitCode, stoppedByUser) {
 			go func() {
-				time.Sleep(1 * time.Second)
+				time.Sleep(time.Second)
 				c.Status = Created
-				c.Start()
+				_ = c.Start()
 			}()
 		} else if c.RemoveOnExit {
 			cleanupContainer(c)
@@ -431,14 +417,12 @@ func (c *Container) runHealthcheck(ctx context.Context) {
 			return
 		case <-time.After(interval):
 		}
-
 		c.dataMu.RLock()
 		isRunning := c.Status == Running
 		c.dataMu.RUnlock()
 		if !isRunning {
 			return
 		}
-
 		err := c.execHealthcheck(hc.Cmd, timeout)
 		if err != nil {
 			failures++
@@ -455,25 +439,15 @@ func (c *Container) runHealthcheck(ctx context.Context) {
 }
 
 func (c *Container) execHealthcheck(cmd string, timeout time.Duration) error {
-	args := []string{
-		"-t", strconv.Itoa(c.PID),
-		"-m", "-p", "-i", "-n",
-		"--",
-		"sh", "-c", cmd,
-	}
-
+	args := []string{"-t", strconv.Itoa(c.PID), "-m", "-p", "-i", "-n", "--", "sh", "-c", cmd}
 	ecmd := exec.Command("nsenter", args...)
-
 	done := make(chan error, 1)
-	go func() {
-		done <- ecmd.Run()
-	}()
-
+	go func() { done <- ecmd.Run() }()
 	select {
 	case err := <-done:
 		return err
 	case <-time.After(timeout):
-		ecmd.Process.Kill()
+		_ = ecmd.Process.Kill()
 		return fmt.Errorf("healthcheck timed out after %v", timeout)
 	}
 }
@@ -484,12 +458,7 @@ func (c *Container) cleanupNetwork() {
 	}
 	var ports []network.PortRule
 	for _, p := range c.Ports {
-		ports = append(ports, network.PortRule{
-			HostPort:      p.HostPort,
-			ContainerPort: p.ContainerPort,
-			Protocol:      p.Protocol,
-			ContainerIP:   c.IP,
-		})
+		ports = append(ports, network.PortRule{HostPort: p.HostPort, ContainerPort: p.ContainerPort, Protocol: p.Protocol, ContainerIP: c.IP})
 	}
 	network.CleanupContainerNetwork(c.ID, c.IP, ports)
 	c.IP = ""
@@ -501,7 +470,7 @@ func cleanupContainer(c *Container) {
 	}
 	if c.ConsoleServePID > 0 {
 		if proc, err := os.FindProcess(c.ConsoleServePID); err == nil {
-			proc.Kill()
+			_ = proc.Kill()
 		}
 		c.ConsoleServePID = 0
 	}
@@ -513,11 +482,11 @@ func cleanupContainer(c *Container) {
 	upper, _, merged := c.OverlayDirs()
 	unmountOverlay(merged)
 	TeardownDiskLimit(state.OverlayDir(), c.ID)
-	os.Remove(state.ConsolePath(c.ID))
-	os.RemoveAll(filepath.Dir(upper))
-	os.Remove(c.LogFile())
+	_ = os.Remove(state.ConsolePath(c.ID))
+	_ = os.RemoveAll(filepath.Dir(upper))
+	_ = os.Remove(c.LogFile())
 	cleanupContainerCgroup(c.ID, c.CgroupPath)
-	c.DeleteState()
+	_ = c.DeleteState()
 }
 
 func isDirEmpty(path string) (bool, error) {

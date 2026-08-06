@@ -21,9 +21,37 @@ import (
 )
 
 var (
-	clusterLock sync.RWMutex
-	clusterConf *ClusterConfig
+	clusterLock  sync.RWMutex
+	tokenLock    sync.RWMutex
+	clusterConf  *ClusterConfig
+	clusterToken string
 )
+
+// SetAPIToken configures the token used for authenticated peer requests.
+func SetAPIToken(token string) {
+	tokenLock.Lock()
+	clusterToken = token
+	tokenLock.Unlock()
+}
+
+func clusterAuthHeader() string {
+	tokenLock.RLock()
+	token := clusterToken
+	tokenLock.RUnlock()
+	if token == "" {
+		token = os.Getenv("DCK_TOKEN")
+	}
+	if token != "" {
+		return "Bearer " + token
+	}
+	return ""
+}
+
+func setClusterAuth(req *http.Request) {
+	if auth := clusterAuthHeader(); auth != "" {
+		req.Header.Set("Authorization", auth)
+	}
+}
 
 func init() {
 	clusterConf = &ClusterConfig{
@@ -56,17 +84,17 @@ func InitCluster(name string, bindAddr string, bindPort int) error {
 	clusterConf.CreatedAt = time.Now()
 
 	node := &Node{
-		ID:        clusterConf.NodeID,
-		Name:      clusterConf.NodeName,
-		Address:   bindAddr,
-		APIPort:   bindPort,
-		Role:      NodeRoleLeader,
-		State:     NodeStateActive,
-		CPUCores:  cpuCores(),
-		MemTotal:  memTotal(),
-		MemAvail:  memTotal(),
-		LastSeen:  time.Now(),
-		JoinedAt:  time.Now(),
+		ID:       clusterConf.NodeID,
+		Name:     clusterConf.NodeName,
+		Address:  bindAddr,
+		APIPort:  bindPort,
+		Role:     NodeRoleLeader,
+		State:    NodeStateActive,
+		CPUCores: cpuCores(),
+		MemTotal: memTotal(),
+		MemAvail: memTotal(),
+		LastSeen: time.Now(),
+		JoinedAt: time.Now(),
 	}
 
 	clusterConf.Nodes[node.ID] = node
@@ -103,11 +131,15 @@ func JoinCluster(peerAddr string, bindAddr string, bindPort int) error {
 		"api_port":  bindPort,
 	})
 
-	resp, err := http.Post(
+	req, err := http.NewRequest(http.MethodPost,
 		fmt.Sprintf("http://%s/cluster/join", peerAddr),
-		"application/json",
-		strings.NewReader(string(reqBody)),
-	)
+		strings.NewReader(string(reqBody)))
+	if err != nil {
+		return fmt.Errorf("create join request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	setClusterAuth(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("join request to %s: %w", peerAddr, err)
 	}
@@ -170,11 +202,18 @@ func LeaveCluster() error {
 		if id == clusterConf.NodeID {
 			continue
 		}
-		http.Post(
+		req, err := http.NewRequest(http.MethodPost,
 			fmt.Sprintf("http://%s:%d/cluster/leave", node.Address, node.APIPort),
-			"application/json",
-			strings.NewReader(fmt.Sprintf(`{"node_id":"%s"}`, clusterConf.NodeID)),
-		)
+			strings.NewReader(fmt.Sprintf(`{"node_id":"%s"}`, clusterConf.NodeID)))
+		if err != nil {
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		setClusterAuth(req)
+		resp, err := http.DefaultClient.Do(req)
+		if err == nil {
+			_ = resp.Body.Close()
+		}
 	}
 
 	// Reset local config
@@ -315,8 +354,8 @@ func handleLeave(w http.ResponseWriter, r *http.Request) {
 
 func handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		NodeID  string `json:"node_id"`
-		MemAvail int64 `json:"mem_avail"`
+		NodeID   string `json:"node_id"`
+		MemAvail int64  `json:"mem_avail"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -351,11 +390,18 @@ func propagateHeartbeat(nodeID string) {
 
 	b, _ := json.Marshal(map[string]string{"node_id": nodeID})
 	for _, n := range nodes {
-		http.Post(
+		req, err := http.NewRequest(http.MethodPost,
 			fmt.Sprintf("http://%s:%d/cluster/heartbeat", n.Address, n.APIPort),
-			"application/json",
-			strings.NewReader(string(b)),
-		)
+			strings.NewReader(string(b)))
+		if err != nil {
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		setClusterAuth(req)
+		resp, err := http.DefaultClient.Do(req)
+		if err == nil {
+			_ = resp.Body.Close()
+		}
 	}
 }
 
@@ -390,11 +436,18 @@ func sendHeartbeat() {
 	clusterLock.RUnlock()
 
 	for _, peer := range peers {
-		http.Post(
+		req, err := http.NewRequest(http.MethodPost,
 			fmt.Sprintf("http://%s:%d/cluster/heartbeat", peer.Address, peer.APIPort),
-			"application/json",
-			strings.NewReader(fmt.Sprintf(`{"node_id":"%s","mem_avail":%d}`, myID, memAvail())),
-		)
+			strings.NewReader(fmt.Sprintf(`{"node_id":"%s","mem_avail":%d}`, myID, memAvail())))
+		if err != nil {
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		setClusterAuth(req)
+		resp, err := http.DefaultClient.Do(req)
+		if err == nil {
+			_ = resp.Body.Close()
+		}
 	}
 }
 
@@ -439,7 +492,12 @@ func loadClusterConfig() error {
 
 func saveClusterConfig() error {
 	dir := filepath.Join(state.DataDir(), ClusterStateDir)
-	os.MkdirAll(dir, 0755)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	if err := os.Chmod(dir, 0700); err != nil {
+		return err
+	}
 	path := filepath.Join(dir, "cluster.json")
 	return saveClusterConfigTo(path)
 }
@@ -449,7 +507,7 @@ func saveClusterConfigTo(path string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0644)
+	return state.WriteFileAtomic(path, data, 0600)
 }
 
 func cpuCores() int {
