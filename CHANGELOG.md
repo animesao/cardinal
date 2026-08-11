@@ -1,12 +1,17 @@
 # Changelog
 
-## Unreleased
+## 1.23.0 (2026-08-11)
 
-### Documentation
+### Highlights since 1.22.0
 
-- The running guides (EN/RU) document `dck verify` as the middle step of the pull → verify → run workflow.
-- The Russian websites guide is now fully synchronized with the English one, including five previously missing content blocks (Flask + nginx proxy, Next.js, Spring Boot, Go HTTP server, FastAPI + PostgreSQL + Redis) and the Python API + PostgreSQL + Nginx compose example.
-- CHANGELOG entries restored for releases 1.22.38, 1.22.39, and 1.22.40.
+- Persistent restart supervisor: detached `always` and `unless-stopped` containers are recovered after reboot or crash via systemd, with configurable `--restart-delay` and crash-loop protection (`--restart-max-attempts`, `--restart-window`, `restart_blocked`).
+- Per-container scheduled backups with `dck backup enable/disable/status`, configurable intervals and retention, safe destinations, and checksum verification with `dck backup verify`.
+- Offline image verification with `dck verify IMAGE[:TAG]` — config and layer digests are checked against the locally stored manifest.
+- Reliable `dck update`: five-minute download timeout, per-method error reporting, bounded curl/wget fallbacks.
+- Runtime hardening: zombie-exit detection, `dck rm` tombstones against supervisor restart races, safe OCI layer extraction (path traversal, absolute and symlink targets), protected bind sources, and volume mount modes (`:ro`/`:rw`, propagation, tmpfs, NFS).
+- Instant startup for `--network none`/`host` containers (no eth0 wait).
+- Docker-compatible REST API with optional HTTPS and bearer-token auth, cluster orchestration, FaaS, services, blueprints, and Compose support.
+- Complete bilingual (EN/RU) documentation: command references, usage guides, practical examples, and per-application guides, including the pull → verify → run workflow and a fully synchronized Russian websites guide.
 
 ## 1.22.40 (2026-08-11)
 

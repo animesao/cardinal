@@ -784,6 +784,8 @@ dck run -d
 
 ## Changelog
 
+**v1.23.0** — Persistent restart supervisor with configurable delays and crash-loop protection (`--restart-max-attempts`/`--restart-window`, `restart_blocked`), per-container scheduled backups with checksum verification (`dck backup verify`), offline image verification (`dck verify`), reliable `dck update`, runtime hardening (zombie-exit detection, `dck rm` tombstones, safe OCI layer extraction, protected bind sources, `:ro`/`:rw` and tmpfs/NFS volume modes), instant startup for `--network none`/`host` containers, and the complete bilingual EN/RU documentation suite.
+
 **v1.22.38** — Reliable `dck update` (5-minute download timeout, per-method errors), crash-loop protection with `--restart-max-attempts`/`--restart-window` and `restart_blocked` state, zombie-exit detection so exited detached containers are finalized and restarted on schedule, `dck rm` no longer races supervisor auto-restarts (tombstone marker), and instant startup for `--network none`/`host` containers (no 20s eth0 wait).
 
 **v1.22.31** — OCI image extraction, protected bind-source validation, persistent restart policies with delays and systemd recovery, rotated dck logs, inspect JSON, manual and scheduled safe container backups with retention, cluster orchestration, FaaS, blueprints, services, Compose, healthchecks, startup scripts, dynamic ports, events, stats, Docker-compatible REST API, cross-architecture CI builds, read-only doctor/security diagnostics, optional HTTPS API, and complete EN/RU CLI references with practical examples.
