@@ -50,7 +50,10 @@ func Set(args []string) {
 	hostname := fs.String("h", "", "Container hostname")
 	networkMode := fs.String("network", "", "Network mode (bridge/none/host)")
 
-	fs.Parse(flagArgs)
+	if err := fs.Parse(flagArgs); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing set options: %v\n", err)
+		os.Exit(1)
+	}
 
 	c, err := container.Load(containerName)
 	if err != nil {
