@@ -57,14 +57,18 @@ func handleSystemPrune(w http.ResponseWriter, r *http.Request) {
 		if runningIDs[e.Name()] {
 			continue
 		}
-		os.RemoveAll(filepath.Join(state.OverlayDir(), e.Name()))
+		if err := os.RemoveAll(filepath.Join(state.OverlayDir(), e.Name())); err != nil {
+			continue
+		}
 	}
 
 	if pruneImages {
 		images, err := listAllImageDirs()
 		if err == nil {
 			for _, imgDir := range images {
-				os.RemoveAll(imgDir)
+				if err := os.RemoveAll(imgDir); err != nil {
+					continue
+				}
 				removedImages++
 			}
 		}

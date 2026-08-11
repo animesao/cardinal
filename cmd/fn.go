@@ -125,14 +125,18 @@ func fnList(args []string) {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "NAME\tIMAGE\tPORT\tTIMEOUT\tIDLE\tWARM\tINVOKES")
+	if _, err := fmt.Fprintln(w, "NAME\tIMAGE\tPORT\tTIMEOUT\tIDLE\tWARM\tINVOKES"); err != nil {
+		return
+	}
 	for _, f := range fns {
-		fmt.Fprintf(w, "%s\t%s\t%d\t%ds\t%ds\t%d\t%d\n",
+		if _, err := fmt.Fprintf(w, "%s\t%s\t%d\t%ds\t%ds\t%d\t%d\n",
 			f.Name, f.Image, f.Port,
 			f.Timeout, f.IdleTimeout,
-			f.Replicas, f.InvokeCount)
+			f.Replicas, f.InvokeCount); err != nil {
+			return
+		}
 	}
-	w.Flush()
+	_ = w.Flush()
 }
 
 func fnRemove(args []string) {

@@ -122,7 +122,9 @@ func (c *Container) InjectSecrets(rootfs string) error {
 				}
 			}
 			if uid >= 0 || gid >= 0 {
-				os.Chown(targetPath, uid, gid)
+				if err := os.Chown(targetPath, uid, gid); err != nil {
+					return fmt.Errorf("chown secret %s: %w", sm.Target, err)
+				}
 			}
 		}
 	}

@@ -70,7 +70,10 @@ func clusterInit(args []string) {
 	apiPort := fs.Int("api-port", 2375, "API server port (for remote replica requests)")
 	startAPI := fs.Bool("serve", false, "Start API server after init")
 	token := fs.String("token", "", "API authentication token (or DCK_TOKEN env)")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing cluster options: %v\n", err)
+		os.Exit(1)
+	}
 	if *token == "" {
 		*token = os.Getenv("DCK_TOKEN")
 	}
@@ -118,7 +121,10 @@ func clusterJoin(args []string) {
 	fs.IntVar(&port, "port", 2375, "API port")
 	fs.BoolVar(&startAPI, "serve", false, "Start API server after join")
 	fs.StringVar(&token, "token", "", "API authentication token (or DCK_TOKEN env)")
-	fs.Parse(args[1:])
+	if err := fs.Parse(args[1:]); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing cluster join options: %v\n", err)
+		os.Exit(1)
+	}
 	if token == "" {
 		token = os.Getenv("DCK_TOKEN")
 	}
@@ -250,7 +256,9 @@ func clusterNodeList(args []string) {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "ID\tNAME\tADDRESS\tROLE\tSTATE\tCPU\tMEM\tLABELS")
+	if _, err := fmt.Fprintln(w, "ID\tNAME\tADDRESS\tROLE\tSTATE\tCPU\tMEM\tLABELS"); err != nil {
+		return
+	}
 	for _, n := range nodes {
 		labels := ""
 		if len(n.Labels) > 0 {
@@ -264,7 +272,7 @@ func clusterNodeList(args []string) {
 			}
 		}
 		mem := fmt.Sprintf("%.1fG", float64(n.MemTotal)/1e9)
-		fmt.Fprintf(w, "%s\t%s\t%s:%d\t%s\t%s\t%d\t%s\t%s\n",
+		if _, err := fmt.Fprintf(w, "%s\t%s\t%s:%d\t%s\t%s\t%d\t%s\t%s\n",
 			shortID(n.ID),
 			n.Name,
 			n.Address, n.APIPort,
@@ -273,9 +281,11 @@ func clusterNodeList(args []string) {
 			n.CPUCores,
 			mem,
 			labels,
-		)
+		); err != nil {
+			return
+		}
 	}
-	w.Flush()
+	_ = w.Flush()
 }
 
 func clusterNodeInspect(args []string) {
@@ -335,18 +345,22 @@ func clusterList(args []string) {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "ID\tNAME\tADDRESS\tROLE\tSTATE\tLAST SEEN")
+	if _, err := fmt.Fprintln(w, "ID\tNAME\tADDRESS\tROLE\tSTATE\tLAST SEEN"); err != nil {
+		return
+	}
 	for _, n := range nodes {
-		fmt.Fprintf(w, "%s\t%s\t%s:%d\t%s\t%s\t%s\n",
+		if _, err := fmt.Fprintf(w, "%s\t%s\t%s:%d\t%s\t%s\t%s\n",
 			shortID(n.ID),
 			n.Name,
 			n.Address, n.APIPort,
 			n.Role,
 			n.State,
 			n.LastSeen.Format("15:04:05"),
-		)
+		); err != nil {
+			return
+		}
 	}
-	w.Flush()
+	_ = w.Flush()
 }
 
 func shortID(id string) string {
@@ -361,7 +375,10 @@ func clusterServe(args []string) {
 	port := fs.Int("p", 2375, "API port")
 	host := fs.String("H", "127.0.0.1", "API host (external addresses require --token or DCK_TOKEN)")
 	token := fs.String("token", "", "API authentication token (or DCK_TOKEN env)")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing cluster options: %v\n", err)
+		os.Exit(1)
+	}
 	if *token == "" {
 		*token = os.Getenv("DCK_TOKEN")
 	}

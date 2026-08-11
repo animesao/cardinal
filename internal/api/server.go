@@ -141,7 +141,9 @@ func jsonContentType(next http.Handler) http.Handler {
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		return
+	}
 }
 
 func writeError(w http.ResponseWriter, status int, msg string) {
@@ -155,7 +157,9 @@ func writeOK(w http.ResponseWriter, msg string) {
 func handlePing(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(200)
-	w.Write([]byte("OK"))
+	if _, err := w.Write([]byte("OK")); err != nil {
+		return
+	}
 }
 
 func handleVersion(w http.ResponseWriter, r *http.Request) {

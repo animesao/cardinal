@@ -92,7 +92,7 @@ func StartDNSServer(addr string) error {
 	if err != nil {
 		return fmt.Errorf("listen dns: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	buf := make([]byte, 512)
 	for {
@@ -130,7 +130,9 @@ func handleDNSQuery(conn *net.UDPConn, remote *net.UDPAddr, data []byte) {
 
 	// Build response (minimal)
 	resp := buildDNSResponse(data, qname, addresses)
-	conn.WriteToUDP(resp, remote)
+	if _, err := conn.WriteToUDP(resp, remote); err != nil {
+		return
+	}
 }
 
 func parseDNSName(data []byte) string {

@@ -508,7 +508,9 @@ func InitContainer(id, merged string) error {
 
 	// Apply readonly rootfs (remount / as readonly after /proc is mounted)
 	if c.ReadonlyRootfs {
-		syscall.Mount("", "/", "", syscall.MS_REMOUNT|syscall.MS_RDONLY, "")
+		if err := syscall.Mount("", "/", "", syscall.MS_REMOUNT|syscall.MS_RDONLY, ""); err != nil {
+			return fmt.Errorf("remount rootfs read-only: %w", err)
+		}
 	}
 
 	// Apply ulimits

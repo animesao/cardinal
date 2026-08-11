@@ -520,7 +520,10 @@ func handleContainerRestart(w http.ResponseWriter, r *http.Request, c *container
 		return
 	}
 	if c.Status == container.Running {
-		c.Stop()
+		if err := c.Stop(); err != nil {
+			writeError(w, 500, fmt.Sprintf("restart stop: %v", err))
+			return
+		}
 	}
 	c.Status = container.Created
 	if err := c.Start(); err != nil {
@@ -594,7 +597,9 @@ func handleContainerLogs(w http.ResponseWriter, r *http.Request, c *container.Co
 		w.Header().Set("Content-Type", "text/plain")
 	}
 	w.WriteHeader(200)
-	w.Write(data)
+	if _, err := w.Write(data); err != nil {
+		return
+	}
 }
 
 func handleContainerTop(w http.ResponseWriter, r *http.Request, c *container.Container) {
@@ -657,7 +662,9 @@ func handleContainerStats(w http.ResponseWriter, r *http.Request, c *container.C
 			if err != nil {
 				break
 			}
-			json.NewEncoder(w).Encode(stats)
+			if err := json.NewEncoder(w).Encode(stats); err != nil {
+				return
+			}
 			flusher.Flush()
 			time.Sleep(1 * time.Second)
 		}

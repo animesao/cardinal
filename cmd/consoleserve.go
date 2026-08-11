@@ -105,10 +105,14 @@ func ConsoleServe(args []string) {
 					offset = 0
 				}
 				if offset > 0 {
-					f.Seek(offset, io.SeekStart)
+					if _, err := f.Seek(offset, io.SeekStart); err != nil {
+						_ = f.Close()
+						_ = conn.Close()
+						continue
+					}
 				}
-				io.Copy(conn, f)
-				f.Close()
+				_, _ = io.Copy(conn, f)
+				_ = f.Close()
 			}
 		}
 		mu.Lock()
@@ -116,8 +120,8 @@ func ConsoleServe(args []string) {
 		mu.Unlock()
 
 		go func(c net.Conn) {
-			io.Copy(stdinW, c)
-			c.Close()
+			_, _ = io.Copy(stdinW, c)
+			_ = c.Close()
 
 			mu.Lock()
 			delete(clients, c)

@@ -43,7 +43,9 @@ func Events(args []string) {
 			if !since.IsZero() && evt.Time.Before(since) {
 				continue
 			}
-			enc.Encode(evt)
+			if err := enc.Encode(evt); err != nil {
+				return
+			}
 		case <-sig:
 			fmt.Fprintf(os.Stderr, "\n")
 			return

@@ -155,7 +155,7 @@ func applyOptions(vs *VolumeSpec, opts string) {
 		case strings.HasPrefix(opt, "size="):
 			vs.TmpfsSize = opt[5:]
 		case strings.HasPrefix(opt, "mode="):
-			fmt.Sscanf(opt[5:], "%o", &vs.TmpfsMode)
+			_, _ = fmt.Sscanf(opt[5:], "%o", &vs.TmpfsMode)
 		case strings.HasPrefix(opt, "nfsopts="):
 			vs.NFOptions = opt[8:]
 		}
@@ -249,7 +249,7 @@ func CreateVolume(name, driver string, labels map[string]string, opts map[string
 	}
 
 	if err := saveVolume(vol); err != nil {
-		os.RemoveAll(volDir)
+		_ = os.RemoveAll(volDir)
 		return nil, err
 	}
 
@@ -423,7 +423,7 @@ func mountBind(spec *VolumeSpec, target string) error {
 	if spec.Type == VolumeTypeVolume && !spec.NoCopy {
 		empty, _ := isDirEmpty(target)
 		if empty {
-			exec.Command("cp", "-a", target+"/.", source+"/").Run()
+			_ = exec.Command("cp", "-a", target+"/.", source+"/").Run()
 		}
 	}
 

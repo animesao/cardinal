@@ -73,7 +73,9 @@ func TestEnsureContainerHosts(t *testing.T) {
 
 	mergedDir := filepath.Join(tmpDir, "merged")
 	os.MkdirAll(filepath.Join(mergedDir, "etc"), 0755)
-	os.WriteFile(filepath.Join(mergedDir, "etc", "hosts"), []byte("127.0.0.1 localhost\n"), 0644)
+	if err := os.WriteFile(filepath.Join(mergedDir, "etc", "hosts"), []byte("127.0.0.1 localhost\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	RegisterDNSName("app1", "10.0.2.10")
 	RegisterDNSName("app2", "10.0.2.11")

@@ -37,7 +37,7 @@ func Attach(args []string) {
 		fmt.Fprintf(os.Stderr, "console: %v\n", err)
 		os.Exit(1)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -46,18 +46,18 @@ func Attach(args []string) {
 	wg.Add(2)
 
 	go func() {
-		io.Copy(conn, os.Stdin)
+		_, _ = io.Copy(conn, os.Stdin)
 		wg.Done()
 	}()
 
 	go func() {
-		io.Copy(os.Stdout, conn)
+		_, _ = io.Copy(os.Stdout, conn)
 		wg.Done()
 	}()
 
 	go func() {
 		<-sigCh
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	wg.Wait()

@@ -69,7 +69,7 @@ func SetupDiskLimit(overlayBase, id string, limitBytes int64) error {
 			return fmt.Errorf("create disk image: %w", err)
 		}
 		if err := f.Truncate(limitBytes); err != nil {
-			f.Close()
+			_ = f.Close()
 			return fmt.Errorf("truncate disk image: %w", err)
 		}
 		f.Close()

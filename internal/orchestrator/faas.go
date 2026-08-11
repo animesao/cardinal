@@ -248,9 +248,21 @@ func scaleUpFunction(ctx context.Context, fn *Function, count int) error {
 		return fmt.Errorf("pull image %s: %w", fn.Image, err)
 	}
 
+	var memoryLimit int64
+	if fn.Memory != "" {
+		var mem int64
+		if _, err := fmt.Sscanf(fn.Memory, "%d", &mem); err != nil {
+			ScaleUpErrors.WithLabelValues(fn.Name, "function").Inc()
+			return fmt.Errorf("parse memory limit %q: %w", fn.Memory, err)
+		}
+		memoryLimit = mem * 1024 * 1024
+	}
+
 	created := 0
+	createdIDs := make([]string, 0, count)
 	for i := 0; i < count; i++ {
 		if ctx.Err() != nil {
+			rollbackFunctionContainers(createdIDs, fn)
 			return ctx.Err()
 		}
 		replicaID := generateID()
@@ -275,10 +287,8 @@ func scaleUpFunction(ctx context.Context, fn *Function, count int) error {
 		for k, v := range fn.Env {
 			opts.Env = append(opts.Env, k+"="+v)
 		}
-		if fn.Memory != "" {
-			var mem int64
-			fmt.Sscanf(fn.Memory, "%d", &mem)
-			opts.MemoryLimit = mem * 1024 * 1024
+		if memoryLimit > 0 {
+			opts.MemoryLimit = memoryLimit
 		}
 		if fn.CPUs > 0 {
 			opts.CPUCount = fn.CPUs
@@ -290,10 +300,13 @@ func scaleUpFunction(ctx context.Context, fn *Function, count int) error {
 		c := container.New(img, opts)
 		if err := c.Save(); err != nil {
 			ScaleUpErrors.WithLabelValues(fn.Name, "function").Inc()
+			rollbackFunctionContainers(createdIDs, fn)
 			return fmt.Errorf("save container: %w", err)
 		}
+		createdIDs = append(createdIDs, c.ID)
 		if err := c.Start(); err != nil {
 			ScaleUpErrors.WithLabelValues(fn.Name, "function").Inc()
+			rollbackFunctionContainers(createdIDs, fn)
 			return fmt.Errorf("start container: %w", err)
 		}
 
@@ -305,6 +318,60 @@ func scaleUpFunction(ctx context.Context, fn *Function, count int) error {
 	log.Info("[faas] scaled up %s: %d containers running", fn.Name, created)
 	RecordScaleUp(fn.Name, "function", time.Since(start).Seconds(), nil)
 	return nil
+}
+
+func rollbackFunctionContainers(createdIDs []string, fn *Function) {
+	if len(createdIDs) == 0 {
+		return
+	}
+
+	created := make(map[string]struct{}, len(createdIDs))
+	failed := make(map[string]struct{})
+	for _, id := range createdIDs {
+		created[id] = struct{}{}
+		c, err := container.Load(id)
+		if err != nil {
+			failed[id] = struct{}{}
+			log.Error("[faas] rollback could not load container %s: %v", shortID(id, 12), err)
+			continue
+		}
+		if err := c.Remove(true); err != nil {
+			failed[id] = struct{}{}
+			log.Error("[faas] rollback failed for container %s: %v", shortID(id, 12), err)
+		}
+	}
+
+	remaining := make([]string, 0, len(functionContainers[fn.Name])+len(failed))
+	for _, id := range functionContainers[fn.Name] {
+		if _, wasCreated := created[id]; !wasCreated || hasID(failed, id) {
+			remaining = append(remaining, id)
+		}
+	}
+	for id := range failed {
+		if !hasIDInSlice(remaining, id) {
+			remaining = append(remaining, id)
+		}
+	}
+	if len(remaining) == 0 {
+		delete(functionContainers, fn.Name)
+	} else {
+		functionContainers[fn.Name] = remaining
+	}
+	fn.ActiveContainers = len(remaining)
+}
+
+func hasID(ids map[string]struct{}, id string) bool {
+	_, ok := ids[id]
+	return ok
+}
+
+func hasIDInSlice(ids []string, id string) bool {
+	for _, existing := range ids {
+		if existing == id {
+			return true
+		}
+	}
+	return false
 }
 
 func scaleDownFunction(ctx context.Context, fn *Function) {
@@ -364,7 +431,7 @@ func forwardToFunction(ctx context.Context, fn *Function, payload []byte) ([]byt
 	if err != nil {
 		return nil, fmt.Errorf("forward request to %s: %w", targetURL, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	result, err := io.ReadAll(resp.Body)
 	if err != nil {

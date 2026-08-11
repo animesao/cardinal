@@ -64,7 +64,10 @@ func init() {
 
 func generateID() string {
 	b := make([]byte, 8)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		log.Warn("generate cluster ID using fallback: %v", err)
+		return fmt.Sprintf("%016x", time.Now().UnixNano())
+	}
 	return hex.EncodeToString(b)
 }
 
@@ -290,7 +293,9 @@ func ClusterHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	case http.MethodGet:
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(clusterConf)
+		if err := json.NewEncoder(w).Encode(clusterConf); err != nil {
+			log.Warn("encode cluster response: %v", err)
+		}
 	}
 }
 
@@ -325,13 +330,15 @@ func handleJoin(w http.ResponseWriter, r *http.Request) {
 	clusterConf.Nodes[node.ID] = node
 	saveClusterConfig()
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"cluster_id":   clusterConf.ClusterID,
 		"cluster_name": clusterConf.ClusterName,
 		"node_id":      clusterConf.NodeID,
 		"nodes":        clusterConf.Nodes,
 		"services":     clusterConf.Services,
-	})
+	}); err != nil {
+		log.Warn("encode cluster join response: %v", err)
+	}
 }
 
 func handleLeave(w http.ResponseWriter, r *http.Request) {
@@ -528,7 +535,9 @@ func memTotal() int64 {
 			parts := strings.Fields(line)
 			if len(parts) >= 2 {
 				val := int64(0)
-				fmt.Sscanf(parts[1], "%d", &val)
+				if _, err := fmt.Sscanf(parts[1], "%d", &val); err != nil {
+					continue
+				}
 				return val * 1024 // kB to bytes
 			}
 		}
@@ -546,7 +555,9 @@ func memAvail() int64 {
 			parts := strings.Fields(line)
 			if len(parts) >= 2 {
 				val := int64(0)
-				fmt.Sscanf(parts[1], "%d", &val)
+				if _, err := fmt.Sscanf(parts[1], "%d", &val); err != nil {
+					continue
+				}
 				return val * 1024 // kB to bytes
 			}
 		}
@@ -569,7 +580,7 @@ func resolveLocalAddr() string {
 	if err != nil {
 		return "127.0.0.1"
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	addr := conn.LocalAddr().(*net.UDPAddr)
 	return addr.IP.String()
 }

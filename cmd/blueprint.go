@@ -574,7 +574,9 @@ func blueprintInstall(args []string) {
 		Value string `json:"value"`
 	}
 	if tpl.Env != "" {
-		json.Unmarshal([]byte(tpl.Env), &envPairs)
+		if err := json.Unmarshal([]byte(tpl.Env), &envPairs); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: invalid blueprint environment: %v\n", err)
+		}
 	}
 
 	// Apply CLI env overrides
@@ -685,7 +687,10 @@ func blueprintInstall(args []string) {
 	// Enable IP forwarding and UFW forwarding for VPN containers
 	if needsNetAdmin {
 		enableIPForward()
-		enableUFWForward()
+		if err := enableUFWForward(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error configuring firewall forwarding: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	opts := container.CreateOpts{
@@ -786,34 +791,79 @@ func fetchBlueprintRegistry() (*blueprintRegistry, error) {
 	return merged, nil
 }
 
-func enableUFWForward() {
+func enableUFWForward() error {
 	if _, err := exec.LookPath("ufw"); err != nil {
-		return
+		return nil
 	}
 	def := "/etc/default/ufw"
 	data, err := os.ReadFile(def)
 	if err != nil {
-		return
+		return fmt.Errorf("read %s: %w", def, err)
 	}
 	content := string(data)
 	if strings.Contains(content, "DEFAULT_FORWARD_POLICY=\"ACCEPT\"") {
-		return
+		return nil
 	}
 	content = strings.ReplaceAll(content, "DEFAULT_FORWARD_POLICY=\"DROP\"", "DEFAULT_FORWARD_POLICY=\"ACCEPT\"")
-	os.WriteFile(def, []byte(content), 0644)
-	exec.Command("ufw", "reload").Run()
-	fmt.Println("  Enabled UFW forwarding (DEFAULT_FORWARD_POLICY=ACCEPT)")
+	if err := os.WriteFile(def, []byte(content), 0644); err != nil {
+		return fmt.Errorf("write %s: %w", def, err)
+	}
 
 	iface := defaultRouteInterface()
 	if iface == "" {
 		iface = "eth0"
 	}
+	masqueradeAdded := false
+	establishedAdded := false
+	wgAdded := false
+	rollback := func(cause error) error {
+		var rollbackErr error
+		setRollbackErr := func(err error) {
+			if err != nil && rollbackErr == nil {
+				rollbackErr = err
+			}
+		}
+		if wgAdded {
+			setRollbackErr(exec.Command("iptables", "-D", "FORWARD", "-i", "wg0", "-j", "ACCEPT").Run())
+		}
+		if establishedAdded {
+			setRollbackErr(exec.Command("iptables", "-D", "FORWARD", "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT").Run())
+		}
+		if masqueradeAdded {
+			setRollbackErr(exec.Command("iptables", "-t", "nat", "-D", "POSTROUTING", "-o", iface, "-j", "MASQUERADE").Run())
+		}
+		if restoreErr := os.WriteFile(def, data, 0644); restoreErr != nil {
+			setRollbackErr(fmt.Errorf("restore %s: %w", def, restoreErr))
+		}
+		if reloadErr := exec.Command("ufw", "reload").Run(); reloadErr != nil {
+			setRollbackErr(fmt.Errorf("reload ufw after rollback: %w", reloadErr))
+		}
+		if rollbackErr != nil {
+			return fmt.Errorf("%w; rollback failed: %v", cause, rollbackErr)
+		}
+		return cause
+	}
+	if err := exec.Command("ufw", "reload").Run(); err != nil {
+		return rollback(fmt.Errorf("reload ufw: %w", err))
+	}
+	fmt.Println("  Enabled UFW forwarding (DEFAULT_FORWARD_POLICY=ACCEPT)")
+
 	if err := exec.Command("iptables", "-t", "nat", "-C", "POSTROUTING", "-o", iface, "-j", "MASQUERADE").Run(); err != nil {
-		exec.Command("iptables", "-t", "nat", "-A", "POSTROUTING", "-o", iface, "-j", "MASQUERADE").Run()
+		if err := exec.Command("iptables", "-t", "nat", "-A", "POSTROUTING", "-o", iface, "-j", "MASQUERADE").Run(); err != nil {
+			return rollback(fmt.Errorf("add iptables masquerade rule: %w", err))
+		}
+		masqueradeAdded = true
 		fmt.Printf("  Added iptables MASQUERADE rule for %s\n", iface)
 	}
-	exec.Command("iptables", "-A", "FORWARD", "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT").Run()
-	exec.Command("iptables", "-A", "FORWARD", "-i", "wg0", "-j", "ACCEPT").Run()
+	if err := exec.Command("iptables", "-A", "FORWARD", "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT").Run(); err != nil {
+		return rollback(fmt.Errorf("add established forwarding rule: %w", err))
+	}
+	establishedAdded = true
+	if err := exec.Command("iptables", "-A", "FORWARD", "-i", "wg0", "-j", "ACCEPT").Run(); err != nil {
+		return rollback(fmt.Errorf("add wg0 forwarding rule: %w", err))
+	}
+	wgAdded = true
+	return nil
 }
 
 func defaultRouteInterface() string {
@@ -856,7 +906,9 @@ func enableIPForward() {
 	if strings.TrimSpace(string(data)) == "1" {
 		return
 	}
-	os.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte("1"), 0644)
+	if err := os.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte("1"), 0644); err != nil {
+		return
+	}
 	fmt.Println("  Enabled IP forwarding (net.ipv4.ip_forward = 1)")
 }
 

@@ -139,7 +139,9 @@ func serviceList(args []string) {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "NAME\tIMAGE\tREPLICAS\tPORTS\tCREATED")
+	if _, err := fmt.Fprintln(w, "NAME\tIMAGE\tREPLICAS\tPORTS\tCREATED"); err != nil {
+		return
+	}
 	for _, s := range services {
 		portStr := ""
 		for i, p := range s.Ports {
@@ -148,11 +150,13 @@ func serviceList(args []string) {
 			}
 			portStr += fmt.Sprintf("%d->%d/%s", p.Port, p.TargetPort, p.Protocol)
 		}
-		fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\n",
+		if _, err := fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\n",
 			s.Name, s.Image, s.Replicas, portStr,
-			s.CreatedAt.Format("2006-01-02 15:04:05"))
+			s.CreatedAt.Format("2006-01-02 15:04:05")); err != nil {
+			return
+		}
 	}
-	w.Flush()
+	_ = w.Flush()
 }
 
 func serviceRemove(args []string) {

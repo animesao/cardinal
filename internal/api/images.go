@@ -172,7 +172,10 @@ func handleImagePush(w http.ResponseWriter, r *http.Request, ref string) {
 	var authMap map[string]string
 	authHeader := r.Header.Get("X-Registry-Auth")
 	if authHeader != "" {
-		json.Unmarshal([]byte(authHeader), &authMap)
+		if err := json.Unmarshal([]byte(authHeader), &authMap); err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid registry auth: %v", err))
+			return
+		}
 	}
 
 	username := authMap["username"]

@@ -29,10 +29,14 @@ func (c *Container) Remove(force bool) error {
 	upper, _, merged := c.OverlayDirs()
 	unmountOverlay(merged)
 	TeardownDiskLimit(state.OverlayDir(), c.ID)
-	os.RemoveAll(filepath.Dir(upper))
+	if err := os.RemoveAll(filepath.Dir(upper)); err != nil {
+		return fmt.Errorf("remove container overlay: %w", err)
+	}
 	os.Remove(c.LogFile())
 	os.Remove(state.ConsolePath(c.ID))
-	c.DeleteState()
+	if err := c.DeleteState(); err != nil {
+		return fmt.Errorf("delete container state: %w", err)
+	}
 	EmitEvent(EventDestroy, c)
 
 	return nil

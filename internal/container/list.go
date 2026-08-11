@@ -60,5 +60,5 @@ func PrintContainers(containers []*Container) {
 		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 			shortID, image, c.Status, c.Name, cmd)
 	}
-	w.Flush()
+	_ = w.Flush()
 }

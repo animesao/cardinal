@@ -103,13 +103,17 @@ func volumeList(args []string) {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "VOLUME NAME\tDRIVER\tMOUNTPOINT\tCREATED")
-	for _, v := range volumes {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-			v.Name, v.Driver, v.Mountpoint,
-			v.CreatedAt.Format("2006-01-02 15:04:05"))
+	if _, err := fmt.Fprintln(w, "VOLUME NAME\tDRIVER\tMOUNTPOINT\tCREATED"); err != nil {
+		return
 	}
-	w.Flush()
+	for _, v := range volumes {
+		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+			v.Name, v.Driver, v.Mountpoint,
+			v.CreatedAt.Format("2006-01-02 15:04:05")); err != nil {
+			return
+		}
+	}
+	_ = w.Flush()
 }
 
 func volumeRemove(args []string) {

@@ -172,7 +172,7 @@ func RootlessPortForward(hostPort, containerPort int, protocol, containerIP stri
 func CleanupRootlessPorts(pids []int) {
 	for _, pid := range pids {
 		if pid > 0 {
-			exec.Command("kill", strconv.Itoa(pid)).Run()
+			_ = exec.Command("kill", strconv.Itoa(pid)).Run()
 		}
 	}
 }

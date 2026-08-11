@@ -18,8 +18,10 @@ func RotateLogFile(path string) {
 		return
 	}
 	rotated := path + ".1"
-	os.Remove(rotated)
-	os.Rename(path, rotated)
+	_ = os.Remove(rotated)
+	if err := os.Rename(path, rotated); err != nil {
+		return
+	}
 }
 
 func (c *Container) Logs(follow bool, tail int) error {
@@ -27,7 +29,7 @@ func (c *Container) Logs(follow bool, tail int) error {
 	if err != nil {
 		return fmt.Errorf("open log: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if tail > 0 {
 		if err := printTail(f, tail); err != nil {
@@ -37,7 +39,9 @@ func (c *Container) Logs(follow bool, tail int) error {
 			return nil
 		}
 		// Seek to end for follow
-		f.Seek(0, io.SeekEnd)
+		if _, err := f.Seek(0, io.SeekEnd); err != nil {
+			return err
+		}
 	}
 
 	if follow {
@@ -121,7 +125,9 @@ func splitLines(s string) []string {
 }
 
 func (c *Container) followLogs(r io.ReadSeeker) error {
-	r.Seek(0, io.SeekEnd)
+	if _, err := r.Seek(0, io.SeekEnd); err != nil {
+		return err
+	}
 	reader := bufio.NewReader(r)
 
 	for {

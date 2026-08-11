@@ -56,7 +56,9 @@ func (c *Container) Stop() error {
 	stoppedContainers.Store(c.ID, true)
 	c.mu.Unlock()
 
-	c.Save()
+	if err := c.Save(); err != nil {
+		return fmt.Errorf("save stopping container: %w", err)
+	}
 
 	unsharePID := findUnsharePID(pid)
 	targetPID := pid
@@ -71,7 +73,9 @@ func (c *Container) Stop() error {
 	//
 	// We can't use proc.Wait() — process was reparented to init, so
 	// Wait() would return ECHILD. Poll with kill(pid, 0) instead.
-	syscall.Kill(targetPID, syscall.SIGTERM)
+	if err := syscall.Kill(targetPID, syscall.SIGTERM); err != nil {
+		log.Warn("terminate target PID %d: %v", targetPID, err)
+	}
 	if waitForExit(targetPID, 5*time.Second) {
 		goto cleanup
 	}
@@ -84,7 +88,9 @@ func (c *Container) Stop() error {
 cleanup:
 	// Kill the container init directly (survives if unshare was killed)
 	if unsharePID != 0 && pid > 0 {
-		syscall.Kill(pid, syscall.SIGTERM)
+		if err := syscall.Kill(pid, syscall.SIGTERM); err != nil {
+			log.Warn("terminate container PID %d: %v", pid, err)
+		}
 		if waitForExit(pid, 3*time.Second) {
 			goto postcleanup
 		}

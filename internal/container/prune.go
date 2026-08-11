@@ -63,7 +63,7 @@ func SystemPrune() error {
 			id := e.Name()
 			path := filepath.Join(state.ContainersDir(), id+".json")
 			if !state.FileExists(path) {
-				os.RemoveAll(filepath.Join(state.OverlayDir(), id))
+				_ = os.RemoveAll(filepath.Join(state.OverlayDir(), id))
 			}
 		}
 	}
