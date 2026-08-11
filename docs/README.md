@@ -9,7 +9,7 @@ dck up                        dck cluster init
 dck serve                     dck fn deploy --name hello myfunc
 ```
 
-Version: `1.22.26` — [GitHub](https://github.com/animesao/dck)
+Version: `1.22.28` — [GitHub](https://github.com/animesao/dck)
 
 ## Start here
 
@@ -17,7 +17,7 @@ Version: `1.22.26` — [GitHub](https://github.com/animesao/dck)
 - [Running guide (English)](en/running.md)
 - [Руководство по запуску (русский)](ru/running.md)
 
-The running guides cover installation, image/tag syntax, bind mounts, `.env`, Python bots, Java/Minecraft servers, logs, restart policies, updates, and troubleshooting.
+The running guides cover installation, image/tag syntax, bind mounts, `.env`, Python bots, Java/Minecraft servers, logs, restart policies, automatic backups, updates, and troubleshooting. The build guide documents local checks, cross-compilation, CI matrix behavior, and release automation.
 
 ## CLI Command Reference
 
@@ -200,7 +200,7 @@ The running guides cover installation, image/tag syntax, bind mounts, `.env`, Py
 | [Compose Examples (15 configs)](en/compose-examples.md) | [Примеры Compose (15 конфигураций)](ru/compose-examples.md) |
 | [Cluster Orchestration](en/cluster.md) | [Кластерная оркестрация](ru/cluster.md) |
 | [FaaS / Serverless](en/faas.md) | [FaaS / Serverless](ru/faas.md) |
-| [Build & Versioning](build.md) | [Сборка и версионирование](build.md) |
+| [Build, CI & Versioning](build.md) | [Сборка, CI и версионирование](build.md) |
 
 ## Architecture
 

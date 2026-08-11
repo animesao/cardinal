@@ -21,14 +21,14 @@
 Все боты запускаются по одному шаблону:
 
 ```bash
-mkdir -p /opt/mybot
-cd /opt/mybot
+mkdir -p /data/mybot
+cd /data/mybot
 
 # 1. Создать код бота, requirements.txt, start.sh
 # 2. Запустить (лимит: 256MB RAM, 0.25 CPU, 1GB диск):
 dck run -d --restart always \
   -n mybot \
-  -v /opt/mybot:/bot \
+  -v /data/mybot:/bot \
   --workdir /bot \
   --memory 256m --cpus 0.25 --disk 1G \
   -e BOT_TOKEN="ваш_токен" \
@@ -36,15 +36,15 @@ dck run -d --restart always \
   python:3.11-slim
 ```
 
-Скрипт `--startup` устанавливает зависимости и запускает бота. Изменения файлов на хосте (`/opt/mybot/`) сразу видны внутри контейнера. Перезапуск: `dck restart mybot`.
+Скрипт `--startup` устанавливает зависимости и запускает бота. Изменения файлов на хосте (`/data/mybot/`) сразу видны внутри контейнера. Перезапуск: `dck restart mybot`.
 
 ---
 
 ## Telegram бот
 
 ```bash
-mkdir -p /opt/tg-bot
-cd /opt/tg-bot
+mkdir -p /data/tg-bot
+cd /data/tg-bot
 
 cat > bot.py << 'EOF'
 import os
@@ -83,7 +83,7 @@ EOF
 
 dck run -d --restart always \
   -n tg-bot \
-  -v /opt/tg-bot:/bot \
+  -v /data/tg-bot:/bot \
   --workdir /bot \
   --memory 256m --cpus 0.25 --disk 1G \
   -e BOT_TOKEN="ВАШ_ТОКЕН_TELEGRAM_БОТА" \
@@ -95,8 +95,8 @@ dck run -d --restart always \
 ## Discord бот
 
 ```bash
-mkdir -p /opt/discord-bot
-cd /opt/discord-bot
+mkdir -p /data/discord-bot
+cd /data/discord-bot
 
 cat > bot.py << 'EOF'
 import os, discord
@@ -135,7 +135,7 @@ EOF
 
 dck run -d --restart always \
   -n discord-bot \
-  -v /opt/discord-bot:/bot \
+  -v /data/discord-bot:/bot \
   --workdir /bot \
   --memory 256m --cpus 0.25 --disk 1G \
   -e BOT_TOKEN="ТОКЕН_ВАШЕГО_DISCORD_БОТА" \
@@ -159,8 +159,8 @@ dck run -d --restart always \
   postgres:16
 
 # 2. Бот с подключением к БД
-mkdir -p /opt/bot-db
-cd /opt/bot-db
+mkdir -p /data/bot-db
+cd /data/bot-db
 
 cat > bot.py << 'EOF'
 import os, discord, asyncpg
@@ -198,7 +198,7 @@ EOF
 
 dck run -d --restart always \
   -n db-bot \
-  -v /opt/bot-db:/bot \
+  -v /data/bot-db:/bot \
   --workdir /bot \
   --memory 256m --cpus 0.25 --disk 1G \
   -e BOT_TOKEN="ВАШ_ТОКЕН" \
@@ -212,8 +212,8 @@ dck run -d --restart always \
 ## JavaScript бот (Node.js)
 
 ```bash
-mkdir -p /opt/js-bot
-cd /opt/js-bot
+mkdir -p /data/js-bot
+cd /data/js-bot
 
 cat > bot.js << 'EOF'
 const { Client, GatewayIntentBits } = require('discord.js');
@@ -243,7 +243,7 @@ EOF
 
 dck run -d --restart always \
   -n js-bot \
-  -v /opt/js-bot:/bot \
+  -v /data/js-bot:/bot \
   --workdir /bot \
   --memory 256m --cpus 0.25 --disk 1G \
   -e BOT_TOKEN="ВАШ_ТОКЕН" \
@@ -267,7 +267,7 @@ dck restart discord-bot
 # Healthcheck (с --startup)
 dck run -d --restart always \
   -n tg-bot \
-  -v /opt/tg-bot:/bot \
+  -v /data/tg-bot:/bot \
   --workdir /bot \
   --memory 256m --cpus 0.25 --disk 1G \
   -e BOT_TOKEN="токен" \
@@ -285,7 +285,7 @@ dck run -d --restart always \
 
 ```bash
 # Обновить код на хосте
-nano /opt/tg-bot/bot.py
+nano /data/tg-bot/bot.py
 
 # Перезапустить контейнер
 dck restart tg-bot

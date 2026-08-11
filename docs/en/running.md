@@ -309,7 +309,7 @@ Starting a container creates a fresh dck stdout/stderr log, so previous dck log 
 
 ## 11. Automatic backups
 
-Enable a per-container schedule. The backup contains the writable overlay and named volumes, and dck briefly stops a running container so the archive is consistent before starting it again.
+Enable a per-container schedule. The backup contains the writable overlay and named volumes, but not host bind mounts. Back up bind-mounted directories such as `/data/minecraft` separately. dck briefly stops a running container so the archive is consistent before starting it again. Enabling the schedule does not create an archive immediately; the first archive is created after the configured interval.
 
 ```bash
 dck backup enable minecraft --interval 6h --retention 14
@@ -327,14 +327,14 @@ dck backup enable minecraft \
   --dir /data/backups/minecraft
 ```
 
-Install the persistent supervisor once so the schedule continues after the terminal and after a reboot:
+Install the persistent supervisor once so the schedule continues after the terminal and after a reboot. If a backup fails, the supervisor records a retry time instead of retrying in a tight loop:
 
 ```bash
 dck bootstrap --install
 systemctl status dck-bootstrap
 ```
 
-A manual backup can still be created with `dck backup create NAME`. Restore only into a stopped container:
+A manual backup can still be created with `dck backup create NAME`; stop the container first. Restore only into a stopped container. Manual and scheduled archives cover dck-managed overlay data and named volumes, not host bind mounts:
 
 ```bash
 dck backup restore minecraft /data/backups/minecraft/minecraft-20260811-120000.tar.gz
@@ -704,7 +704,7 @@ dck logs NAME
 
 ## 17. Data locations
 
-For root, the default dck data directory is `/root/.dck`:
+For root, the default dck data directory is `/root/.dck`. The exact location is also shown by `dck info`:
 
 ```text
 /root/.dck/
@@ -714,8 +714,8 @@ For root, the default dck data directory is `/root/.dck`:
 ├── logs/         dck stdout/stderr logs
 ├── volumes/      named volumes
 ├── cache/        cached image layers
-└── consoles/     attach sockets
-    backups/      scheduled container archives
+├── consoles/     attach sockets
+└── backups/      scheduled container archives
 ```
 
 Set `DCK_DATA_DIR` before running dck to use another state location. Application bind mounts such as `/data/alfheimguide` are separate from this internal state.

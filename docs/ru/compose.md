@@ -264,7 +264,7 @@ services:
 ### Пример 1: Бот + Сайт + БД (разные директории)
 
 ```
-/opt/
+/data/
 ├── mybot/
 │   ├── main.py
 │   └── requirements.txt
@@ -298,7 +298,7 @@ services:
     restart: always
     working_dir: /app
     volumes:
-      - /opt/mybot:/app
+      - /data/mybot:/app
     command: sh -c "pip install -r requirements.txt && python main.py"
     environment:
       DB_HOST: db
@@ -314,7 +314,7 @@ services:
     restart: always
     working_dir: /app
     volumes:
-      - /opt/mysite:/app
+      - /data/mysite:/app
     ports:
       - "3000:3000"
     command: sh -c "npm install && node index.js"
@@ -332,7 +332,7 @@ volumes:
 ```
 
 ```
-cd /opt
+cd /data
 dck up           # запустит все 3 сервиса
 dck up bot       # только бота
 ```
@@ -434,26 +434,24 @@ volumes:
 
 ---
 
-### Пример 3: Абсолютные пути (бот в /opt, конфиги в /etc)
+### Пример 3: Абсолютные пути внутри `/data`
 
 ```
-/opt/
+/data/
 ├── bot/
 │   └── main.py
 ├── api/
 │   └── server.js
-/etc/
+/data/
 ├── dck/
 │   └── compose.yaml
 ├── secrets/
 │   ├── db_pass.txt
 │   └── bot_token.txt
-/var/
-└── data/
-    └── mysql/
+└── mysql/
 ```
 
-**compose.yaml (внутри `/etc/dck/`):**
+**compose.yaml (внутри `/data/dck/`):**
 
 ```yaml
 services:
@@ -461,7 +459,7 @@ services:
     image: mysql:8
     restart: always
     volumes:
-      - /var/data/mysql:/var/lib/mysql
+      - /data/mysql:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_pass
       MYSQL_DATABASE: myapp
@@ -473,7 +471,7 @@ services:
     restart: always
     working_dir: /app
     volumes:
-      - /opt/bot:/app
+      - /data/bot:/app
     command: sh -c "pip install -r /app/requirements.txt && python /app/main.py"
     secrets:
       - source: db_pass
@@ -491,7 +489,7 @@ services:
     restart: always
     working_dir: /app
     volumes:
-      - /opt/api:/app
+      - /data/api:/app
     ports:
       - "4000:4000"
     command: node /app/server.js
@@ -505,13 +503,13 @@ services:
 
 secrets:
   db_pass:
-    file: /etc/secrets/db_pass.txt
+    file: /data/secrets/db_pass.txt
   bot_token:
-    file: /etc/secrets/bot_token.txt
+    file: /data/secrets/bot_token.txt
 ```
 
 ```
-cd /etc/dck
+cd /data/dck
 dck up --autostart
 ```
 
@@ -524,7 +522,7 @@ dck up --autostart
 | Синтаксис volume | Что происходит |
 |---|---|
 | `./site:/app` | Относительно compose.yaml. Папка `site/` рядом с compose.yaml |
-| `/opt/site:/app` | Абсолютный путь — работает откуда угодно |
+| `/data/site:/app` | Абсолютный путь — работает откуда угодно |
 | `site-data:/app` | Именованный том — управляется dck (`~/.dck/volumes/site-data/`) |
 
 ### Связь между контейнерами

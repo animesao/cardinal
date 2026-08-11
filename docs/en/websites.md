@@ -43,13 +43,13 @@ The simplest — serve HTML/CSS/JS files with nginx.
 
 ```bash
 # Create site directory
-mkdir -p /var/www/mysite
-echo "<h1>Hello from dck!</h1>" > /var/www/mysite/index.html
+mkdir -p /data/www/mysite
+echo "<h1>Hello from dck!</h1>" > /data/www/mysite/index.html
 
 # Run nginx with mounted files (limit: 256MB RAM, 0.5 CPU, 1GB disk)
 dck run -d --restart always \
   -n mysite -p 80:80 \
-  -v /var/www/mysite:/usr/share/nginx/html:ro \
+  -v /data/www/mysite:/usr/share/nginx/html:ro \
   --memory 256m --cpus 0.5 --disk 1G \
   nginx:alpine
 
@@ -60,10 +60,10 @@ curl http://localhost:80
 ### Custom nginx config
 
 ```bash
-mkdir -p /var/www/mysite /etc/nginx-conf
+mkdir -p /data/www/mysite /data/nginx-conf
 
 # Create nginx config
-cat > /etc/nginx-conf/default.conf << 'EOF'
+cat > /data/nginx-conf/default.conf << 'EOF'
 server {
     listen 80;
     server_name mysite.example.com;
@@ -76,8 +76,8 @@ EOF
 
 dck run -d --restart always \
   -n mysite -p 80:80 \
-  -v /var/www/mysite:/usr/share/nginx/html:ro \
-  -v /etc/nginx-conf:/etc/nginx/conf.d:ro \
+  -v /data/www/mysite:/usr/share/nginx/html:ro \
+  -v /data/nginx-conf:/etc/nginx/conf.d:ro \
   nginx:alpine
 ```
 
@@ -97,8 +97,8 @@ apt-get install -y certbot
 certbot certonly --standalone -d mysite.example.com
 
 # Create nginx config with SSL
-mkdir -p /etc/nginx-ssl
-cat > /etc/nginx-ssl/default.conf << 'EOF'
+mkdir -p /data/nginx-ssl
+cat > /data/nginx-ssl/default.conf << 'EOF'
 server {
     listen 80;
     server_name mysite.example.com;
@@ -117,29 +117,29 @@ EOF
 # Run nginx
 dck run -d --restart always \
   -n mysite -p 80:80 -p 443:443 \
-  -v /var/www/mysite:/usr/share/nginx/html:ro \
-  -v /etc/nginx-ssl:/etc/nginx/conf.d:ro \
-  -v /etc/letsencrypt:/etc/letsencrypt:ro \
+  -v /data/www/mysite:/usr/share/nginx/html:ro \
+  -v /data/nginx-ssl:/etc/nginx/conf.d:ro \
+  -v /data/letsencrypt:/etc/letsencrypt:ro \
   nginx:alpine
 ```
 
 ### Option 2: Self-signed (for testing)
 
 ```bash
-mkdir -p /root/ssl /root/nginx-conf/ssl
+mkdir -p /data/ssl /data/nginx-conf/ssl
 
 # Generate self-signed cert
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout /root/ssl/server.key \
-  -out /root/ssl/server.crt \
+  -keyout /data/ssl/server.key \
+  -out /data/ssl/server.crt \
   -subj "/CN=localhost"
 
 # Copy ssl into config dir
-cp /root/ssl/server.crt /root/nginx-conf/ssl/
-cp /root/ssl/server.key /root/nginx-conf/ssl/
+cp /data/ssl/server.crt /data/nginx-conf/ssl/
+cp /data/ssl/server.key /data/nginx-conf/ssl/
 
 # Nginx config
-cat > /root/nginx-conf/default.conf << 'EOF'
+cat > /data/nginx-conf/default.conf << 'EOF'
 server {
     listen 443 ssl http2;
     server_name localhost;
@@ -153,8 +153,8 @@ EOF
 # Run
 dck run -d --restart always \
   -n mysite -p 443:443 \
-  -v /var/www/mysite:/usr/share/nginx/html:ro \
-  -v /root/nginx-conf:/etc/nginx/conf.d \
+  -v /data/www/mysite:/usr/share/nginx/html:ro \
+  -v /data/nginx-conf:/etc/nginx/conf.d \
   nginx:alpine
 ```
 
@@ -193,11 +193,11 @@ You can also use bind mounts (`-v`) for persistent file sharing — changes on t
 
 ```bash
 dck run -d -n web -p 80:80 \
-  -v /var/www/mysite:/usr/share/nginx/html:ro \
+  -v /data/www/mysite:/usr/share/nginx/html:ro \
   nginx:alpine
 
 # Edit files on the host — nginx serves them instantly
-echo "<h1>Updated!</h1>" > /var/www/mysite/index.html
+echo "<h1>Updated!</h1>" > /data/www/mysite/index.html
 ```
 
 ---
@@ -208,8 +208,8 @@ echo "<h1>Updated!</h1>" > /var/www/mysite/index.html
 
 ```bash
 # Create app
-mkdir -p /opt/flask-app
-cd /opt/flask-app
+mkdir -p /data/flask-app
+cd /data/flask-app
 
 cat > app.py << 'EOF'
 from flask import Flask
@@ -235,7 +235,7 @@ EOF
 # Run with gunicorn via startup script
 dck run -d --restart always \
   -n flask-app -p 5000:5000 \
-  -v /opt/flask-app:/app \
+  -v /data/flask-app:/app \
   --workdir /app \
   --startup "pip install -r /app/requirements.txt && gunicorn -w 4 -b 0.0.0.0:5000 app:app" \
   python:3.11-slim
@@ -248,8 +248,8 @@ curl http://localhost:5000
 
 ```bash
 # Create nginx config
-mkdir -p /etc/flask-nginx
-cat > /etc/flask-nginx/default.conf << 'EOF'
+mkdir -p /data/flask-nginx
+cat > /data/flask-nginx/default.conf << 'EOF'
 server {
     listen 80;
     server_name example.com;
@@ -261,7 +261,7 @@ server {
     }
 
     location /static/ {
-        alias /var/www/flask-app/static/;
+        alias /data/www/flask-app/static/;
     }
 }
 EOF
@@ -269,7 +269,7 @@ EOF
 # Run flask app (no port needed - access via nginx)
 dck run -d --restart always \
   -n flask-backend \
-  -v /opt/flask-app:/app \
+  -v /data/flask-app:/app \
   --workdir /app \
   --startup "pip install -r /app/requirements.txt && gunicorn -w 4 -b 0.0.0.0:5000 app:app" \
   python:3.11-slim
@@ -277,7 +277,7 @@ dck run -d --restart always \
 # Run nginx pointing to flask container by IP
 dck run -d --restart always \
   -n flask-web -p 80:80 \
-  -v /etc/flask-nginx:/etc/nginx/conf.d:ro \
+  -v /data/flask-nginx:/etc/nginx/conf.d:ro \
   nginx:alpine
 
 # Find flask IP
@@ -290,8 +290,8 @@ dck inspect flask-backend | grep IP
 ## Python FastAPI
 
 ```bash
-mkdir -p /opt/fastapi-app
-cd /opt/fastapi-app
+mkdir -p /data/fastapi-app
+cd /data/fastapi-app
 
 cat > main.py << 'EOF'
 from fastapi import FastAPI
@@ -313,7 +313,7 @@ EOF
 
 dck run -d --restart always \
   -n fastapi-app -p 8000:8000 \
-  -v /opt/fastapi-app:/app \
+  -v /data/fastapi-app:/app \
   --workdir /app \
   --startup "pip install -r /app/requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8000" \
   python:3.11-slim
@@ -327,8 +327,8 @@ curl http://localhost:8000/docs   # Swagger UI
 ## Python Django
 
 ```bash
-mkdir -p /opt/django-app
-cd /opt/django-app
+mkdir -p /data/django-app
+cd /data/django-app
 
 # Create requirements
 cat > requirements.txt << 'EOF'
@@ -350,7 +350,7 @@ SCRIPT
 
 # Create Django project (or copy existing)
 dck run --rm \
-  -v /opt/django-app:/app \
+  -v /data/django-app:/app \
   --workdir /app \
   python:3.11-slim sh -c "pip install django && django-admin startproject myproject ."
 
@@ -366,7 +366,7 @@ dck run -d --restart always \
 # Wait for DB, then run Django
 dck run -d --restart always \
   -n django-app -p 8000:8000 \
-  -v /opt/django-app:/app \
+  -v /data/django-app:/app \
   --workdir /app \
   -e DB_HOST=10.0.2.1 \
   -e DB_NAME=django \
@@ -381,8 +381,8 @@ dck run -d --restart always \
 ## Node.js Express
 
 ```bash
-mkdir -p /opt/express-app
-cd /opt/express-app
+mkdir -p /data/express-app
+cd /data/express-app
 
 cat > index.js << 'EOF'
 const express = require('express');
@@ -412,7 +412,7 @@ EOF
 
 dck run -d --restart always \
   -n express-app -p 3000:3000 \
-  -v /opt/express-app:/app \
+  -v /data/express-app:/app \
   --workdir /app \
   --startup "npm install && npm start" \
   node:20
@@ -425,8 +425,8 @@ curl http://localhost:3000
 ## Node.js Next.js
 
 ```bash
-mkdir -p /opt/next-app
-cd /opt/next-app
+mkdir -p /data/next-app
+cd /data/next-app
 
 # Create Next.js project
 cat > package.json << 'EOF'
@@ -455,20 +455,20 @@ EOF
 # Development mode (with hot reload)
 dck run -d --restart always \
   -n next-dev -p 3000:3000 \
-  -v /opt/next-app:/app \
+  -v /data/next-app:/app \
   --workdir /app \
   --startup "npm install && npm run dev" \
   node:20
 
 # Production build
 dck run --rm \
-  -v /opt/next-app:/app \
+  -v /data/next-app:/app \
   --workdir /app \
   node:20 sh -c "npm install && npm run build"
 
 dck run -d --restart always \
   -n next-prod -p 3000:3000 \
-  -v /opt/next-app:/app \
+  -v /data/next-app:/app \
   --workdir /app \
   --startup "npm start" \
   node:20
@@ -479,8 +479,8 @@ dck run -d --restart always \
 ## PHP + Nginx
 
 ```bash
-mkdir -p /opt/php-app
-cd /opt/php-app
+mkdir -p /data/php-app
+cd /data/php-app
 
 cat > index.php << 'EOF'
 <?php
@@ -489,8 +489,8 @@ echo '<p>PHP version: ' . phpversion() . '</p>';
 EOF
 
 # Create nginx config for PHP-FPM
-mkdir -p /etc/php-nginx
-cat > /etc/php-nginx/default.conf << 'EOF'
+mkdir -p /data/php-nginx
+cat > /data/php-nginx/default.conf << 'EOF'
 server {
     listen 80;
     root /var/www/html;
@@ -507,7 +507,7 @@ EOF
 # Run PHP-FPM container
 dck run -d --restart always \
   -n php-fpm \
-  -v /opt/php-app:/var/www/html \
+  -v /data/php-app:/var/www/html \
   php:8.2-fpm
 
 # Run nginx with PHP-FPM (find PHP container IP)
@@ -515,12 +515,12 @@ PHP_IP=$(dck inspect php-fpm | grep -o '"ip":"[^"]*"' | grep -o '[0-9.]*')
 echo "PHP container IP: $PHP_IP"
 
 # Update nginx config with actual PHP IP
-sed -i "s/127.0.0.1:9000/$PHP_IP:9000/" /etc/php-nginx/default.conf
+sed -i "s/127.0.0.1:9000/$PHP_IP:9000/" /data/php-nginx/default.conf
 
 dck run -d --restart always \
   -n php-web -p 80:80 \
-  -v /opt/php-app:/var/www/html:ro \
-  -v /etc/php-nginx:/etc/nginx/conf.d:ro \
+  -v /data/php-app:/var/www/html:ro \
+  -v /data/php-nginx:/etc/nginx/conf.d:ro \
   nginx:alpine
 ```
 
@@ -529,8 +529,8 @@ dck run -d --restart always \
 ## Java Spring Boot
 
 ```bash
-mkdir -p /opt/spring-app
-cd /opt/spring-app
+mkdir -p /data/spring-app
+cd /data/spring-app
 
 # Create a simple Spring Boot app (or use your JAR)
 # For testing, create a simple JAR or use existing
@@ -560,7 +560,7 @@ curl http://localhost:8080
 ### Quick Java test (no build needed)
 
 ```bash
-cat > /opt/spring-app/HttpServer.java << 'EOF'
+cat > /data/spring-app/HttpServer.java << 'EOF'
 import com.sun.net.httpserver.*;
 
 public class HttpServer {
@@ -583,7 +583,7 @@ EOF
 
 dck run -d --restart always \
   -n java-app -p 8080:8080 \
-  -v /opt/spring-app:/app \
+  -v /data/spring-app:/app \
   --workdir /app \
   --startup "javac HttpServer.java && java HttpServer" \
   eclipse-temurin:21-jdk
@@ -594,8 +594,8 @@ dck run -d --restart always \
 ## Go HTTP Server
 
 ```bash
-mkdir -p /opt/go-app
-cd /opt/go-app
+mkdir -p /data/go-app
+cd /data/go-app
 
 cat > main.go << 'EOF'
 package main
@@ -642,19 +642,19 @@ curl http://localhost:8080
 
 ```bash
 # 1. PostgreSQL
-mkdir -p /opt/postgres-data
+mkdir -p /data/postgres-data
 
 dck run -d --restart always \
   -n pg -p 5432:5432 \
-  -v /opt/postgres-data:/var/lib/postgresql/data \
+  -v /data/postgres-data:/var/lib/postgresql/data \
   -e POSTGRES_DB=myapp \
   -e POSTGRES_USER=myapp \
   -e POSTGRES_PASSWORD=secret \
   postgres:16
 
 # 2. Flask app
-mkdir -p /opt/flask-fullstack
-cd /opt/flask-fullstack
+mkdir -p /data/flask-fullstack
+cd /data/flask-fullstack
 
 cat > app.py << 'EOF'
 from flask import Flask, jsonify
@@ -708,7 +708,7 @@ EOF
 # Wait for PostgreSQL to be ready, then run Flask
 dck run -d --restart always \
   -n flask-app -p 5000:5000 \
-  -v /opt/flask-fullstack:/app \
+  -v /data/flask-fullstack:/app \
   --workdir /app \
   -e DB_HOST=10.0.2.1 \
   -e DB_NAME=myapp \
@@ -726,11 +726,11 @@ curl http://localhost:5000/db
 
 ```bash
 # 1. MySQL
-mkdir -p /opt/mysql-data
+mkdir -p /data/mysql-data
 
 dck run -d --restart always \
   -n mysql -p 3306:3306 \
-  -v /opt/mysql-data:/var/lib/mysql \
+  -v /data/mysql-data:/var/lib/mysql \
   -e MYSQL_ROOT_PASSWORD=rootpass \
   -e MYSQL_DATABASE=myapp \
   -e MYSQL_USER=myapp \
@@ -738,8 +738,8 @@ dck run -d --restart always \
   mysql:8
 
 # 2. Node.js app
-mkdir -p /opt/node-mysql
-cd /opt/node-mysql
+mkdir -p /data/node-mysql
+cd /data/node-mysql
 
 cat > index.js << 'EOF'
 const express = require('express');
@@ -778,7 +778,7 @@ EOF
 
 dck run -d --restart always \
   -n node-app -p 3000:3000 \
-  -v /opt/node-mysql:/app \
+  -v /data/node-mysql:/app \
   --workdir /app \
   -e DB_HOST=10.0.2.1 \
   -e DB_NAME=myapp \
@@ -806,8 +806,8 @@ dck run -d --restart always \
   redis:7
 
 # 3. FastAPI app
-mkdir -p /opt/fastapi-stack
-cd /opt/fastapi-stack
+mkdir -p /data/fastapi-stack
+cd /data/fastapi-stack
 
 cat > main.py << 'EOF'
 from fastapi import FastAPI, HTTPException
@@ -851,7 +851,7 @@ EOF
 
 dck run -d --restart always \
   -n fastapi-app -p 8000:8000 \
-  -v /opt/fastapi-stack:/app \
+  -v /data/fastapi-stack:/app \
   --workdir /app \
   -e DB_HOST=10.0.2.1 \
   -e DB_NAME=myapp \
@@ -991,7 +991,7 @@ Connect to your server at `your-server-ip:25565`.
 Download and run any Paper/Spigot/vanilla server JAR:
 
 ```bash
-cat > /opt/mc/start.sh << 'EOF'
+cat > /data/mc/start.sh << 'EOF'
 #!/bin/sh
 set -e
 SERVER_DIR="/data"
@@ -1007,16 +1007,16 @@ EOF
 
 dck run -d --restart always \
   -n mc-paper -p 25565:25565 \
-  -v /opt/mc:/data --memory 4G \
-  --startup @/opt/mc/start.sh \
+  -v /data/mc:/data --memory 4G \
+  --startup @/data/mc/start.sh \
   eclipse-temurin:21-jdk
 ```
 
 ### Server.properties via bind mount
 
 ```bash
-mkdir -p /opt/mc-config
-cat > /opt/mc-config/server.properties << 'EOF'
+mkdir -p /data/mc-config
+cat > /data/mc-config/server.properties << 'EOF'
 max-players=50
 difficulty=hard
 motd=A dck Minecraft Server
@@ -1026,7 +1026,7 @@ EOF
 
 dck run -d --restart always \
   -n mc -p 25565:25565 \
-  -v /opt/mc-config:/data \
+  -v /data/mc-config:/data \
   -e EULA=TRUE -e TYPE=PAPER -e VERSION=1.20.4 \
   -e MEMORY=4G \
   itzg/minecraft-server
@@ -1062,8 +1062,8 @@ Run bots (Telegram, Discord, Slack, etc.) in dck containers with persistent stor
 ### Telegram Bot
 
 ```bash
-mkdir -p /opt/tg-bot
-cd /opt/tg-bot
+mkdir -p /data/tg-bot
+cd /data/tg-bot
 
 cat > bot.py << 'EOF'
 import os, logging
@@ -1102,7 +1102,7 @@ EOF
 
 dck run -d --restart always \
   -n tg-bot \
-  -v /opt/tg-bot:/bot \
+  -v /data/tg-bot:/bot \
   --workdir /bot \
   --memory 256m --cpus 0.25 --disk 1G \
   -e BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN" \
@@ -1113,8 +1113,8 @@ dck run -d --restart always \
 ### Discord Bot
 
 ```bash
-mkdir -p /opt/discord-bot
-cd /opt/discord-bot
+mkdir -p /data/discord-bot
+cd /data/discord-bot
 
 cat > bot.py << 'EOF'
 import os, discord
@@ -1153,7 +1153,7 @@ EOF
 
 dck run -d --restart always \
   -n discord-bot \
-  -v /opt/discord-bot:/bot \
+  -v /data/discord-bot:/bot \
   --workdir /bot \
   --memory 256m --cpus 0.25 --disk 1G \
   -e BOT_TOKEN="YOUR_DISCORD_BOT_TOKEN" \
@@ -1175,8 +1175,8 @@ dck run -d --restart always \
   postgres:16
 
 # 2. Bot with DB connection
-mkdir -p /opt/bot-db
-cd /opt/bot-db
+mkdir -p /data/bot-db
+cd /data/bot-db
 
 cat > bot.py << 'EOF'
 import os, discord, asyncpg
@@ -1207,7 +1207,7 @@ EOF
 
 dck run -d --restart always \
   -n db-bot \
-  -v /opt/bot-db:/bot \
+  -v /data/bot-db:/bot \
   --workdir /bot \
   -e BOT_TOKEN="YOUR_TOKEN" \
   -e DB_HOST=10.0.2.1 \

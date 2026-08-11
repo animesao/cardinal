@@ -217,6 +217,7 @@ dck run -d --name myapp --ports 8080:80 --volume /app:/app --restart always --im
 | `-t` | Allocate TTY (pseudo-terminal) | `-t` |
 | `--rm` | Remove container on exit | `--rm` |
 | `--restart <policy>` | Restart: `no`, `always`, `on-failure`, `unless-stopped`; detached boot supervision applies to `always`/`unless-stopped` | `--restart always` |
+| `--restart-delay <duration>` | Delay crash recovery, e.g. `10s` or `1m`; does not delay initial boot | `--restart-delay 1m` |
 | `--memory <lim>` | Memory limit | `--memory 2g` |
 | `--ram <lim>` | Memory limit (alias for `--memory`) | `--ram 1g` |
 | `--cpus <num>` | CPU limit | `--cpus 1.5` |
@@ -396,7 +397,7 @@ For root, dck logs are stored under `/root/.dck/logs/<container-id>.log`; set `D
 
 ### `dck backup create|list|restore|enable|disable|status`
 
-Create manual archives or enable a persistent schedule for one container. Scheduled backups include the writable overlay and named volumes. dck briefly stops a running container for a consistent archive and starts it again afterward.
+Create manual archives or enable a persistent schedule for one container. Scheduled backups include the writable overlay and named volumes, but not host bind mounts; back up bind-mounted application directories separately. dck briefly stops a running container for a consistent archive and starts it again afterward. The first scheduled archive is created after the configured interval, not immediately.
 
 ```bash
 dck backup enable minecraft --interval 6h --retention 14
@@ -541,7 +542,6 @@ containers/    State JSON files
 overlay/       upper/work/merged per container (writable layer)
 volumes/       Named volumes
 logs/          Container stdout/stderr (fresh on each new start)
-volumes/       Named volumes
 cache/         Cached image layers
 consoles/      Unix sockets for attach
 backups/       Scheduled container archives
@@ -1040,7 +1040,7 @@ dck run -d
 | **Image** | Read-only rootfs (`python:3.11-slim`, `nginx:alpine`). Pulled once via `dck pull`. |
 | **Container** | Image + writable overlay layer. Changes live in the overlay, not the image. |
 | **Overlay** | Diff layer on top of the image. Persists across restarts — packages stay installed. |
-| **Volume** | Host bind mount into the container. `-v /opt/mybot:/bot` mounts `/opt/mybot` as `/bot`. |
+| **Volume** | Host bind mount into the container. `-v /data/mybot:/bot` mounts `/data/mybot` as `/bot`. |
 | **Network** | Every container gets IP `10.0.2.X` on bridge `dck0`. Host at `10.0.2.1`. |
 
 ### Execution Flow

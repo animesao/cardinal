@@ -2,11 +2,24 @@
 
 ## Unreleased
 
+### CI and release workflow
+
+- CI runs Go tests only on the native amd64 runner; arm64 is cross-compiled without executing an incompatible test binary.
+- The architecture matrix uses `fail-fast: false`, so one architecture cannot cancel the other job.
+- Build & Release checks out the newly created version tag before building amd64, arm64, and armv6 artifacts.
+- Build and manual release workflows are serialized to avoid concurrent version and tag updates.
+
 ### Added
 
 - Added configurable automatic restart delays with `--restart-delay` / `dck set --restart-delay` (for example, `10s` or `1m`).
 - Added a persistent systemd supervisor for detached `always` and `unless-stopped` containers; `on-failure` remains a foreground-process policy and is not adopted after the detached CLI exits.
 - Added per-container scheduled backups with `dck backup enable/disable/status`, configurable intervals, retention, safe destinations, and supervisor-based recovery after reboot.
+
+## 1.22.28 (2026-08-11)
+
+### Documentation
+
+- Updated English and Russian guides with the current version, automatic backups, supervisor behavior, restart delays, protected bind mounts, log rotation, and CI/build workflow.
 
 ## 1.22.26 (2026-08-11)
 

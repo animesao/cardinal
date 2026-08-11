@@ -267,7 +267,7 @@ Configs are mounted as files inside the container:
 ### Example 1: Bot + Site + DB (different directories)
 
 ```
-/opt/
+/data/
 ├── mybot/
 │   ├── main.py
 │   └── requirements.txt
@@ -301,7 +301,7 @@ services:
     restart: always
     working_dir: /app
     volumes:
-      - /opt/mybot:/app
+      - /data/mybot:/app
     command: sh -c "pip install -r requirements.txt && python main.py"
     environment:
       DB_HOST: db
@@ -320,7 +320,7 @@ services:
     restart: always
     working_dir: /app
     volumes:
-      - /opt/mysite:/app
+      - /data/mysite:/app
     ports:
       - "3000:3000"
     command: sh -c "npm install && node index.js"
@@ -440,26 +440,24 @@ volumes:
 
 ---
 
-### Example 3: Absolute paths (services in /opt, configs in /etc)
+### Example 3: Absolute paths under `/data`
 
 ```
-/opt/
+/data/
 ├── bot/
 │   └── main.py
 ├── api/
 │   └── server.js
-/etc/
+/data/
 ├── dck/
 │   └── compose.yaml
 ├── secrets/
 │   ├── db_pass.txt
 │   └── bot_token.txt
-/var/
-└── data/
-    └── mysql/
+└── mysql/
 ```
 
-**compose.yaml (inside `/etc/dck/`):**
+**compose.yaml (inside `/data/dck/`):**
 
 ```yaml
 services:
@@ -467,7 +465,7 @@ services:
     image: mysql:8
     restart: always
     volumes:
-      - /var/data/mysql:/var/lib/mysql
+      - /data/mysql:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_pass
       MYSQL_DATABASE: myapp
@@ -479,7 +477,7 @@ services:
     restart: always
     working_dir: /app
     volumes:
-      - /opt/bot:/app
+      - /data/bot:/app
     command: sh -c "pip install -r /app/requirements.txt && python /app/main.py"
     secrets:
       - source: db_pass
@@ -497,7 +495,7 @@ services:
     restart: always
     working_dir: /app
     volumes:
-      - /opt/api:/app
+      - /data/api:/app
     ports:
       - "4000:4000"
     command: node /app/server.js
@@ -511,13 +509,13 @@ services:
 
 secrets:
   db_pass:
-    file: /etc/secrets/db_pass.txt
+    file: /data/secrets/db_pass.txt
   bot_token:
-    file: /etc/secrets/bot_token.txt
+    file: /data/secrets/bot_token.txt
 ```
 
 ```
-cd /etc/dck
+cd /data/dck
 dck up --autostart
 ```
 
@@ -530,7 +528,7 @@ dck up --autostart
 | Volume syntax | What happens |
 |---|---|
 | `./site:/app` | Relative to compose.yaml location. `site/` folder next to compose.yaml |
-| `/opt/site:/app` | Absolute path — works from anywhere |
+| `/data/site:/app` | Absolute path — works from anywhere |
 | `site-data:/app` | Named volume — managed by dck (`~/.dck/volumes/site-data/`) |
 
 ### Container-to-container communication

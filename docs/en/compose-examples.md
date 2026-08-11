@@ -28,7 +28,7 @@ services:
     image: eclipse-temurin:21-jdk
     working_dir: /server
     volumes:
-      - /opt/mc-server:/server
+      - /data/mc-server:/server
     command: >
       sh -c "
         rm -f world/session.lock world_nether/session.lock world_the_end/session.lock
@@ -44,7 +44,7 @@ services:
 
 - `rm -f *.lock` — cleans stale Paper locks from previous crashes
 - `working_dir` — working directory inside container
-- `volumes: /opt/mc-server:/server` — mount host folder to container
+- `volumes: /data/mc-server:/server` — mount host folder to container
 - `restart: always` — restart on crash or reboot
 - `dns` — fixes DNS for downloading mods/plugins
 
@@ -61,7 +61,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - /var/www/html:/usr/share/nginx/html:ro
+      - ./html:/usr/share/nginx/html:ro
       - ./nginx-conf:/etc/nginx/conf.d:ro
       - ./ssl:/etc/nginx/ssl:ro
     labels:
@@ -327,7 +327,14 @@ services:
 
 ---
 
-## 8. CI Runner (self-hosted)
+## 8. CI Runner (self-hosted, reference only)
+
+> **Not a ready-to-run dck recipe.** The common `summerwind/actions-runner`
+> setup expects Docker-in-Docker or access to a host Docker socket. dck blocks
+> protected host bind sources such as `/var/run/docker.sock`, so use a
+> dedicated host-side runner integration or an image that does not require
+> Docker socket access. The snippet below documents the container-side
+> settings only.
 
 ```yaml
 services:
@@ -335,7 +342,6 @@ services:
     image: summerwind/actions-runner:latest
     restart: always
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - runner_data:/home/runner
     environment:
       - RUNNER_NAME=my-runner
@@ -351,8 +357,8 @@ volumes:
   runner_data:
 ```
 
-- `privileged: true` — needed for Docker-in-Docker
-- `/var/run/docker.sock` — bind mount the host Docker socket
+- `privileged: true` alone does not provide Docker-in-Docker.
+- For dck, treat this as a configuration reference and use a host-side runner integration or a runtime-specific image that does not require `/var/run/docker.sock`.
 
 ---
 

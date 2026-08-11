@@ -69,7 +69,7 @@ PID/Mount/Net/UTS/IPC namespaces + overlayfs.
 | **Image** | Read-only rootfs (`python:3.11-slim`, `nginx:alpine`). Pulled once via `dck pull`. |
 | **Container** | Image + writable overlay layer. Changes live in the overlay, not the image. |
 | **Overlay** | Diff layer on top of the image. Persists across restarts — packages stay installed. Stays mounted after `stop` — browse with `dck fs`. |
-| **Volume** | Host bind mount into the container. `-v /opt/mybot:/bot` mounts `/opt/mybot` as `/bot`. |
+| **Volume** | Host bind mount into the container. `-v /data/mybot:/bot` mounts `/data/mybot` as `/bot`. |
 | **Network** | Every container gets IP `10.0.2.X` on bridge `dck0`. Host at `10.0.2.1`. |
 
 ```
@@ -122,7 +122,7 @@ dck commit web my-image:v1                  # Create image from container
 
 ### Automatic Backups
 
-Scheduled backups are managed by the persistent systemd supervisor. The archive includes the container writable overlay and named volumes. To keep the archive consistent, dck briefly stops a running container, creates the backup, then starts it again.
+Scheduled backups are managed by the persistent systemd supervisor. The archive includes the container writable overlay and named volumes, but not host bind mounts. To keep the archive consistent, dck briefly stops a running container, creates the backup, then starts it again. Enabling a schedule does not create an archive immediately; the first archive is created after the configured interval.
 
 ```bash
 dck backup enable minecraft --interval 6h --retention 14
@@ -253,7 +253,7 @@ curl localhost
 ### Python Flask App
 
 ```bash
-mkdir -p /opt/flask-app && cd /opt/flask-app
+mkdir -p /data/flask-app && cd /data/flask-app
 cat > app.py << 'EOF'
 from flask import Flask
 app = Flask(__name__)
@@ -267,7 +267,7 @@ echo "flask==3.0.0" > requirements.txt
 
 dck run -d --restart always \
   -n flask -p 5000:5000 \
-  -v /opt/flask-app:/app \
+  -v /data/flask-app:/app \
   python:3.11-slim sh -c "\
     pip install -r /app/requirements.txt && \
     python /app/app.py"
@@ -499,7 +499,7 @@ See [deployment docs](docs/en/websites.md#file-operations) for more.
 ### Node.js App
 
 ```bash
-mkdir -p /opt/node-app && cd /opt/node-app
+mkdir -p /data/node-app && cd /data/node-app
 cat > index.js << 'EOF'
 const http = require('http');
 http.createServer((req, res) => res.end('Hello from dck!\n')).listen(3000);
@@ -507,7 +507,7 @@ EOF
 
 dck run -d --restart always \
   -n node-app -p 3000:3000 \
-  -v /opt/node-app:/app \
+  -v /data/node-app:/app \
   node:20 node /app/index.js
 curl http://localhost:3000
 ```
@@ -515,7 +515,7 @@ curl http://localhost:3000
 ### Discord Bot
 
 ```bash
-mkdir -p /opt/discord-bot && cd /opt/discord-bot
+mkdir -p /data/discord-bot && cd /data/discord-bot
 
 cat > bot.py << 'EOF'
 import os, discord
@@ -536,7 +536,7 @@ echo "discord.py==2.4.0" > requirements.txt
 
 dck run -d --restart always \
   -n discord-bot \
-  -v /opt/discord-bot:/bot \
+  -v /data/discord-bot:/bot \
   --workdir /bot \
   -e BOT_TOKEN=your_token_here \
   --startup "pip install -r /bot/requirements.txt && exec python /bot/bot.py" \
@@ -546,7 +546,7 @@ dck run -d --restart always \
 ### Telegram Bot
 
 ```bash
-mkdir -p /opt/tg-bot && cd /opt/tg-bot
+mkdir -p /data/tg-bot && cd /data/tg-bot
 
 cat > bot.py << 'EOF'
 import os
@@ -566,7 +566,7 @@ echo "python-telegram-bot==20.7" > requirements.txt
 
 dck run -d --restart always \
   -n tg-bot \
-  -v /opt/tg-bot:/bot \
+  -v /data/tg-bot:/bot \
   --workdir /bot \
   -e BOT_TOKEN=your_token_here \
   --startup "pip install -r /bot/requirements.txt && exec python /bot/bot.py" \
@@ -587,7 +587,7 @@ dck run -d --restart always \
 # 2. Bot connects via 10.0.2.1
 dck run -d --restart always \
   -n db-bot \
-  -v /opt/mybot:/bot \
+  -v /data/mybot:/bot \
   -e BOT_TOKEN=token -e DB_HOST=10.0.2.1 \
   --startup "pip install -r /bot/requirements.txt && exec python /bot/bot.py" \
   python:3.11-slim
@@ -779,7 +779,7 @@ dck run -d
 
 ## Changelog
 
-**v1.22.26** — Current release. OCI image extraction, protected bind-source validation, persistent restart policies with delays and systemd recovery, rotated dck logs, inspect JSON, manual and scheduled safe container backups with retention, cluster orchestration, FaaS, blueprints, services, Compose, healthchecks, startup scripts, dynamic ports, events, stats, and Docker-compatible REST API.
+**v1.22.28** — Current release. OCI image extraction, protected bind-source validation, persistent restart policies with delays and systemd recovery, rotated dck logs, inspect JSON, manual and scheduled safe container backups with retention, cluster orchestration, FaaS, blueprints, services, Compose, healthchecks, startup scripts, dynamic ports, events, stats, Docker-compatible REST API, and cross-architecture CI builds.
 
 **v1.20.0** — Dynamic port management (`dck port add/rm`). Russian (ru) docs.
 
@@ -814,6 +814,7 @@ Downloads the latest binary and replaces `/usr/local/bin/dck`.
 ## Documentation
 
 - [Contributors and contribution guide](CONTRIBUTING.md)
+- [Build, CI, and versioning](docs/build.md) — local checks, cross-compilation, and release automation
 
 | English | Русский |
 |---|---|

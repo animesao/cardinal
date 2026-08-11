@@ -44,13 +44,13 @@ Python, Node.js, PHP, Java и полноценные приложения с б�
 
 ```bash
 # Создать папку с сайтом
-mkdir -p /var/www/mysite
-echo "<h1>Hello from dck!</h1>" > /var/www/mysite/index.html
+mkdir -p /data/www/mysite
+echo "<h1>Hello from dck!</h1>" > /data/www/mysite/index.html
 
 # Запустить nginx с примонтированными файлами (лимит: 256MB RAM, 0.5 CPU, 1GB диск)
 dck run -d --restart always \
   -n mysite -p 80:80 \
-  -v /var/www/mysite:/usr/share/nginx/html:ro \
+  -v /data/www/mysite:/usr/share/nginx/html:ro \
   --memory 256m --cpus 0.5 --disk 1G \
   nginx:alpine
 
@@ -61,10 +61,10 @@ curl http://localhost:80
 ### Свой конфиг nginx
 
 ```bash
-mkdir -p /var/www/mysite /etc/nginx-conf
+mkdir -p /data/www/mysite /data/nginx-conf
 
 # Создать конфиг
-cat > /etc/nginx-conf/default.conf << 'EOF'
+cat > /data/nginx-conf/default.conf << 'EOF'
 server {
     listen 80;
     server_name mysite.example.com;
@@ -77,8 +77,8 @@ EOF
 
 dck run -d --restart always \
   -n mysite -p 80:80 \
-  -v /var/www/mysite:/usr/share/nginx/html:ro \
-  -v /etc/nginx-conf:/etc/nginx/conf.d:ro \
+  -v /data/www/mysite:/usr/share/nginx/html:ro \
+  -v /data/nginx-conf:/etc/nginx/conf.d:ro \
   nginx:alpine
 ```
 
@@ -89,20 +89,20 @@ dck run -d --restart always \
 ### Самоподписанный сертификат (для теста)
 
 ```bash
-mkdir -p /root/ssl /root/nginx-conf/ssl
+mkdir -p /data/ssl /data/nginx-conf/ssl
 
 # Сгенерировать сертификат
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout /root/ssl/server.key \
-  -out /root/ssl/server.crt \
+  -keyout /data/ssl/server.key \
+  -out /data/ssl/server.crt \
   -subj "/CN=localhost"
 
 # Скопировать в папку конфига
-cp /root/ssl/server.crt /root/nginx-conf/ssl/
-cp /root/ssl/server.key /root/nginx-conf/ssl/
+cp /data/ssl/server.crt /data/nginx-conf/ssl/
+cp /data/ssl/server.key /data/nginx-conf/ssl/
 
 # Конфиг nginx
-cat > /root/nginx-conf/default.conf << 'EOF'
+cat > /data/nginx-conf/default.conf << 'EOF'
 server {
     listen 443 ssl http2;
     server_name localhost;
@@ -116,8 +116,8 @@ EOF
 # Запустить
 dck run -d --restart always \
   -n mysite -p 443:443 \
-  -v /var/www/mysite:/usr/share/nginx/html:ro \
-  -v /root/nginx-conf:/etc/nginx/conf.d \
+  -v /data/www/mysite:/usr/share/nginx/html:ro \
+  -v /data/nginx-conf:/etc/nginx/conf.d \
   nginx:alpine
 
 # Проверить
@@ -134,8 +134,8 @@ apt-get install -y certbot
 certbot certonly --standalone -d mysite.example.com
 
 # Создать конфиг nginx
-mkdir -p /etc/nginx-ssl
-cat > /etc/nginx-ssl/default.conf << 'EOF'
+mkdir -p /data/nginx-ssl
+cat > /data/nginx-ssl/default.conf << 'EOF'
 server {
     listen 80;
     server_name mysite.example.com;
@@ -154,9 +154,9 @@ EOF
 # Запустить nginx
 dck run -d --restart always \
   -n mysite -p 80:80 -p 443:443 \
-  -v /var/www/mysite:/usr/share/nginx/html:ro \
-  -v /etc/nginx-ssl:/etc/nginx/conf.d:ro \
-  -v /etc/letsencrypt:/etc/letsencrypt:ro \
+  -v /data/www/mysite:/usr/share/nginx/html:ro \
+  -v /data/nginx-ssl:/etc/nginx/conf.d:ro \
+  -v /data/letsencrypt:/etc/letsencrypt:ro \
   nginx:alpine
 ```
 
@@ -195,11 +195,11 @@ dck cp ./file.txt abc123def456:/tmp/
 
 ```bash
 dck run -d -n web -p 80:80 \
-  -v /var/www/mysite:/usr/share/nginx/html:ro \
+  -v /data/www/mysite:/usr/share/nginx/html:ro \
   nginx:alpine
 
 # Редактируйте файлы на хосте — nginx отдаёт их мгновенно
-echo "<h1>Обновлено!</h1>" > /var/www/mysite/index.html
+echo "<h1>Обновлено!</h1>" > /data/www/mysite/index.html
 ```
 
 ---
@@ -207,8 +207,8 @@ echo "<h1>Обновлено!</h1>" > /var/www/mysite/index.html
 ## Python Flask
 
 ```bash
-mkdir -p /opt/flask-app
-cd /opt/flask-app
+mkdir -p /data/flask-app
+cd /data/flask-app
 
 cat > app.py << 'EOF'
 from flask import Flask
@@ -233,7 +233,7 @@ EOF
 
 dck run -d --restart always \
   -n flask-app -p 5000:5000 \
-  -v /opt/flask-app:/app \
+  -v /data/flask-app:/app \
   --workdir /app \
   --startup "pip install -r /app/requirements.txt && gunicorn -w 4 -b 0.0.0.0:5000 app:app" \
   python:3.11-slim
@@ -246,8 +246,8 @@ curl http://localhost:5000
 ## Python FastAPI
 
 ```bash
-mkdir -p /opt/fastapi-app
-cd /opt/fastapi-app
+mkdir -p /data/fastapi-app
+cd /data/fastapi-app
 
 cat > main.py << 'EOF'
 from fastapi import FastAPI
@@ -269,7 +269,7 @@ EOF
 
 dck run -d --restart always \
   -n fastapi-app -p 8000:8000 \
-  -v /opt/fastapi-app:/app \
+  -v /data/fastapi-app:/app \
   --workdir /app \
   --startup "pip install -r /app/requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8000" \
   python:3.11-slim
@@ -283,8 +283,8 @@ curl http://localhost:8000/docs   # Swagger UI
 ## Python Django
 
 ```bash
-mkdir -p /opt/django-app
-cd /opt/django-app
+mkdir -p /data/django-app
+cd /data/django-app
 
 cat > requirements.txt << 'EOF'
 django==5.0.0
@@ -304,7 +304,7 @@ SCRIPT
 
 # Создать Django проект
 dck run --rm \
-  -v /opt/django-app:/app \
+  -v /data/django-app:/app \
   --workdir /app \
   python:3.11-slim sh -c "pip install django && django-admin startproject myproject ."
 
@@ -319,7 +319,7 @@ dck run -d --restart always \
 
 dck run -d --restart always \
   -n django-app -p 8000:8000 \
-  -v /opt/django-app:/app \
+  -v /data/django-app:/app \
   --workdir /app \
   -e DB_HOST=10.0.2.1 \
   -e DB_NAME=django \
@@ -334,8 +334,8 @@ dck run -d --restart always \
 ## Node.js Express
 
 ```bash
-mkdir -p /opt/express-app
-cd /opt/express-app
+mkdir -p /data/express-app
+cd /data/express-app
 
 cat > index.js << 'EOF'
 const express = require('express');
@@ -355,7 +355,7 @@ echo '{ "name": "express-app", "scripts": { "start": "node index.js" }, "depende
 
 dck run -d --restart always \
   -n express-app -p 3000:3000 \
-  -v /opt/express-app:/app \
+  -v /data/express-app:/app \
   --workdir /app \
   --startup "npm install && npm start" \
   node:20
@@ -368,8 +368,8 @@ curl http://localhost:3000
 ## PHP + Nginx
 
 ```bash
-mkdir -p /opt/php-app
-cd /opt/php-app
+mkdir -p /data/php-app
+cd /data/php-app
 
 cat > index.php << 'EOF'
 <?php
@@ -378,8 +378,8 @@ echo '<p>PHP version: ' . phpversion() . '</p>';
 EOF
 
 # Конфиг nginx для PHP-FPM
-mkdir -p /etc/php-nginx
-cat > /etc/php-nginx/default.conf << 'EOF'
+mkdir -p /data/php-nginx
+cat > /data/php-nginx/default.conf << 'EOF'
 server {
     listen 80;
     root /var/www/html;
@@ -396,18 +396,18 @@ EOF
 # PHP-FPM контейнер
 dck run -d --restart always \
   -n php-fpm \
-  -v /opt/php-app:/var/www/html \
+  -v /data/php-app:/var/www/html \
   php:8.2-fpm
 
 # Узнать IP PHP контейнера
 PHP_IP=$(dck inspect php-fpm | grep -o '"ip":"[^"]*"' | grep -o '[0-9.]*')
-sed -i "s/127.0.0.1:9000/$PHP_IP:9000/" /etc/php-nginx/default.conf
+sed -i "s/127.0.0.1:9000/$PHP_IP:9000/" /data/php-nginx/default.conf
 
 # Nginx
 dck run -d --restart always \
   -n php-web -p 80:80 \
-  -v /opt/php-app:/var/www/html:ro \
-  -v /etc/php-nginx:/etc/nginx/conf.d:ro \
+  -v /data/php-app:/var/www/html:ro \
+  -v /data/php-nginx:/etc/nginx/conf.d:ro \
   nginx:alpine
 ```
 
@@ -428,8 +428,8 @@ dck run -d --restart always \
   postgres:16
 
 # 2. Flask приложение
-mkdir -p /opt/flask-pg
-cd /opt/flask-pg
+mkdir -p /data/flask-pg
+cd /data/flask-pg
 
 cat > app.py << 'EOF'
 from flask import Flask, jsonify
@@ -467,7 +467,7 @@ EOF
 
 dck run -d --restart always \
   -n flask-app -p 5000:5000 \
-  -v /opt/flask-pg:/app \
+  -v /data/flask-pg:/app \
   --workdir /app \
   -e DB_HOST=10.0.2.1 \
   -e DB_NAME=myapp \
@@ -491,8 +491,8 @@ dck run -d --restart always \
   mysql:8
 
 # 2. Express + MySQL
-mkdir -p /opt/node-mysql
-cd /opt/node-mysql
+mkdir -p /data/node-mysql
+cd /data/node-mysql
 
 cat > index.js << 'EOF'
 const express = require('express');
@@ -511,7 +511,7 @@ echo '{ "name": "app", "scripts": { "start": "node index.js" }, "dependencies": 
 
 dck run -d --restart always \
   -n node-app -p 3000:3000 \
-  -v /opt/node-mysql:/app \
+  -v /data/node-mysql:/app \
   --workdir /app \
   --startup "npm install && node index.js" \
   node:20
@@ -589,7 +589,7 @@ dck run -d --restart always \
 Скачайте и запустите любой Paper/Spigot/vanilla JAR:
 
 ```bash
-cat > /opt/mc/start.sh << 'EOF'
+cat > /data/mc/start.sh << 'EOF'
 #!/bin/sh
 set -e
 SERVER_DIR="/data"
@@ -605,16 +605,16 @@ EOF
 
 dck run -d --restart always \
   -n mc-paper -p 25565:25565 \
-  -v /opt/mc:/data --memory 4G \
-  --startup @/opt/mc/start.sh \
+  -v /data/mc:/data --memory 4G \
+  --startup @/data/mc/start.sh \
   eclipse-temurin:21-jdk
 ```
 
 ### Server.properties через bind mount
 
 ```bash
-mkdir -p /opt/mc-config
-cat > /opt/mc-config/server.properties << 'EOF'
+mkdir -p /data/mc-config
+cat > /data/mc-config/server.properties << 'EOF'
 max-players=50
 difficulty=hard
 motd=Minecraft сервер на dck
@@ -624,7 +624,7 @@ EOF
 
 dck run -d --restart always \
   -n mc -p 25565:25565 \
-  -v /opt/mc-config:/data \
+  -v /data/mc-config:/data \
   -e EULA=TRUE -e TYPE=PAPER -e VERSION=1.20.4 \
   -e MEMORY=4G \
   itzg/minecraft-server
@@ -660,8 +660,8 @@ tar -czf mc-backup.tar.gz /root/.dck/volumes/mc_data/
 ### Telegram бот
 
 ```bash
-mkdir -p /opt/tg-bot
-cd /opt/tg-bot
+mkdir -p /data/tg-bot
+cd /data/tg-bot
 
 cat > bot.py << 'EOF'
 import os, logging
@@ -700,7 +700,7 @@ EOF
 
 dck run -d --restart always \
   -n tg-bot \
-  -v /opt/tg-bot:/bot \
+  -v /data/tg-bot:/bot \
   --workdir /bot \
   --memory 256m --cpus 0.25 --disk 1G \
   -e BOT_TOKEN="ВАШ_ТОКЕН_TELEGRAM_БОТА" \
@@ -711,8 +711,8 @@ dck run -d --restart always \
 ### Discord бот
 
 ```bash
-mkdir -p /opt/discord-bot
-cd /opt/discord-bot
+mkdir -p /data/discord-bot
+cd /data/discord-bot
 
 cat > bot.py << 'EOF'
 import os, discord
@@ -751,7 +751,7 @@ EOF
 
 dck run -d --restart always \
   -n discord-bot \
-  -v /opt/discord-bot:/bot \
+  -v /data/discord-bot:/bot \
   --workdir /bot \
   --memory 256m --cpus 0.25 --disk 1G \
   -e BOT_TOKEN="ТОКЕН_ВАШЕГО_DISCORD_БОТА" \
@@ -773,8 +773,8 @@ dck run -d --restart always \
   postgres:16
 
 # 2. Бот с БД
-mkdir -p /opt/bot-db
-cd /opt/bot-db
+mkdir -p /data/bot-db
+cd /data/bot-db
 
 cat > bot.py << 'EOF'
 import os, discord, asyncpg
@@ -805,7 +805,7 @@ EOF
 
 dck run -d --restart always \
   -n db-bot \
-  -v /opt/bot-db:/bot \
+  -v /data/bot-db:/bot \
   --workdir /bot \
   -e BOT_TOKEN="ВАШ_ТОКЕН" \
   -e DB_HOST=10.0.2.1 \

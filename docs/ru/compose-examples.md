@@ -26,7 +26,7 @@ services:
     image: eclipse-temurin:21-jdk
     working_dir: /server
     volumes:
-      - /opt/mc-server:/server
+      - /data/mc-server:/server
     command: >
       sh -c "
         rm -f world/session.lock world_nether/session.lock world_the_end/session.lock
@@ -59,7 +59,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - /var/www/html:/usr/share/nginx/html:ro
+      - ./html:/usr/share/nginx/html:ro
       - ./nginx-conf:/etc/nginx/conf.d:ro
       - ./ssl:/etc/nginx/ssl:ro
     labels:
@@ -319,7 +319,14 @@ services:
 
 ---
 
-## 8. CI Runner (GitHub Actions)
+## 8. CI Runner (GitHub Actions, только справка)
+
+> **Это не готовый рецепт для запуска в dck.** Распространённый образ
+> `summerwind/actions-runner` ожидает Docker-in-Docker или доступ к Docker socket
+> хоста. dck блокирует защищённые host bind source вроде
+> `/var/run/docker.sock`, поэтому используйте отдельную host-side интеграцию
+> runner или образ, которому не нужен Docker socket. Ниже показаны только
+> настройки контейнера.
 
 ```yaml
 services:
@@ -327,7 +334,6 @@ services:
     image: summerwind/actions-runner:latest
     restart: always
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - runner_data:/home/runner
     environment:
       - RUNNER_NAME=my-runner
@@ -343,8 +349,8 @@ volumes:
   runner_data:
 ```
 
-- `privileged: true` — для Docker-in-Docker
-- `/var/run/docker.sock` — bind mount сокета хоста
+- Одного `privileged: true` недостаточно для Docker-in-Docker.
+- В dck воспринимайте этот фрагмент как справку и используйте host-side интеграцию runner или образ, которому не нужен `/var/run/docker.sock`.
 
 ---
 
