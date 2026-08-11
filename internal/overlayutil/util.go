@@ -201,43 +201,80 @@ func safeTarPath(root, name string) (string, error) {
 }
 
 func ensureNoSymlinkAncestors(root, path string, includeTarget bool) error {
+	if !includeTarget {
+		path = filepath.Dir(path)
+	}
+	return evaluateSafePath(root, path)
+}
+
+// evaluateSafePath resolves existing symlinks component by component while
+// allowing missing components that may be created by later tar entries.
+func evaluateSafePath(root, path string) error {
+	root, err := filepath.Abs(root)
+	if err != nil {
+		return fmt.Errorf("resolve rootfs: %w", err)
+	}
+	path, err = filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("resolve path: %w", err)
+	}
 	rel, err := filepath.Rel(root, path)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return fmt.Errorf("path escapes rootfs")
 	}
-	parts := []string{}
-	if rel != "." {
-		parts = strings.Split(rel, string(filepath.Separator))
-	}
-	limit := len(parts)
-	if !includeTarget && limit > 0 {
-		limit--
-	}
+	pending := splitPathParts(rel)
 	current := root
-	for i, part := range parts {
-		current = filepath.Join(current, part)
-		if i >= limit {
-			break
+	links := 0
+
+	for len(pending) > 0 {
+		part := pending[0]
+		pending = pending[1:]
+		switch part {
+		case "", ".":
+			continue
+		case "..":
+			if current == root {
+				return fmt.Errorf("path escapes rootfs")
+			}
+			current = filepath.Dir(current)
+			continue
 		}
-		info, err := os.Lstat(current)
-		if err != nil {
-			if os.IsNotExist(err) {
+
+		next := filepath.Join(current, part)
+		info, statErr := os.Lstat(next)
+		if statErr != nil {
+			if os.IsNotExist(statErr) {
+				current = next
 				continue
 			}
-			return err
+			return statErr
 		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			evaluated, evalErr := filepath.EvalSymlinks(current)
-			if evalErr != nil {
-				return fmt.Errorf("evaluate symlink %q: %w", current, evalErr)
-			}
-			evaluatedRel, relErr := filepath.Rel(root, evaluated)
-			if relErr != nil || evaluatedRel == ".." || strings.HasPrefix(evaluatedRel, ".."+string(filepath.Separator)) {
-				return fmt.Errorf("component %q escapes rootfs", current)
-			}
+		if info.Mode()&os.ModeSymlink == 0 {
+			current = next
+			continue
 		}
+
+		links++
+		if links > 255 {
+			return fmt.Errorf("too many symlinks")
+		}
+		linkTarget, readErr := os.Readlink(next)
+		if readErr != nil {
+			return readErr
+		}
+		linkParts := splitPathParts(linkTarget)
+		if filepath.IsAbs(filepath.FromSlash(linkTarget)) || strings.HasPrefix(linkTarget, "/") {
+			current = root
+		} else {
+			current = filepath.Dir(next)
+		}
+		pending = append(linkParts, pending...)
 	}
 	return nil
+}
+
+func splitPathParts(path string) []string {
+	return strings.FieldsFunc(filepath.ToSlash(path), func(r rune) bool { return r == '/' })
 }
 
 func validateSymlinkTarget(root, linkPath, target string) error {
@@ -263,20 +300,8 @@ func validateSymlinkTarget(root, linkPath, target string) error {
 		base = root
 	}
 	resolved := filepath.Join(base, converted)
-	if err := ensureNoSymlinkAncestors(root, resolved, false); err != nil {
-		return fmt.Errorf("target ancestor: %w", err)
-	}
-	rel, err := filepath.Rel(root, resolved)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return fmt.Errorf("target escapes rootfs")
-	}
-	if evaluated, err := filepath.EvalSymlinks(resolved); err == nil {
-		evaluatedRel, relErr := filepath.Rel(root, evaluated)
-		if relErr != nil || evaluatedRel == ".." || strings.HasPrefix(evaluatedRel, ".."+string(filepath.Separator)) {
-			return fmt.Errorf("target resolves outside rootfs")
-		}
-	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("resolve target: %w", err)
+	if err := evaluateSafePath(root, resolved); err != nil {
+		return fmt.Errorf("target resolves outside rootfs: %w", err)
 	}
 	return nil
 }
