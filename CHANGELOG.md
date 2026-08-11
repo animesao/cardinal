@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Update reliability
+
+- `dck update` now allows up to five minutes for the release download instead of timing out after ten seconds, which was too short for multi-megabyte binaries on slow links.
+- The opaque `all methods failed` message is gone: each download method (Go HTTP client, curl, wget) now reports its own error so a failure can be diagnosed.
+- The curl/wget fallbacks get explicit connect and max-time limits so the updater can never hang indefinitely.
+
+## 1.22.37 (2026-08-11)
+
+### Runtime fixes
+
+- Container startup no longer spends up to 20 seconds polling for an `eth0` address. The wait is skipped entirely for `--network none` (no interface exists) and `--network host` (the host interface is already up), and capped at five seconds for bridge mode. Crash-loop restart cycles now run on schedule, and simple containers such as `sh -c sleep 5` start immediately after `dck run -d` returns.
+
+## 1.22.36 (2026-08-11)
+
+### Runtime fixes
+
+- Detached container processes that become zombies (defunct, reparented to systemd after the CLI exits) are now detected as dead: process liveness reads `/proc/<pid>/stat` and treats `Z`/`X` states as exited. A plain `/proc/<pid>` existence check counted zombies as alive, stalling exit detection — containers stuck on `running`, cgroup/network cleanup not running, and crash-loop restarts almost never firing.
+- `dck rm` writes a tombstone marker as its first action, so a supervisor automatic restart racing a slow removal can no longer resurrect a container mid-delete.
+- The supervisor re-loads fresh container state before an automatic restart and skips containers being removed; `dck start` aborts cleanly (killing spawned processes and releasing the DNS record) if the state file vanished or a removal is in progress.
+
+## 1.22.35 (2026-08-11)
+
 ### Documentation
 
 - Added complete English and Russian CLI command references with syntax prefixes, positional arguments, aliases, every user-facing option, and internal-command notes.

@@ -156,6 +156,8 @@ dck logout registry.example.com
 | `-h HOSTNAME` | Hostname контейнера |
 | `--restart POLICY` | `no`, `always`, `on-failure` или `unless-stopped` |
 | `--restart-delay DURATION` | Задержка перезапуска после сбоя, например `10s` или `1m` |
+| `--restart-max-attempts N` | Бюджет crash-loop: автоматический перезапуск блокируется после N сбоев в течение окна (по умолчанию 5) |
+| `--restart-window DURATION` | Окно бюджета crash-loop, например `10m`, `1h` |
 | `-e KEY=VALUE` | Повторяемая переменная окружения |
 | `--env-file FILE` | Загрузить строки `KEY=VALUE` или `export KEY=VALUE` |
 | `-p HOST:CONTAINER[/PROTO]` | Проброс порта; можно передать несколько через запятую |
@@ -196,6 +198,8 @@ dck run -d --restart unless-stopped --restart-delay 1m --memory 4g --cpus 2 myap
 ```
 
 Политики автоматического перезапуска обслуживает `dck-bootstrap.service`. Контейнер `unless-stopped`, остановленный вручную, не запускается при boot recovery; `always` запускается после перезагрузки. Сервис устанавливается автоматически, если это возможно для root, либо явно командой `dck bootstrap --install`.
+
+Частые быстрые падения защищены: когда исчерпан бюджет crash-loop (по умолчанию 5 перезапусков, `--restart-max-attempts` и `--restart-window`), автоматический перезапуск блокируется, и контейнер остаётся остановленным до явного `dck start`.
 
 Host bind source должен существовать и не должен находиться в защищённых системных путях `/root`, `/etc`, `/var`, `/usr`, `/opt` или `/run`. Используйте каталог данных `/data/myapp` либо именованный volume:
 
@@ -253,6 +257,8 @@ dck inspect --sensitive web
 | `--disk LIMIT` | Лимит диска |
 | `--restart POLICY` | Политика перезапуска |
 | `--restart-delay DURATION` | Задержка восстановления |
+| `--restart-max-attempts N` | Бюджет перезапусков crash-loop |
+| `--restart-window DURATION` | Окно бюджета crash-loop |
 | `--workdir DIR` | Рабочий каталог |
 | `-e KEY=VALUE` | Добавить переменную окружения |
 | `--entrypoint COMMAND` | Переопределить entrypoint |
@@ -543,7 +549,7 @@ Defaults `fn deploy`: port `8080`, handler `/handler`, timeout `30` секунд
 
 ### `dck update [--check]`
 
-Проверить новую версию. Без `--check` (или `-c`) dck спросит подтверждение и скачает/заменит бинарник. При наличии checksum обновление проверяется.
+Проверить новую версию. Без `--check` (или `-c`) dck спросит подтверждение и скачает/заменит бинарник. При наличии checksum обновление проверяется. На скачивание даётся до пяти минут; при ошибке каждый метод загрузки сообщает собственную причину. Если автоматическое скачивание не удалось, установите релиз вручную (см. [Руководство по запуску](running.md), раздел 2).
 
 ### `dck bootstrap [--install] [--remove]`
 

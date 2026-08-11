@@ -156,6 +156,8 @@ Create and start a container. The image may instead be supplied with `--image`, 
 | `-h HOSTNAME` | Container hostname |
 | `--restart POLICY` | `no`, `always`, `on-failure`, or `unless-stopped` |
 | `--restart-delay DURATION` | Crash-restart delay, e.g. `10s` or `1m` |
+| `--restart-max-attempts N` | Crash-loop budget: automatic restart is blocked after N failures within the window (default 5) |
+| `--restart-window DURATION` | Window for the crash-loop budget, e.g. `10m`, `1h` |
 | `-e KEY=VALUE` | Repeatable environment variable |
 | `--env-file FILE` | Load `KEY=VALUE` or `export KEY=VALUE` lines |
 | `-p HOST:CONTAINER[/PROTO]` | Port mapping; comma-separated mappings are accepted |
@@ -196,6 +198,8 @@ dck run -d --restart unless-stopped --restart-delay 1m --memory 4g --cpus 2 myap
 ```
 
 Automatic restart policies are supervised by `dck-bootstrap.service`. A manually stopped `unless-stopped` container is not started by boot recovery; `always` is started after boot. The supervisor is installed automatically when possible for root, or explicitly with `dck bootstrap --install`.
+
+Quick repeated crashes are protected: once the crash-loop budget (default 5 restarts, `--restart-max-attempts` and `--restart-window`) is exhausted, automatic restart is blocked and the container stays stopped until an explicit `dck start`.
 
 Host bind sources must exist and must not use protected system paths such as `/root`, `/etc`, `/var`, `/usr`, `/opt`, or `/run`. Use a data directory such as `/data/myapp` or a named volume:
 
@@ -253,6 +257,8 @@ Change configuration without removing the container. If it was running, dck stop
 | `--disk LIMIT` | Disk limit |
 | `--restart POLICY` | Restart policy |
 | `--restart-delay DURATION` | Recovery delay |
+| `--restart-max-attempts N` | Crash-loop restart budget |
+| `--restart-window DURATION` | Crash-loop budget window |
 | `--workdir DIR` | Working directory |
 | `-e KEY=VALUE` | Add environment variable |
 | `--entrypoint COMMAND` | Entrypoint override |
@@ -543,7 +549,7 @@ Remove unused containers and images according to the runtime's cleanup rules.
 
 ### `dck update [--check]`
 
-Check for a newer release. Without `--check` (or `-c`), dck prompts before downloading and replacing the current binary. The update verifies a checksum when one is available.
+Check for a newer release. Without `--check` (or `-c`), dck prompts before downloading and replacing the current binary. The update verifies a checksum when one is available. The download allows up to five minutes; on failure, each download method reports its own error. If the automatic download fails, install the release manually (see [Running dck](running.md), Section 2).
 
 ### `dck bootstrap [--install] [--remove]`
 

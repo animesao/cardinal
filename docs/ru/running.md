@@ -57,6 +57,18 @@ dck version
 dck run --rm alpine:latest echo "DCK UPDATE OK"
 ```
 
+Если `dck update` не может скачать бинарник (в старых версиях — ошибка `Failed to download binary: all methods failed`), установите релиз вручную. Подставьте нужную версию и архитектуру:
+
+```bash
+curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
+  https://github.com/animesao/dck/releases/download/v1.22.37/dck-linux-amd64
+sudo mv /tmp/dck-new /usr/local/bin/dck
+sudo chmod +x /usr/local/bin/dck
+sudo systemctl restart dck-bootstrap   # если установлен systemd supervisor
+```
+
+Имена бинарников: `dck-linux-amd64`, `dck-linux-arm64`, `dck-linux-armv6`. Если GitHub качается медленно или недоступен (часто бывает на некоторых VPS), добавьте перед URL зеркало, например `https://ghproxy.com/` или `https://mirror.ghproxy.com/`.
+
 ## 3. Загрузка и запуск образа
 
 Образ можно передать позиционно. Флаг `--image` тоже поддерживается, а `--images` — нет.
@@ -113,6 +125,8 @@ dck logs web
 ```
 
 Доступные политики перезапуска: `no`, `always`, `on-failure`, `unless-stopped`. Добавьте `--restart-delay 1m` (или короткое значение `10s`), чтобы задать задержку перед автоматическим запуском после неожиданного завершения процесса. Намеренный `dck stop` эту задержку не отменяет и контейнер не запускает.
+
+Частые быстрые падения защищены: когда исчерпан бюджет crash-loop (по умолчанию 5 перезапусков; настраивается через `--restart-max-attempts` и `--restart-window`), автоматический перезапуск блокируется — `dck inspect ИМЯ` покажет `"restart_blocked": true` — и контейнер остаётся остановленным до явного `dck start`.
 
 ## 5. Bind mount и именованные тома
 
@@ -373,7 +387,7 @@ dck run -d --readonly ОБРАЗ[:ТЕГ] КОМАНДА
 --cap-add NET_ADMIN
 ```
 
-Используйте `--network none`, если приложению не нужна сеть, и `--network host` только осознанно — этот режим делит сетевое пространство хоста.
+Используйте `--network none`, если приложению не нужна сеть, и `--network host` только осознанно — этот режим делит сетевое пространство хоста. Контейнеры с `--network none` и `--network host` запускаются без ожидания интерфейса; в bridge-режиме ожидание появления veth-интерфейса ограничено пятью секундами.
 
 ## 14. Обновление кода приложения
 
@@ -701,6 +715,32 @@ dck port ИМЯ
 ss -ltnp
 dck logs ИМЯ
 ```
+
+### `Failed to download binary: all methods failed` при `dck update`
+
+Раньше обновление завершалось таймаутом через десять секунд — этого мало для бинарника в несколько мегабайт на медленном канале. Установите релиз вручную:
+
+```bash
+curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
+  https://github.com/animesao/dck/releases/download/v1.22.37/dck-linux-amd64
+sudo mv /tmp/dck-new /usr/local/bin/dck
+sudo chmod +x /usr/local/bin/dck
+sudo systemctl restart dck-bootstrap
+```
+
+### Контейнер остаётся `running` после завершения процесса
+
+Старые версии считали zombie-процессы (defunct) живыми, поэтому supervisor не замечал выход — контейнер застревал в `running`, рестарты почти не срабатывали, а ресурсы не очищались. Обновите dck и проверьте:
+
+```bash
+dck version
+dck ps -a
+dck inspect ИМЯ | grep -E '"status"|"pid"'
+```
+
+### Контейнер `--network none` «висит» перед запуском команды
+
+До версии 1.22.37 каждый контейнер до 20 секунд ждал появления `eth0`, которого при `--network none` не бывает. Теперь ожидание пропускается для `none`/`host` и ограничено пятью секундами в bridge-режиме. Обновите dck.
 
 ## 17. Где хранятся данные
 

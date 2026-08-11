@@ -57,6 +57,18 @@ dck version
 dck run --rm alpine:latest echo "DCK UPDATE OK"
 ```
 
+If `dck update` cannot download the binary (older releases failed with `Failed to download binary: all methods failed`), install the release manually. Replace the version and architecture as needed:
+
+```bash
+curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
+  https://github.com/animesao/dck/releases/download/v1.22.37/dck-linux-amd64
+sudo mv /tmp/dck-new /usr/local/bin/dck
+sudo chmod +x /usr/local/bin/dck
+sudo systemctl restart dck-bootstrap   # if the systemd supervisor is installed
+```
+
+Binary names are `dck-linux-amd64`, `dck-linux-arm64`, and `dck-linux-armv6`. If GitHub is slow or blocked (common on some VPS providers), prefix the URL with a mirror such as `https://ghproxy.com/` or `https://mirror.ghproxy.com/`.
+
 ## 3. Pull and run an image
 
 The image reference is positional. `--image` is also supported, but `--images` is not.
@@ -113,6 +125,8 @@ dck logs web
 ```
 
 Supported restart policies are `no`, `always`, `on-failure`, and `unless-stopped`. Add `--restart-delay 1m` (or a shorter value such as `10s`) to control how long dck waits after an unexpected process exit before starting the container again. The delay does not override an intentional `dck stop`.
+
+Quick repeated crashes are protected: once the crash-loop budget (default 5 restarts, tunable with `--restart-max-attempts` and `--restart-window`) is exhausted, automatic restart is blocked — `dck inspect NAME` then shows `"restart_blocked": true` — and the container stays stopped until an explicit `dck start`.
 
 ## 5. Bind mounts and named volumes
 
@@ -373,7 +387,7 @@ Add only the capabilities that the application requires:
 --cap-add NET_ADMIN
 ```
 
-Use `--network none` for a workload that does not need networking, or `--network host` only when sharing the host network is intentional.
+Use `--network none` for a workload that does not need networking, or `--network host` only when sharing the host network is intentional. Containers with `--network none` or `--network host` start without any interface wait; bridge-mode containers wait at most five seconds for the veth interface to come up.
 
 ## 14. Update application code
 
@@ -701,6 +715,32 @@ dck port NAME
 ss -ltnp
 dck logs NAME
 ```
+
+### `Failed to download binary: all methods failed` during `dck update`
+
+The updater used to time out after ten seconds, which was too short for multi-megabyte binaries on slow links. Install the release manually:
+
+```bash
+curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
+  https://github.com/animesao/dck/releases/download/v1.22.37/dck-linux-amd64
+sudo mv /tmp/dck-new /usr/local/bin/dck
+sudo chmod +x /usr/local/bin/dck
+sudo systemctl restart dck-bootstrap
+```
+
+### Container stays `running` after its process exited
+
+Older releases treated defunct (zombie) container processes as alive, so the supervisor never noticed the exit — the container stayed `running`, crash-loop restarts barely fired, and resources were not cleaned up. Update dck and verify:
+
+```bash
+dck version
+dck ps -a
+dck inspect NAME | grep -E '"status"|"pid"'
+```
+
+### A `--network none` container hangs before its command starts
+
+Before 1.22.37 every container waited up to 20 seconds for an `eth0` address, which never appears with `--network none`. The wait is now skipped for `none`/`host` and capped at five seconds for bridge mode. Update dck.
 
 ## 17. Data locations
 
