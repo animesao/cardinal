@@ -175,7 +175,7 @@ func validateVolumeName(name string) error {
 }
 
 func validateContainerTarget(target string) error {
-	if target == "" || !filepath.IsAbs(filepath.FromSlash(target)) {
+	if target == "" || strings.Contains(target, "\\") || !filepath.IsAbs(filepath.FromSlash(target)) {
 		return fmt.Errorf("container mount target must be absolute: %q", target)
 	}
 	for _, part := range strings.FieldsFunc(target, func(r rune) bool { return r == '/' || r == '\\' }) {

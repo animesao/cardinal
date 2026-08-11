@@ -174,6 +174,7 @@ func TestUpdateService_ContextCancelled(t *testing.T) {
 }
 
 func TestListServices_Empty(t *testing.T) {
+	t.Setenv("DCK_DATA_DIR", t.TempDir())
 	clusterLock.Lock()
 	clusterConf = &ClusterConfig{
 		Nodes:    make(map[string]*Node),

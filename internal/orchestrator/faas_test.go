@@ -143,6 +143,7 @@ func TestCleanIdleFunctions_ContextCancellation(t *testing.T) {
 }
 
 func TestListFunctions_Empty(t *testing.T) {
+	t.Setenv("DCK_DATA_DIR", t.TempDir())
 	allFunctions = make(map[string]*Function)
 	functionContainers = make(map[string][]string)
 	t.Cleanup(func() {
