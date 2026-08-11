@@ -50,6 +50,10 @@ func (c *Container) startInternal() error {
 	c.Status = Created
 	c.dataMu.Unlock()
 
+	// A previous detached console server may outlive a failed or automatic
+	// restart. Stop it before the next run truncates the shared log file.
+	c.killConsoleServe()
+
 	if err := state.EnsureDirs(); err != nil {
 		return err
 	}
@@ -209,8 +213,7 @@ func (c *Container) setupIO(cmd *exec.Cmd) (func(), error) {
 		cmd.Stderr = os.Stderr
 		return nil, nil
 	default:
-		RotateLogFile(c.LogFile())
-		logFile, err := os.OpenFile(c.LogFile(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+		logFile, err := OpenFreshLogFile(c.LogFile(), 0600)
 		if err != nil {
 			return nil, fmt.Errorf("log: %w", err)
 		}
@@ -409,6 +412,7 @@ func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 		c.Status = Stopped
 		c.dataMu.Unlock()
 		c.cleanupNetwork()
+		c.killConsoleServe()
 		_ = c.Save()
 
 		if shouldRestart(c.Restart, exitCode, stoppedByUser) {

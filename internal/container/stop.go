@@ -127,12 +127,18 @@ func (c *Container) cleanupRootlessPorts() {
 }
 
 func (c *Container) killConsoleServe() {
-	if c.ConsoleServePID > 0 {
-		if err := syscall.Kill(c.ConsoleServePID, syscall.SIGKILL); err != nil {
-			log.Warn("kill console-serve PID %d: %v", c.ConsoleServePID, err)
-		}
-		c.ConsoleServePID = 0
+	if c.ConsoleServePID <= 0 {
+		return
 	}
+
+	pid := c.ConsoleServePID
+	if err := syscall.Kill(pid, syscall.SIGKILL); err != nil && err != syscall.ESRCH {
+		log.Warn("kill console-serve PID %d: %v", pid, err)
+	}
+	if err := waitForExit(pid, 2*time.Second); !err {
+		log.Warn("console-serve PID %d did not exit before log reset", pid)
+	}
+	c.ConsoleServePID = 0
 }
 
 func (c *Container) cancelHealthcheck() {

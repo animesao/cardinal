@@ -10,18 +10,9 @@ import (
 	"time"
 )
 
-const MaxLogSize = 10 * 1024 * 1024
-
-func RotateLogFile(path string) {
-	info, err := os.Stat(path)
-	if err != nil || info.Size() < MaxLogSize {
-		return
-	}
-	rotated := path + ".1"
-	_ = os.Remove(rotated)
-	if err := os.Rename(path, rotated); err != nil {
-		return
-	}
+// OpenFreshLogFile creates or truncates a container log for a new run.
+func OpenFreshLogFile(path string, mode os.FileMode) (*os.File, error) {
+	return os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
 }
 
 func (c *Container) Logs(follow bool, tail int) error {
