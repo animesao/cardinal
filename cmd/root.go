@@ -241,12 +241,6 @@ Usage:
 
   System:
     dck inspect [--sensitive] <container> Show container state as JSON
-    dck backup create <container>          Create a container data backup
-    dck backup list                        List backups
-    dck backup restore <c> <file>          Restore a stopped container backup
-    dck backup enable <c> --interval 24h   Enable scheduled backups
-    dck backup disable <c>                 Disable scheduled backups
-    dck backup status <c>                  Show scheduled backup settings
     dck serve [-p 2375] [--token TOKEN]    Start REST API server
     dck serve --tls-cert cert.pem --tls-key key.pem  Enable HTTPS API
     dck system prune                       Clean up unused resources
