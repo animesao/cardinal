@@ -45,7 +45,9 @@ func loadBlueprintRepos() *blueprintRepoConfig {
 		cfg := &blueprintRepoConfig{
 			Repos: []blueprintRepo{defaultBlueprintRepo()},
 		}
-		saveBlueprintRepos(cfg)
+		if err := saveBlueprintRepos(cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Error saving default blueprint repository config: %v\n", err)
+		}
 		return cfg
 	}
 

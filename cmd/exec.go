@@ -14,7 +14,10 @@ func Exec(args []string) {
 	fs := flag.NewFlagSet("exec", flag.ExitOnError)
 	interactive := fs.Bool("i", false, "Interactive mode")
 	tty := fs.Bool("t", false, "Allocate TTY")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing exec options: %v\n", err)
+		os.Exit(1)
+	}
 
 	remaining := fs.Args()
 	if len(remaining) < 2 {

@@ -67,7 +67,10 @@ func fnDeploy(args []string) {
 	fs.Var(&envVars, "e", "Environment variables")
 	fs.Var(&envVars, "env", "Environment variables")
 
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing fn deploy options: %v\n", err)
+		os.Exit(1)
+	}
 
 	image := ""
 	freeArgs := fs.Args()

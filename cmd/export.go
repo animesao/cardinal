@@ -13,7 +13,10 @@ import (
 func Export(args []string) {
 	fs := flag.NewFlagSet("export", flag.ExitOnError)
 	output := fs.String("o", "", "Output file path")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing export options: %v\n", err)
+		os.Exit(1)
+	}
 
 	freeArgs := fs.Args()
 	if len(freeArgs) < 1 {
