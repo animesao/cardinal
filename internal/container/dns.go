@@ -129,8 +129,12 @@ func EnsureContainerHosts(mergedDir, containerName, containerIP string, dns []st
 			resolvContent += fmt.Sprintf("nameserver %s\n", s)
 		}
 		resolvPath := filepath.Join(mergedDir, "etc", "resolv.conf")
-		os.MkdirAll(filepath.Dir(resolvPath), 0755)
-		os.WriteFile(resolvPath, []byte(resolvContent), 0644)
+		if err := os.MkdirAll(filepath.Dir(resolvPath), 0755); err != nil {
+			return
+		}
+		if err := os.WriteFile(resolvPath, []byte(resolvContent), 0644); err != nil {
+			return
+		}
 	}
 
 	// Inject known container names into /etc/hosts
@@ -148,6 +152,6 @@ func EnsureContainerHosts(mergedDir, containerName, containerIP string, dns []st
 				sb.WriteString(fmt.Sprintf("%s\t%s\n", e.IP, e.Name))
 			}
 		}
-		os.WriteFile(hostsPath, []byte(sb.String()), 0644)
+		_ = os.WriteFile(hostsPath, []byte(sb.String()), 0644)
 	}
 }

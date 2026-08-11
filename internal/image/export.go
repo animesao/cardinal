@@ -13,7 +13,7 @@ import (
 )
 
 // Export saves an image as a .tar.gz file
-func Export(ref, outputPath string) error {
+func Export(ref, outputPath string) (retErr error) {
 	name, tag := parseRef(ref)
 
 	img := LoadFromStore(name, tag)
@@ -30,13 +30,19 @@ func Export(ref, outputPath string) error {
 	if err != nil {
 		return fmt.Errorf("create output: %w", err)
 	}
-	defer f.Close()
-
 	gw := gzip.NewWriter(f)
-	defer gw.Close()
-
 	tw := tar.NewWriter(gw)
-	defer tw.Close()
+	defer func() {
+		if err := tw.Close(); retErr == nil {
+			retErr = fmt.Errorf("close tar archive: %w", err)
+		}
+		if err := gw.Close(); retErr == nil {
+			retErr = fmt.Errorf("close gzip archive: %w", err)
+		}
+		if err := f.Close(); retErr == nil {
+			retErr = fmt.Errorf("close export: %w", err)
+		}
+	}()
 
 	imageDir := state.ImageDir(name, tag)
 
@@ -76,7 +82,6 @@ func Export(ref, outputPath string) error {
 	if err != nil {
 		return fmt.Errorf("walk image dir: %w", err)
 	}
-
 	fmt.Printf("Exported %s:%s -> %s (%d bytes)\n", name, tag, outputPath, fileSize(outputPath))
 	return nil
 }
@@ -87,13 +92,13 @@ func Import(path string) error {
 	if err != nil {
 		return fmt.Errorf("open: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	gr, err := gzip.NewReader(f)
 	if err != nil {
 		return fmt.Errorf("gzip: %w", err)
 	}
-	defer gr.Close()
+	defer func() { _ = gr.Close() }()
 
 	tr := tar.NewReader(gr)
 
@@ -155,17 +160,19 @@ func Import(path string) error {
 	if err != nil {
 		return err
 	}
-	defer f2.Close()
+	defer func() { _ = f2.Close() }()
 
 	gr2, err := gzip.NewReader(f2)
 	if err != nil {
 		return err
 	}
-	defer gr2.Close()
+	defer func() { _ = gr2.Close() }()
 
 	tr2 := tar.NewReader(gr2)
 	destDir := state.ImageDir(manifestName, manifestTag)
-	os.RemoveAll(destDir)
+	if err := os.RemoveAll(destDir); err != nil {
+		return fmt.Errorf("remove existing image: %w", err)
+	}
 	if err := os.MkdirAll(destDir, 0700); err != nil {
 		return err
 	}

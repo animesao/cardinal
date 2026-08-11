@@ -20,18 +20,6 @@ import (
 	"dck/internal/state"
 )
 
-// Capabilities dropped by default for container safety (can be overridden with --cap-add)
-var dangerousCaps = []string{
-	"SYS_ADMIN", "SYS_MODULE", "SYS_BOOT", "SYS_RAWIO",
-	"SYS_TIME", "SYS_PACCT", "SYS_PTRACE", "SYS_TTY_CONFIG",
-	"SYSLOG", "SYS_NICE", "SYS_RESOURCE",
-	"LINUX_IMMUTABLE", "LEASE", "SETFCAP",
-	"MAC_ADMIN", "MAC_OVERRIDE",
-	"AUDIT_CONTROL", "AUDIT_WRITE", "AUDIT_READ",
-	"WAKE_ALARM", "BLOCK_SUSPEND",
-	"IPC_LOCK", "MKNOD",
-}
-
 var capMap = map[string]uintptr{
 	"CHOWN":              0,
 	"DAC_OVERRIDE":       1,
@@ -220,7 +208,9 @@ func applyUlimits(ulimits []Ulimit) {
 		default:
 			continue
 		}
-		syscall.Setrlimit(resource, &rlimit)
+		if err := syscall.Setrlimit(resource, &rlimit); err != nil {
+			log.Warn("set rlimit %s: %v", u.Name, err)
+		}
 	}
 }
 
@@ -233,7 +223,9 @@ func ensureUsrMerge() {
 	} {
 		if _, err := os.Stat(dir.link); os.IsNotExist(err) {
 			if _, err := os.Stat(dir.target); err == nil {
-				os.Symlink(dir.target, dir.link)
+				if err := os.Symlink(dir.target, dir.link); err != nil {
+					log.Warn("create usr-merge symlink %s: %v", dir.link, err)
+				}
 			}
 		}
 	}
@@ -281,25 +273,50 @@ func InitContainer(id, merged string) error {
 	os.MkdirAll("/dev/pts", 0755)
 	os.MkdirAll("/tmp", os.ModeSticky|0777)
 
-	syscall.Mount("proc", "/proc", "proc", 0, "")
-	syscall.Mount("devtmpfs", "/dev", "devtmpfs", 0, "")
-	syscall.Mount("sysfs", "/sys", "sysfs", 0, "")
-	syscall.Mount("devpts", "/dev/pts", "devpts", 0, "")
+	for _, mount := range []struct {
+		what, target, fstype string
+		required             bool
+	}{
+		{"proc", "/proc", "proc", true},
+		{"devtmpfs", "/dev", "devtmpfs", false},
+		{"sysfs", "/sys", "sysfs", true},
+		{"devpts", "/dev/pts", "devpts", false},
+	} {
+		if err := syscall.Mount(mount.what, mount.target, mount.fstype, 0, ""); err != nil {
+			if mount.required {
+				return fmt.Errorf("mount %s: %w", mount.target, err)
+			}
+			log.Warn("mount %s: %v", mount.target, err)
+		}
+	}
 
 	// Apply sysctls BEFORE making /proc/sys read-only
 	for k, v := range c.Sysctls {
 		path := "/proc/sys/" + strings.ReplaceAll(k, ".", "/")
-		os.WriteFile(path, []byte(v), 0644)
+		if err := os.WriteFile(path, []byte(v), 0644); err != nil {
+			log.Warn("set sysctl %s: %v", k, err)
+		}
 	}
 
 	// Remount /proc/sys and /sys as read-only to prevent kernel parameter escapes
-	syscall.Mount("/proc/sys", "/proc/sys", "", syscall.MS_BIND, "")
-	syscall.Mount("/proc/sys", "/proc/sys", "", syscall.MS_BIND|syscall.MS_RDONLY|syscall.MS_REMOUNT, "")
-	syscall.Mount("/sys", "/sys", "", syscall.MS_BIND, "")
-	syscall.Mount("/sys", "/sys", "", syscall.MS_BIND|syscall.MS_RDONLY|syscall.MS_REMOUNT, "")
+	for _, remount := range []struct {
+		source, target string
+		flags          uintptr
+	}{
+		{"/proc/sys", "/proc/sys", syscall.MS_BIND},
+		{"/proc/sys", "/proc/sys", syscall.MS_BIND | syscall.MS_RDONLY | syscall.MS_REMOUNT},
+		{"/sys", "/sys", syscall.MS_BIND},
+		{"/sys", "/sys", syscall.MS_BIND | syscall.MS_RDONLY | syscall.MS_REMOUNT},
+	} {
+		if err := syscall.Mount(remount.source, remount.target, "", remount.flags, ""); err != nil {
+			return fmt.Errorf("remount %s read-only: %w", remount.target, err)
+		}
+	}
 
 	// Ensure /tmp is world-writable (critical for images that switch users)
-	os.Chmod("/tmp", 01777)
+	if err := os.Chmod("/tmp", 01777); err != nil {
+		log.Warn("chmod /tmp: %v", err)
+	}
 
 	// Bring up loopback interface (best-effort, iproute2 may not be in the image)
 	if err := exec.Command("ip", "link", "set", "lo", "up").Run(); err != nil {
@@ -313,7 +330,9 @@ func InitContainer(id, merged string) error {
 		if len(out) > 0 {
 			s := string(out)
 			if !strings.Contains(s, "NO-CARRIER") && strings.Contains(s, "inet ") {
-				exec.Command("ip", "link", "set", "eth0", "up").Run()
+				if err := exec.Command("ip", "link", "set", "eth0", "up").Run(); err != nil {
+					log.Warn("enable eth0: %v", err)
+				}
 				break
 			}
 		}
@@ -328,9 +347,13 @@ func InitContainer(id, merged string) error {
 		for _, d := range c.DNS {
 			sb.WriteString("nameserver " + d + "\n")
 		}
-		os.WriteFile("/etc/resolv.conf", []byte(sb.String()), 0644)
+		if err := os.WriteFile("/etc/resolv.conf", []byte(sb.String()), 0644); err != nil {
+			return fmt.Errorf("write resolv.conf: %w", err)
+		}
 	} else {
-		os.WriteFile("/etc/resolv.conf", []byte("nameserver 8.8.8.8\nnameserver 8.8.4.4\n"), 0644)
+		if err := os.WriteFile("/etc/resolv.conf", []byte("nameserver 8.8.8.8\nnameserver 8.8.4.4\n"), 0644); err != nil {
+			return fmt.Errorf("write default resolv.conf: %w", err)
+		}
 	}
 
 	var cfg struct {
@@ -340,7 +363,9 @@ func InitContainer(id, merged string) error {
 			User       string   `json:"User"`
 		} `json:"config"`
 	}
-	json.Unmarshal(cfgData, &cfg)
+	if err := json.Unmarshal(cfgData, &cfg); err != nil {
+		return fmt.Errorf("parse image config: %w", err)
+	}
 
 	c.Env = append(cfg.Config.Env, c.Env...)
 
@@ -349,8 +374,12 @@ func InitContainer(id, merged string) error {
 		wd = c.WorkingDir
 	}
 	if wd != "" {
-		os.MkdirAll(wd, 0755)
-		syscall.Chdir(wd)
+		if err := os.MkdirAll(wd, 0755); err != nil {
+			return fmt.Errorf("create working directory: %w", err)
+		}
+		if err := syscall.Chdir(wd); err != nil {
+			return fmt.Errorf("chdir working directory: %w", err)
+		}
 	}
 
 	defaultPath := "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -417,18 +446,30 @@ func InitContainer(id, merged string) error {
 				if gid == 0 {
 					gid = uid
 				}
-				os.Chown(target, uid, gid)
-				filepath.Walk(target, func(path string, info os.FileInfo, walkErr error) error {
-					os.Chown(path, uid, gid)
-					return nil
-				})
+				if err := os.Chown(target, uid, gid); err != nil {
+					log.Warn("chown volume %s: %v", target, err)
+				}
+				if err := filepath.Walk(target, func(path string, info os.FileInfo, walkErr error) error {
+					if walkErr != nil {
+						return walkErr
+					}
+					return os.Chown(path, uid, gid)
+				}); err != nil {
+					log.Warn("chown volume contents %s: %v", target, err)
+				}
 			}
 		} else {
-			os.Chmod(target, 0777)
-			filepath.Walk(target, func(path string, info os.FileInfo, walkErr error) error {
-				os.Chmod(path, 0777)
-				return nil
-			})
+			if err := os.Chmod(target, 0777); err != nil {
+				log.Warn("chmod volume %s: %v", target, err)
+			}
+			if err := filepath.Walk(target, func(path string, info os.FileInfo, walkErr error) error {
+				if walkErr != nil {
+					return walkErr
+				}
+				return os.Chmod(path, 0777)
+			}); err != nil {
+				log.Warn("chmod volume contents %s: %v", target, err)
+			}
 		}
 	}
 
@@ -448,9 +489,13 @@ func InitContainer(id, merged string) error {
 		uid, err = strconv.Atoi(parts[0])
 		if err == nil {
 			if gid > 0 {
-				syscall.Setgid(gid)
+				if err := syscall.Setgid(gid); err != nil {
+					return fmt.Errorf("setgid: %w", err)
+				}
 			}
-			syscall.Setuid(uid)
+			if err := syscall.Setuid(uid); err != nil {
+				return fmt.Errorf("setuid: %w", err)
+			}
 		}
 	}
 
@@ -528,7 +573,9 @@ echo "  DCK_PORT_UDP_*     - Port mappings (UDP)"
 `,
 	}
 	for name, content := range dckScripts {
-		os.WriteFile("/dck/"+name, []byte(content), 0755)
+		if err := os.WriteFile("/dck/"+name, []byte(content), 0755); err != nil {
+			return fmt.Errorf("write /dck/%s: %w", name, err)
+		}
 	}
 
 	// If startup script is provided, write it and run it before CMD
@@ -556,7 +603,9 @@ echo "  DCK_PORT_UDP_*     - Port mappings (UDP)"
 				break
 			}
 		}
-		os.Setenv("PATH", searchPath)
+		if err := os.Setenv("PATH", searchPath); err != nil {
+			return fmt.Errorf("set PATH: %w", err)
+		}
 		if resolved, err := exec.LookPath(cmdPath); err == nil {
 			cmdPath = resolved
 			cmdArgs = append([]string{cmdPath}, c.Cmd[1:]...)

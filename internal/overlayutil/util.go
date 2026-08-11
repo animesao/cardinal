@@ -59,13 +59,13 @@ func ExtractLayer(cachePath, rootfsDir string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	gzr, err := gzip.NewReader(f)
 	if err != nil {
 		return fmt.Errorf("gzip: %w", err)
 	}
-	defer gzr.Close()
+	defer func() { _ = gzr.Close() }()
 
 	root, err := filepath.Abs(rootfsDir)
 	if err != nil {
@@ -103,7 +103,7 @@ func ExtractLayer(cachePath, rootfsDir string) error {
 				return err
 			}
 
-		case tar.TypeReg, tar.TypeRegA:
+		case tar.TypeReg:
 			if err := ensureNoSymlinkAncestors(root, path, true); err != nil {
 				return fmt.Errorf("file %q: %w", hdr.Name, err)
 			}
@@ -266,7 +266,7 @@ func HashFile(path string) (string, int64) {
 	if err != nil {
 		return "", 0
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	h := sha256.New()
 	size, err := io.Copy(h, f)

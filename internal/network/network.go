@@ -257,11 +257,21 @@ func SetupVeth(containerID string, pid int, containerIP string) error {
 		return fmt.Errorf("set host veth up: %w", err)
 	}
 
-	_ = runInNetns(pid, "ip", "link", "set", "lo", "up")
-	_ = runInNetns(pid, "ip", "link", "set", contIf, "name", "eth0")
-	runInNetns(pid, "ip", "addr", "add", fmt.Sprintf("%s/24", containerIP), "dev", "eth0")
-	runInNetns(pid, "ip", "link", "set", "eth0", "up")
-	runInNetns(pid, "ip", "route", "add", "default", "via", BridgeIP)
+	if err := runInNetns(pid, "ip", "link", "set", "lo", "up"); err != nil {
+		return fmt.Errorf("enable loopback in netns: %w", err)
+	}
+	if err := runInNetns(pid, "ip", "link", "set", contIf, "name", "eth0"); err != nil {
+		return fmt.Errorf("rename container interface: %w", err)
+	}
+	if err := runInNetns(pid, "ip", "addr", "add", fmt.Sprintf("%s/24", containerIP), "dev", "eth0"); err != nil {
+		return fmt.Errorf("configure container address: %w", err)
+	}
+	if err := runInNetns(pid, "ip", "link", "set", "eth0", "up"); err != nil {
+		return fmt.Errorf("enable container interface: %w", err)
+	}
+	if err := runInNetns(pid, "ip", "route", "add", "default", "via", BridgeIP); err != nil {
+		return fmt.Errorf("configure container route: %w", err)
+	}
 
 	flushBridgeNeigh(containerIP)
 

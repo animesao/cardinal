@@ -20,14 +20,16 @@ func EnsureLayer(layerPath string) (digest string, size int, err error) {
 	if err != nil {
 		return "", 0, fmt.Errorf("open layer: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	h := sha256.New()
 	n, err := io.Copy(h, f)
 	if err != nil {
 		return "", 0, fmt.Errorf("hash layer: %w", err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		return "", 0, fmt.Errorf("close layer: %w", err)
+	}
 
 	hash := hex.EncodeToString(h.Sum(nil))
 	digest = "sha256:" + hash
@@ -50,13 +52,13 @@ func EnsureLayer(layerPath string) (digest string, size int, err error) {
 	if err != nil {
 		return "", 0, err
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 
 	dst, err := os.OpenFile(cachePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return "", 0, err
 	}
-	defer dst.Close()
+	defer func() { _ = dst.Close() }()
 
 	if _, err := io.Copy(dst, src); err != nil {
 		return "", 0, err

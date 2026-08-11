@@ -83,7 +83,7 @@ type ftpSession struct {
 }
 
 func (s *Server) handleConn(conn net.Conn) {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	session := &ftpSession{
 		server:  s,
@@ -118,9 +118,10 @@ func (s *ftpSession) reply(code int, msg string) {
 func (s *ftpSession) replyMultiline(code int, msg string) {
 	lines := strings.Split(msg, "\n")
 	for i, line := range lines {
-		if i == len(lines)-1 {				_, _ = s.writer.WriteString(fmt.Sprintf("%d %s\r\n", code, line))
-			} else {
-				_, _ = s.writer.WriteString(fmt.Sprintf("%d-%s\r\n", code, line))
+		if i == len(lines)-1 {
+			_, _ = s.writer.WriteString(fmt.Sprintf("%d %s\r\n", code, line))
+		} else {
+			_, _ = s.writer.WriteString(fmt.Sprintf("%d-%s\r\n", code, line))
 		}
 	}
 	_ = s.writer.Flush()
@@ -157,11 +158,11 @@ func (s *ftpSession) handleCommand(cmd string) bool {
 	case "PWD":
 		s.reply(257, "\""+s.working+"\" is current directory")
 	case "TYPE":
-		s.reply(200, "Type set to " + arg)
+		s.reply(200, "Type set to "+arg)
 	case "MODE":
-		s.reply(200, "Mode set to " + arg)
+		s.reply(200, "Mode set to "+arg)
 	case "STRU":
-		s.reply(200, "Structure set to " + arg)
+		s.reply(200, "Structure set to "+arg)
 	case "CWD":
 		newDir := s.resolvePath(arg)
 		info, err := os.Stat(newDir)
@@ -229,17 +230,17 @@ func (s *ftpSession) handleCommand(cmd string) bool {
 			if err != nil {
 				return err
 			}
-			defer f.Close()
-	// nolint:errcheck
+			defer func() { _ = f.Close() }()
+			// nolint:errcheck
 			_, err = io.Copy(w, f)
 			return err
 		})
 	case "STOR":
 		path := s.resolvePath(arg)
-	_ = os.MkdirAll(filepath.Dir(path), 0755)
-	s.transfer(func(w io.Writer) error {
-		return nil
-	})
+		_ = os.MkdirAll(filepath.Dir(path), 0755)
+		s.transfer(func(w io.Writer) error {
+			return nil
+		})
 	case "SIZE":
 		path := s.resolvePath(arg)
 		info, err := os.Stat(path)
@@ -315,7 +316,7 @@ func (s *ftpSession) doPassiveTransfer(writeFn func(io.Writer) error) {
 		s.reply(425, "Can't open data connection")
 		return
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	s.closePasv()
 
 	err = writeFn(conn)
@@ -334,7 +335,7 @@ func (s *ftpSession) doActiveTransfer(writeFn func(io.Writer) error) {
 		s.reply(425, "Can't open data connection")
 		return
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	err = writeFn(conn)
 	if err != nil {

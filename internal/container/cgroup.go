@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	cgroupRoot  = "/sys/fs/cgroup"
-	dckCgroup   = "dck"
-	cpuPeriod   = 100000
+	cgroupRoot = "/sys/fs/cgroup"
+	dckCgroup  = "dck"
+	cpuPeriod  = 100000
 )
 
 func cgroupV2Enabled() bool {
@@ -45,8 +45,6 @@ func enableCgroupController(ctrl string) error {
 	}
 	return nil
 }
-
-
 
 func setupContainerCgroup(id string, pid int, memoryLimit int64, cpuCount float64) (string, error) {
 	basePath := filepath.Join(cgroupRoot, dckCgroup)
@@ -106,7 +104,11 @@ func cleanupContainerCgroup(id, cgroupPath string) {
 	}
 	if b, err := os.ReadFile(filepath.Join(cgroupPath, "cgroup.procs")); err == nil && len(b) > 0 {
 		parentProcs := filepath.Join(filepath.Dir(cgroupPath), "cgroup.procs")
-		os.WriteFile(parentProcs, b, 0644)
+		if err := os.WriteFile(parentProcs, b, 0644); err != nil {
+			log.Warn("restore cgroup processes: %v", err)
+		}
 	}
-	os.RemoveAll(cgroupPath)
+	if err := os.RemoveAll(cgroupPath); err != nil {
+		log.Warn("remove cgroup %s: %v", id, err)
+	}
 }

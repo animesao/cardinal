@@ -120,20 +120,26 @@ func CommitContainer(rootfsDir, name, tag, author, message string) (*Image, erro
 	return img, nil
 }
 
-func createLayer(rootfsDir, outputPath string) error {
+func createLayer(rootfsDir, outputPath string) (retErr error) {
 	outFile, err := os.Create(outputPath)
 	if err != nil {
 		return err
 	}
-	defer outFile.Close()
-
 	gw := gzip.NewWriter(outFile)
-	defer gw.Close()
-
 	tw := tar.NewWriter(gw)
-	defer tw.Close()
+	defer func() {
+		if err := tw.Close(); retErr == nil {
+			retErr = fmt.Errorf("close tar layer: %w", err)
+		}
+		if err := gw.Close(); retErr == nil {
+			retErr = fmt.Errorf("close gzip layer: %w", err)
+		}
+		if err := outFile.Close(); retErr == nil {
+			retErr = fmt.Errorf("close layer file: %w", err)
+		}
+	}()
 
-	return filepath.Walk(rootfsDir, func(path string, fi os.FileInfo, err error) error {
+	err = filepath.Walk(rootfsDir, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -167,9 +173,12 @@ func createLayer(rootfsDir, outputPath string) error {
 			return err
 		}
 		_, err = io.Copy(tw, f)
-		f.Close()
+		if closeErr := f.Close(); err == nil {
+			err = closeErr
+		}
 		return err
 	})
+	return err
 }
 
 func hashFile(path string) (string, int) {

@@ -110,7 +110,7 @@ func StreamEvents(since time.Time, stop chan struct{}) {
 			if evt.Time.Before(since) {
 				continue
 			}
-			enc.Encode(evt)
+			_ = enc.Encode(evt)
 		case <-stop:
 			return
 		}
@@ -131,7 +131,7 @@ func persistEvent(evt Event) {
 	}
 
 	data, _ := json.Marshal(evt)
-	eventFile.Write(append(data, '\n'))
+	_, _ = eventFile.Write(append(data, '\n'))
 }
 
 // InitEvents opens event log
@@ -151,7 +151,7 @@ func CloseEvents() {
 	eventFileMu.Lock()
 	defer eventFileMu.Unlock()
 	if eventFile != nil {
-		eventFile.Close()
+		_ = eventFile.Close()
 		eventFile = nil
 	}
 }

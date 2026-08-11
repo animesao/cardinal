@@ -17,7 +17,7 @@ func makeTarGz(t *testing.T, files map[string]string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	gw := gzip.NewWriter(f)
 	tw := tar.NewWriter(gw)
 	for name, content := range files {

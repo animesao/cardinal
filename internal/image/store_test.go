@@ -73,8 +73,12 @@ func TestListImages(t *testing.T) {
 		t.Errorf("ListImages() should be empty initially, got %d", len(images))
 	}
 
-	SaveToStore(&Image{Name: "library/alpine", Tag: "latest"})
-	SaveToStore(&Image{Name: "library/nginx", Tag: "1.21"})
+	if err := SaveToStore(&Image{Name: "library/alpine", Tag: "latest"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := SaveToStore(&Image{Name: "library/nginx", Tag: "1.21"}); err != nil {
+		t.Fatal(err)
+	}
 
 	images, err = ListImages()
 	if err != nil {
@@ -92,7 +96,9 @@ func TestRemoveImage(t *testing.T) {
 	defer os.Setenv("DCK_DATA_DIR", origDir)
 
 	img := &Image{Name: "test-img", Tag: "latest"}
-	SaveToStore(img)
+	if err := SaveToStore(img); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := RemoveImage("test-img", "latest"); err != nil {
 		t.Fatalf("RemoveImage() error: %v", err)

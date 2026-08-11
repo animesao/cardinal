@@ -116,7 +116,7 @@ func Build(cfg *BuildConfig) (*image.Image, error) {
 
 	buildTmp := filepath.Join(state.DataDir(), "build")
 	os.MkdirAll(buildTmp, 0755)
-	defer os.RemoveAll(buildTmp)
+	defer func() { _ = os.RemoveAll(buildTmp) }()
 
 	var buildEnv []string
 	// Apply --build-arg values
@@ -191,7 +191,9 @@ func Build(cfg *BuildConfig) (*image.Image, error) {
 		case StopSignal:
 			bs.handleStopSignal(inst)
 		case Healthcheck:
-			bs.handleHealthcheck(inst)
+			if err := bs.handleHealthcheck(inst); err != nil {
+				return nil, fmt.Errorf("step %d (HEALTHCHECK): %w", i+1, err)
+			}
 		case Maintainer:
 			bs.handleMaintainer(inst)
 		case OnBuild:
@@ -438,7 +440,9 @@ func (bs *buildState) handleRun(inst Instruction, buildEnv []string, buildTmp st
 
 	// Update rootfs to extracted layer
 	newRootfs := filepath.Join(buildTmp, fmt.Sprintf("rootfs_%d", bs.stackIdx))
-	os.RemoveAll(newRootfs)
+	if err := os.RemoveAll(newRootfs); err != nil {
+		return fmt.Errorf("reset temporary rootfs: %w", err)
+	}
 	os.MkdirAll(newRootfs, 0755)
 	if err := extractLayer(layerFile, newRootfs); err != nil {
 		return fmt.Errorf("extract layer: %w", err)
@@ -490,7 +494,9 @@ func (bs *buildState) handleCopy(inst Instruction, buildTmp string) error {
 
 	// Create temp dir to track what was copied
 	copyDir := filepath.Join(buildTmp, fmt.Sprintf("copy_%d", step))
-	os.RemoveAll(copyDir)
+	if err := os.RemoveAll(copyDir); err != nil {
+		return fmt.Errorf("reset copy directory: %w", err)
+	}
 	os.MkdirAll(copyDir, 0755)
 
 	for _, src := range srcs {
@@ -521,7 +527,9 @@ func (bs *buildState) handleCopy(inst Instruction, buildTmp string) error {
 	if chown != "" {
 		for _, src := range srcs {
 			dstTarget := filepath.Join(dstPath, filepath.Base(src))
-			exec.Command("chown", "-R", chown, dstTarget).Run()
+			if err := exec.Command("chown", "-R", chown, dstTarget).Run(); err != nil {
+				return fmt.Errorf("chown %s: %w", dstTarget, err)
+			}
 		}
 	}
 
@@ -670,11 +678,11 @@ func (bs *buildState) handleStopSignal(inst Instruction) {
 	bs.config.Config.StopSignal = strings.Join(inst.Args, " ")
 }
 
-func (bs *buildState) handleHealthcheck(inst Instruction) {
+func (bs *buildState) handleHealthcheck(inst Instruction) error {
 	if len(inst.Args) == 0 {
 		// HEALTHCHECK NONE - disable
 		bs.config.Config.Healthcheck = nil
-		return
+		return nil
 	}
 
 	hc := &healthConfig{}
@@ -694,7 +702,9 @@ func (bs *buildState) handleHealthcheck(inst Instruction) {
 		case "--RETRIES":
 			if i+1 < len(args) {
 				i++
-				fmt.Sscanf(args[i], "%d", &hc.Retries)
+				if _, err := fmt.Sscanf(args[i], "%d", &hc.Retries); err != nil {
+					return fmt.Errorf("invalid --retries value %q: %w", args[i], err)
+				}
 			}
 		case "--START-PERIOD":
 			if i+1 < len(args) {
@@ -716,6 +726,7 @@ func (bs *buildState) handleHealthcheck(inst Instruction) {
 	if hc != nil {
 		bs.config.Config.Healthcheck = hc
 	}
+	return nil
 }
 
 func (bs *buildState) handleMaintainer(inst Instruction) {
@@ -834,7 +845,9 @@ func (bs *buildState) finalize(buildTmp string) (*image.Image, error) {
 
 	// Extract rootfs for runtime use
 	rootfsDir := state.ImageRootfsDir(name, tag)
-	os.RemoveAll(rootfsDir)
+	if err := os.RemoveAll(rootfsDir); err != nil {
+		return nil, fmt.Errorf("reset rootfs: %w", err)
+	}
 	os.MkdirAll(rootfsDir, 0755)
 
 	for i := range bs.layers {
@@ -869,15 +882,10 @@ func createLayerFromDir(srcDir, outputPath string) error {
 	if err != nil {
 		return err
 	}
-	defer outFile.Close()
-
 	gw := gzip.NewWriter(outFile)
-	defer gw.Close()
-
 	tw := tar.NewWriter(gw)
-	defer tw.Close()
 
-	return filepath.Walk(srcDir, func(path string, fi os.FileInfo, err error) error {
+	err = filepath.Walk(srcDir, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -910,9 +918,30 @@ func createLayerFromDir(srcDir, outputPath string) error {
 			return err
 		}
 		_, err = io.Copy(tw, f)
-		f.Close()
+		if closeErr := f.Close(); err == nil {
+			err = closeErr
+		}
 		return err
 	})
+	if err != nil {
+		_ = tw.Close()
+		_ = gw.Close()
+		_ = outFile.Close()
+		return err
+	}
+	if err := tw.Close(); err != nil {
+		_ = gw.Close()
+		_ = outFile.Close()
+		return fmt.Errorf("close tar layer: %w", err)
+	}
+	if err := gw.Close(); err != nil {
+		_ = outFile.Close()
+		return fmt.Errorf("close gzip layer: %w", err)
+	}
+	if err := outFile.Close(); err != nil {
+		return fmt.Errorf("close layer file: %w", err)
+	}
+	return nil
 }
 
 func hashFile(path string) (string, int) {
@@ -940,14 +969,20 @@ func applyBuildCgroup(pid int, cpu float64, mem int64) {
 	os.MkdirAll(cgPath, 0755)
 
 	if mem > 0 {
-		os.WriteFile(filepath.Join(cgPath, "memory.max"), []byte(fmt.Sprintf("%d", mem)), 0644)
+		if err := os.WriteFile(filepath.Join(cgPath, "memory.max"), []byte(fmt.Sprintf("%d", mem)), 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: set build memory limit: %v\\n", err)
+		}
 	}
 	if cpu > 0 {
 		quota := int64(cpu * 100000)
-		os.WriteFile(filepath.Join(cgPath, "cpu.max"), []byte(fmt.Sprintf("%d 100000", quota)), 0644)
+		if err := os.WriteFile(filepath.Join(cgPath, "cpu.max"), []byte(fmt.Sprintf("%d 100000", quota)), 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: set build CPU limit: %v\\n", err)
+		}
 	}
 
-	os.WriteFile(filepath.Join(cgPath, "cgroup.procs"), []byte(fmt.Sprintf("%d", pid)), 0644)
+	if err := os.WriteFile(filepath.Join(cgPath, "cgroup.procs"), []byte(fmt.Sprintf("%d", pid)), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: attach build process to cgroup: %v\\n", err)
+	}
 }
 
 func copyFile(src, dst string) error {
@@ -955,13 +990,13 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	_, err = io.Copy(out, in)
 	return err

@@ -49,7 +49,7 @@ func List(all bool) ([]*Container, error) {
 
 func PrintContainers(containers []*Container) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "ID\tIMAGE\tSTATUS\tNAME\tCMD")
+	_, _ = fmt.Fprintln(w, "ID\tIMAGE\tSTATUS\tNAME\tCMD")
 	for _, c := range containers {
 		shortID := shortID(c.ID, 12)
 		image := fmt.Sprintf("%s:%s", c.ImageName, c.ImageTag)
@@ -57,7 +57,7 @@ func PrintContainers(containers []*Container) {
 		if len(cmd) > 40 {
 			cmd = cmd[:40] + "..."
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 			shortID, image, c.Status, c.Name, cmd)
 	}
 	w.Flush()
