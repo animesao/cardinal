@@ -95,6 +95,7 @@ dck pull nginx:alpine              # With tag
 dck search nginx                   # Search Docker Hub
 dck images                         # List local images
 dck rmi nginx:alpine               # Remove image
+dck verify nginx:alpine            # Verify image digests
 ```
 
 ### Container Lifecycle
@@ -144,7 +145,7 @@ The supervisor must be installed for scheduled backups to run after the CLI exit
 dck bootstrap --install
 ```
 
-Manual backups remain available with `dck backup create`; restore only into a stopped container.
+Manual backups remain available with `dck backup create`; restore only into a stopped container. Verify an archive with `dck backup verify FILE.tar.gz`.
 
 ### Logs & Attach
 
@@ -222,7 +223,7 @@ Use `-v` (bind mount) for live file sharing — changes on host are instantly vi
 | `-d` | Detach (background) |
 | `-n` | Container name |
 | `-p` | Port mapping `host:container` |
-| `-v` | Volume mount `src:dst` |
+| `-v` | Volume mount `src:dst` (add `:ro`/`:rw` for read-only/read-write) |
 | `-e` | Environment variable (repeatable) |
 | `-i` | Interactive (keep stdin) |
 | `-t` | Allocate TTY |

@@ -61,7 +61,7 @@ If `dck update` cannot download the binary (older releases failed with `Failed t
 
 ```bash
 curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
-  https://github.com/animesao/dck/releases/download/v1.22.37/dck-linux-amd64
+  https://github.com/animesao/dck/releases/download/v1.22.38/dck-linux-amd64
 sudo mv /tmp/dck-new /usr/local/bin/dck
 sudo chmod +x /usr/local/bin/dck
 sudo systemctl restart dck-bootstrap   # if the systemd supervisor is installed
@@ -136,6 +136,15 @@ A volume specification is `source:container_target`. The target inside the conta
 --vol /data/myapp:/app
 --vol myapp_data:/var/lib/myapp
 ```
+
+Append `:ro` or `:rw` to make the mount read-only or read-write (read-write is the default), or a propagation mode such as `:shared`/`:rshared`:
+
+```bash
+--vol /data/myapp:/app:ro
+--vol /data/config:/etc/app:shared
+```
+
+`tmpfs:` (in-memory) and `nfs://server:/export:/container/path` specs are also supported.
 
 Create a named volume with dck:
 
@@ -355,6 +364,8 @@ dck backup restore minecraft /data/backups/minecraft/minecraft-20260811-120000.t
 ```
 
 Automatic backup settings are stored in the container state and survive `stop`, `start`, and dck upgrades. Retention removes the oldest scheduled archives after a successful backup; it does not delete manually placed files outside the container's scheduled archive naming pattern.
+
+Verify an archive against its checksum with `dck backup verify FILE.tar.gz`. When no checksum sidecar exists, dck reports the archive as valid but unverified.
 
 ## 12. Inspect and operate inside a container
 
@@ -722,7 +733,7 @@ The updater used to time out after ten seconds, which was too short for multi-me
 
 ```bash
 curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
-  https://github.com/animesao/dck/releases/download/v1.22.37/dck-linux-amd64
+  https://github.com/animesao/dck/releases/download/v1.22.38/dck-linux-amd64
 sudo mv /tmp/dck-new /usr/local/bin/dck
 sudo chmod +x /usr/local/bin/dck
 sudo systemctl restart dck-bootstrap

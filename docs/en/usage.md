@@ -96,6 +96,14 @@ Remove an image from local storage.
 dck rmi nginx:alpine
 ```
 
+### `dck verify <image>[:tag]`
+
+Verify a local image's config and layer digests.
+
+```bash
+dck verify nginx:alpine
+```
+
 ### `dck export <image> -o <file.tar.gz>`
 
 Export an image to a tar.gz file (for backup or transfer).
@@ -220,6 +228,8 @@ dck run -d --name myapp --ports 8080:80 --volume /app:/app --restart always --im
 | `--rm` | Remove container on exit | `--rm` |
 | `--restart <policy>` | Restart: `no`, `always`, `on-failure`, `unless-stopped`; detached boot supervision applies to `always`/`unless-stopped` | `--restart always` |
 | `--restart-delay <duration>` | Delay crash recovery, e.g. `10s` or `1m`; does not delay initial boot | `--restart-delay 1m` |
+| `--restart-max-attempts <n>` | Crash-loop budget: stop auto-restart after N failures within the window (default 5) | `--restart-max-attempts 5` |
+| `--restart-window <duration>` | Window for the crash-loop budget | `--restart-window 10m` |
 | `--memory <lim>` | Memory limit | `--memory 2g` |
 | `--ram <lim>` | Memory limit (alias for `--memory`) | `--ram 1g` |
 | `--cpus <num>` | CPU limit | `--cpus 1.5` |
@@ -397,7 +407,7 @@ A fresh dck log is created at every new container start, so output from previous
 
 For root, dck logs are stored under `/root/.dck/logs/<container-id>.log`; set `DCK_DATA_DIR` to change the dck state location. See the [running guide](running.md) for operational examples.
 
-### `dck backup create|list|restore|enable|disable|status`
+### `dck backup create|list|restore|enable|disable|status|verify`
 
 Create manual archives or enable a persistent schedule for one container. Scheduled backups include the writable overlay and named volumes, but not host bind mounts; back up bind-mounted application directories separately. dck briefly stops a running container for a consistent archive and starts it again afterward. The first scheduled archive is created after the configured interval, not immediately.
 
@@ -417,7 +427,7 @@ The systemd supervisor must be installed for scheduled backups to continue after
 dck bootstrap --install
 ```
 
-`dck backup create NAME -o file.tar.gz` remains the manual one-shot operation. Restore only into a stopped container with `dck backup restore NAME file.tar.gz`.
+`dck backup create NAME -o file.tar.gz` remains the manual one-shot operation. Restore only into a stopped container with `dck backup restore NAME file.tar.gz`. Verify an archive against its checksum with `dck backup verify FILE.tar.gz`; when no checksum sidecar exists, dck reports the archive as unverified.
 
 ### `dck stats [container]`
 

@@ -96,6 +96,14 @@ dck search python:3.11          # фильтр по тегу
 dck rmi nginx:alpine
 ```
 
+### `dck verify <образ>[:тег]`
+
+Проверить config и диджесты слоёв локального образа.
+
+```bash
+dck verify nginx:alpine
+```
+
 ### `dck export <образ> -o <файл.tar.gz>`
 
 Экспортировать образ в tar.gz (для бэкапа или переноса).
@@ -220,6 +228,8 @@ dck run -d --name myapp --ports 8080:80 --volume /app:/app --restart always --im
 | `--rm` | Удалить контейнер при выходе | `--rm` |
 | `--restart <политика>` | `no`, `always`, `on-failure`, `unless-stopped`; для detached-контейнеров после reboot supervisor обслуживает `always`/`unless-stopped` | `--restart always` |
 | `--restart-delay <длительность>` | Задержка восстановления после сбоя, например `10s` или `1m`; не задерживает первоначальный запуск | `--restart-delay 1m` |
+| `--restart-max-attempts <n>` | Бюджет crash-loop: остановить авто-перезапуск после N сбоев в течение окна (по умолчанию 5) | `--restart-max-attempts 5` |
+| `--restart-window <длительность>` | Окно бюджета crash-loop | `--restart-window 10m` |
 | `--memory <лимит>` | Лимит памяти | `--memory 2g` |
 | `--ram <лимит>` | Лимит памяти (алиас `--memory`) | `--ram 1g` |
 | `--cpus <число>` | Лимит CPU | `--cpus 1.5` |
@@ -407,7 +417,7 @@ dck logs -f --tail 10 web  # последние 10 + следить
 
 Для root логи dck находятся в `/root/.dck/logs/<container-id>.log`; изменить каталог состояния можно через `DCK_DATA_DIR`. Практические примеры находятся в [руководстве по запуску](running.md).
 
-### `dck backup create|list|restore|enable|disable|status`
+### `dck backup create|list|restore|enable|disable|status|verify`
 
 Создавайте разовые архивы или включайте постоянное расписание для конкретного контейнера. Авто-бэкап включает writable overlay и именованные тома, но не host bind mount — каталоги приложения на хосте нужно архивировать отдельно. Для согласованности dck ненадолго останавливает работающий контейнер, создаёт архив и запускает его снова. Первый автоматический архив создаётся после заданного интервала, а не сразу.
 
@@ -427,7 +437,7 @@ dck backup enable minecraft --interval 24h --retention 7 --dir /data/backups/min
 dck bootstrap --install
 ```
 
-`dck backup create ИМЯ -o file.tar.gz` остаётся разовым ручным бэкапом. Восстановление выполняется только в остановленный контейнер: `dck backup restore ИМЯ file.tar.gz`.
+`dck backup create ИМЯ -o file.tar.gz` остаётся разовым ручным бэкапом. Восстановление выполняется только в остановленный контейнер: `dck backup restore ИМЯ file.tar.gz`. Архив можно проверить по контрольной сумме: `dck backup verify ФАЙЛ.tar.gz`; если checksum-файла рядом нет, dck сообщит, что архив не проверен.
 
 ### `dck stats [контейнер]`
 

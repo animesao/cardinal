@@ -61,7 +61,7 @@ dck run --rm alpine:latest echo "DCK UPDATE OK"
 
 ```bash
 curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
-  https://github.com/animesao/dck/releases/download/v1.22.37/dck-linux-amd64
+  https://github.com/animesao/dck/releases/download/v1.22.38/dck-linux-amd64
 sudo mv /tmp/dck-new /usr/local/bin/dck
 sudo chmod +x /usr/local/bin/dck
 sudo systemctl restart dck-bootstrap   # если установлен systemd supervisor
@@ -136,6 +136,15 @@ dck logs web
 --vol /data/myapp:/app
 --vol myapp_data:/var/lib/myapp
 ```
+
+Добавьте `:ro` или `:rw`, чтобы смонтировать том только на чтение или на запись (по умолчанию — на запись), либо режим propagation, например `:shared`/`:rshared`:
+
+```bash
+--vol /data/myapp:/app:ro
+--vol /data/config:/etc/app:shared
+```
+
+Также поддерживаются спецификации `tmpfs:` (в памяти) и `nfs://сервер:/export:/путь/в/контейнере`.
 
 Создание именованного тома:
 
@@ -355,6 +364,8 @@ dck backup restore minecraft /data/backups/minecraft/minecraft-20260811-120000.t
 ```
 
 Настройки авто-бэкапа хранятся в state контейнера и переживают `stop`, `start` и обновление dck. Retention удаляет самые старые архивы расписания после успешного бэкапа; файлы с другими именами он не трогает.
+
+Архив можно проверить по контрольной сумме: `dck backup verify ФАЙЛ.tar.gz`. Если checksum-файла рядом нет, dck сообщит, что архив валиден, но не проверен.
 
 ## 12. Проверка и команды внутри контейнера
 
@@ -722,7 +733,7 @@ dck logs ИМЯ
 
 ```bash
 curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
-  https://github.com/animesao/dck/releases/download/v1.22.37/dck-linux-amd64
+  https://github.com/animesao/dck/releases/download/v1.22.38/dck-linux-amd64
 sudo mv /tmp/dck-new /usr/local/bin/dck
 sudo chmod +x /usr/local/bin/dck
 sudo systemctl restart dck-bootstrap

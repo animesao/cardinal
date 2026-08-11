@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Go 1.26.5+ (use the latest patched Go release in CI and production builds)
+- Go 1.25+ (the module targets `go 1.25.0`; CI and release tooling pin the latest patched Go release, currently 1.26.5)
 - Linux runtime checks: `dck doctor` and `dck security check`
 - Linux for container execution features
 - Optional: `git` for version injection and release metadata

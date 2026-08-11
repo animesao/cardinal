@@ -80,6 +80,14 @@ dck search python:3.12
 dck rmi alpine:3.20
 ```
 
+### `dck verify IMAGE[:TAG]`
+
+Проверить config и диджесты слоёв локального образа по сохранённым манифестам.
+
+```bash
+dck verify alpine:3.20
+```
+
 ### `dck commit CONTAINER IMAGE[:TAG]`
 
 Создать образ из текущего изменяемого состояния контейнера.
@@ -162,7 +170,7 @@ dck logout registry.example.com
 | `--env-file FILE` | Загрузить строки `KEY=VALUE` или `export KEY=VALUE` |
 | `-p HOST:CONTAINER[/PROTO]` | Проброс порта; можно передать несколько через запятую |
 | `--ports` | Алиас `-p` |
-| `-v SRC:DST` | Bind mount или именованный volume |
+| `-v SRC:DST[:MODE]` | Bind mount или именованный volume; режимы `:ro`/`:rw`, propagation `:shared`/`:rslave`, `nocopy`, а также спецификации `tmpfs:` и `nfs://` |
 | `--volume`, `--vol` | Алиасы `-v` |
 | `--memory`, `--ram LIMIT` | Лимит памяти, например `512m`, `1g` |
 | `--cpus`, `--cpu N` | Лимит CPU, например `0.5`, `2` |
@@ -429,6 +437,7 @@ dck volume create -l env=prod app-data
 | `enable` | `dck backup enable CONTAINER [OPTIONS]` | Включить расписание |
 | `disable` | `dck backup disable CONTAINER` | Выключить расписание |
 | `status` | `dck backup status CONTAINER` | Показать расписание и результат |
+| `verify` | `dck backup verify FILE.tar.gz` | Проверить архив бэкапа по контрольной сумме |
 
 Флаги `backup enable`:
 

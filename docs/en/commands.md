@@ -80,6 +80,14 @@ Remove a local image. The default tag is `latest`.
 dck rmi alpine:3.20
 ```
 
+### `dck verify IMAGE[:TAG]`
+
+Verify a local image's config and layer digests against its stored manifests.
+
+```bash
+dck verify alpine:3.20
+```
+
 ### `dck commit CONTAINER IMAGE[:TAG]`
 
 Create an image from a container's current writable state.
@@ -162,7 +170,7 @@ Create and start a container. The image may instead be supplied with `--image`, 
 | `--env-file FILE` | Load `KEY=VALUE` or `export KEY=VALUE` lines |
 | `-p HOST:CONTAINER[/PROTO]` | Port mapping; comma-separated mappings are accepted |
 | `--ports` | Alias for `-p` |
-| `-v SRC:DST` | Volume/bind mapping |
+| `-v SRC:DST[:MODE]` | Volume/bind mapping; modes `:ro`/`:rw`, propagation `:shared`/`:rslave`, `nocopy`, plus `tmpfs:` and `nfs://` specs |
 | `--volume`, `--vol` | Aliases for `-v` |
 | `--memory`, `--ram LIMIT` | Memory limit, e.g. `512m`, `1g` |
 | `--cpus`, `--cpu N` | CPU limit, e.g. `0.5`, `2` |
@@ -429,6 +437,7 @@ Remove local volumes not referenced by any container.
 | `enable` | `dck backup enable CONTAINER [OPTIONS]` | Enable scheduled backups |
 | `disable` | `dck backup disable CONTAINER` | Disable scheduled backups |
 | `status` | `dck backup status CONTAINER` | Show schedule and last result |
+| `verify` | `dck backup verify FILE.tar.gz` | Verify a backup archive against its checksum sidecar |
 
 `backup enable` options:
 

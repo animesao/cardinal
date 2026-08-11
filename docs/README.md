@@ -34,6 +34,7 @@ The running guides cover installation, image/tag syntax, bind mounts, `.env`, Py
 | `dck images` | List local images |
 | `dck search <term>` | Search Docker Hub |
 | `dck rmi <image>[:tag]` | Remove image |
+| `dck verify <image>[:tag]` | Verify image config and layer digests |
 | `dck commit <container> <image>[:tag]` | Create image from container |
 | `dck build -t name:tag .` | Build from Dockerfile |
 | `dck export <image> -o file.tar.gz` | Save image to file |
@@ -52,6 +53,7 @@ The running guides cover installation, image/tag syntax, bind mounts, `.env`, Py
 | `dck rename <c> <new-name>` | Rename container |
 | `dck set <c> [opts]` | Change container params |
 | `dck ps [-a]` | List containers |
+| `dck backup create/list/restore/enable/disable/status/verify` | Manual and scheduled container backups |
 | `dck init` | Internal container init |
 
 ### Monitoring & Logs
