@@ -304,8 +304,8 @@ services:
     ports:
       - "9000:80"
     volumes:
-      - /mnt/storage:/usr/share/nginx/html:ro
-      - /mnt/uploads:/uploads:rw
+      - /data/storage:/usr/share/nginx/html:ro
+      - /data/uploads:/uploads:rw
     tmpfs:
       - /var/cache/nginx
       - /var/run
@@ -492,8 +492,8 @@ services:
   backup:
     image: alpine:3.19
     volumes:
-      - /mnt/data:/data:ro
-      - /mnt/backups:/backups
+      - /data/shared:/data:ro
+      - /data/backups:/backups
     command: >
       sh -c "tar czf /backups/data-$(date +%Y%m%d).tar.gz /data"
     restart: "no"

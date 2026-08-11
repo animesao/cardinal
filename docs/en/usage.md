@@ -3,6 +3,8 @@
 dck is a lightweight container runtime — no daemon, no Docker. Just containers.
 ~5 MB static binary, OCI images, bridge networking, cluster orchestration, FaaS.
 
+> For the exhaustive command tree, every alias/prefix, and all flags, see the [Complete CLI Command Reference](commands.md). For copy-paste deployment recipes, see [Command Examples](examples.md).
+
 ---
 
 ## Table of Contents
@@ -807,12 +809,8 @@ depends_on = { db = "service_healthy" }
 dck up                    # auto-detect
 dck up myapp              # start only the "myapp" service
 dck up -f compose.prod.yaml
-dck up --no-net           # skip network setup
-dck up --no-start         # create but don't start
-dck up --build            # rebuild images before starting
-dck up --pull             # pull images before starting
-dck up -d                 # detach (output only container IDs)
-dck up                    # auto-installs systemd bootstrap if containers use --restart always
+dck up myapp              # start only the "myapp" service
+dck bootstrap --install  # install boot recovery separately
 dck up --generate         # generate dck.toml from existing containers
 ```
 
@@ -825,8 +823,8 @@ dck down                  # stop + remove
 dck down myapp            # stop + remove only "myapp"
 dck down -f dck.toml
 dck down -a               # remove ALL containers (ignore config)
-dck down --volumes        # also remove volumes
-dck down --rmi            # also remove images
+# Remove named volumes separately, only when safe:
+dck volume prune
 ```
 
 ---

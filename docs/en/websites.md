@@ -49,7 +49,7 @@ echo "<h1>Hello from dck!</h1>" > /data/www/mysite/index.html
 # Run nginx with mounted files (limit: 256MB RAM, 0.5 CPU, 1GB disk)
 dck run -d --restart always \
   -n mysite -p 80:80 \
-  -v /data/www/mysite:/usr/share/nginx/html:ro \
+  -v /data/www/mysite:/usr/share/nginx/html \
   --memory 256m --cpus 0.5 --disk 1G \
   nginx:alpine
 
@@ -76,8 +76,8 @@ EOF
 
 dck run -d --restart always \
   -n mysite -p 80:80 \
-  -v /data/www/mysite:/usr/share/nginx/html:ro \
-  -v /data/nginx-conf:/etc/nginx/conf.d:ro \
+  -v /data/www/mysite:/usr/share/nginx/html \
+  -v /data/nginx-conf:/etc/nginx/conf.d \
   nginx:alpine
 ```
 
@@ -117,9 +117,9 @@ EOF
 # Run nginx
 dck run -d --restart always \
   -n mysite -p 80:80 -p 443:443 \
-  -v /data/www/mysite:/usr/share/nginx/html:ro \
-  -v /data/nginx-ssl:/etc/nginx/conf.d:ro \
-  -v /data/letsencrypt:/etc/letsencrypt:ro \
+  -v /data/www/mysite:/usr/share/nginx/html \
+  -v /data/nginx-ssl:/etc/nginx/conf.d \
+  -v /data/letsencrypt:/etc/letsencrypt \
   nginx:alpine
 ```
 
@@ -153,7 +153,7 @@ EOF
 # Run
 dck run -d --restart always \
   -n mysite -p 443:443 \
-  -v /data/www/mysite:/usr/share/nginx/html:ro \
+  -v /data/www/mysite:/usr/share/nginx/html \
   -v /data/nginx-conf:/etc/nginx/conf.d \
   nginx:alpine
 ```
@@ -193,7 +193,7 @@ You can also use bind mounts (`-v`) for persistent file sharing — changes on t
 
 ```bash
 dck run -d -n web -p 80:80 \
-  -v /data/www/mysite:/usr/share/nginx/html:ro \
+  -v /data/www/mysite:/usr/share/nginx/html \
   nginx:alpine
 
 # Edit files on the host — nginx serves them instantly
@@ -277,7 +277,7 @@ dck run -d --restart always \
 # Run nginx pointing to flask container by IP
 dck run -d --restart always \
   -n flask-web -p 80:80 \
-  -v /data/flask-nginx:/etc/nginx/conf.d:ro \
+  -v /data/flask-nginx:/etc/nginx/conf.d \
   nginx:alpine
 
 # Find flask IP
@@ -519,8 +519,8 @@ sed -i "s/127.0.0.1:9000/$PHP_IP:9000/" /data/php-nginx/default.conf
 
 dck run -d --restart always \
   -n php-web -p 80:80 \
-  -v /data/php-app:/var/www/html:ro \
-  -v /data/php-nginx:/etc/nginx/conf.d:ro \
+  -v /data/php-app:/var/www/html \
+  -v /data/php-nginx:/etc/nginx/conf.d \
   nginx:alpine
 ```
 
@@ -905,7 +905,7 @@ volumes:
 ```
 
 ```bash
-dck up -d
+dck up
 ```
 
 ### Python API + PostgreSQL + Nginx
@@ -947,8 +947,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./static:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./static:/usr/share/nginx/html
     depends_on:
       - api
 
@@ -957,7 +957,7 @@ volumes:
 ```
 
 ```bash
-dck up -d
+dck up
 ```
 
 ---

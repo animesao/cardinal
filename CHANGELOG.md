@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Documentation
+
+- Added complete English and Russian CLI command references with syntax prefixes, positional arguments, aliases, every user-facing option, and internal-command notes.
+- Added separate English and Russian practical command examples for applications, databases, bots, Minecraft, restart recovery, volumes, backups, Compose, registries, clusters, services, and functions.
+- Linked the new references and examples from the README and documentation index.
+
 ### CI and release workflow
 
 - CI runs Go tests only on the native amd64 runner; arm64 is cross-compiled without executing an incompatible test binary.
@@ -14,6 +20,13 @@
 - Added configurable automatic restart delays with `--restart-delay` / `dck set --restart-delay` (for example, `10s` or `1m`).
 - Added a persistent systemd supervisor for detached `always` and `unless-stopped` containers; `on-failure` remains a foreground-process policy and is not adopted after the detached CLI exits.
 - Added per-container scheduled backups with `dck backup enable/disable/status`, configurable intervals, retention, safe destinations, and supervisor-based recovery after reboot.
+
+## 1.22.30 (2026-08-11)
+
+### Documentation
+
+- Added complete bilingual CLI references and command examples.
+- Updated documentation navigation and current release references.
 
 ## 1.22.28 (2026-08-11)
 

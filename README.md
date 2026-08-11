@@ -779,7 +779,7 @@ dck run -d
 
 ## Changelog
 
-**v1.22.28** — Current release. OCI image extraction, protected bind-source validation, persistent restart policies with delays and systemd recovery, rotated dck logs, inspect JSON, manual and scheduled safe container backups with retention, cluster orchestration, FaaS, blueprints, services, Compose, healthchecks, startup scripts, dynamic ports, events, stats, Docker-compatible REST API, and cross-architecture CI builds.
+**v1.22.30** — Current release. OCI image extraction, protected bind-source validation, persistent restart policies with delays and systemd recovery, rotated dck logs, inspect JSON, manual and scheduled safe container backups with retention, cluster orchestration, FaaS, blueprints, services, Compose, healthchecks, startup scripts, dynamic ports, events, stats, Docker-compatible REST API, cross-architecture CI builds, and complete EN/RU CLI references with practical examples.
 
 **v1.20.0** — Dynamic port management (`dck port add/rm`). Russian (ru) docs.
 
@@ -819,6 +819,8 @@ Downloads the latest binary and replaces `/usr/local/bin/dck`.
 | English | Русский |
 |---|---|
 | [Running Guide](docs/en/running.md) | [Руководство по запуску](docs/ru/running.md) |
+| [Complete CLI Reference](docs/en/commands.md) | [Полный справочник CLI](docs/ru/commands.md) |
+| [Command Examples](docs/en/examples.md) | [Примеры команд](docs/ru/examples.md) |
 | [Usage & Commands](docs/en/usage.md) | [Команды и использование](docs/ru/usage.md) |
 | [Deploying Websites](docs/en/websites.md) | [Развёртывание сайтов](docs/ru/websites.md) |
 | [Bots (Telegram, Discord)](docs/en/bots.md) | [Боты (Telegram, Discord)](docs/ru/bots.md) |

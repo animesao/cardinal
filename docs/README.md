@@ -9,10 +9,14 @@ dck up                        dck cluster init
 dck serve                     dck fn deploy --name hello myfunc
 ```
 
-Version: `1.22.28` — [GitHub](https://github.com/animesao/dck)
+Version: `1.22.30` — [GitHub](https://github.com/animesao/dck)
 
 ## Start here
 
+- [Complete CLI command reference (English)](en/commands.md)
+- [Полный справочник CLI (русский)](ru/commands.md)
+- [Command examples (English)](en/examples.md)
+- [Примеры команд (русский)](ru/examples.md)
 - [Contributing guide](../CONTRIBUTING.md)
 - [Running guide (English)](en/running.md)
 - [Руководство по запуску (русский)](ru/running.md)
@@ -147,6 +151,7 @@ The running guides cover installation, image/tag syntax, bind mounts, `.env`, Py
 | `dck bootstrap [--install\|--remove]` | Install/start or remove the systemd supervisor |
 | `dck version / --version / -v` | Show version |
 | `dck help / --help / -h` | Show help |
+| `dck help / --help / -h` | Show help |
 
 ## Run Options
 
@@ -193,6 +198,8 @@ The running guides cover installation, image/tag syntax, bind mounts, `.env`, Py
 | English | Русский |
 |---------|---------|
 | [Running Guide](en/running.md) | [Руководство по запуску](ru/running.md) |
+| [Complete CLI Reference](en/commands.md) | [Полный справочник CLI](ru/commands.md) |
+| [Command Examples](en/examples.md) | [Примеры команд](ru/examples.md) |
 | [Usage & Commands](en/usage.md) | [Команды и использование](ru/usage.md) |
 | [Deploying Websites](en/websites.md) | [Развёртывание сайтов](ru/websites.md) |
 | [Bots (Telegram, Discord)](en/bots.md) | [Боты (Telegram, Discord)](ru/bots.md) |

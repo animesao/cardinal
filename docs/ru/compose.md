@@ -15,12 +15,8 @@
 dck up                    # автоопределение
 dck up myapp              # запустить только "myapp"
 dck up -f docker-compose.prod.yaml
-dck up --no-net           # без настройки сети
-dck up --no-start         # создать, но не запускать
-dck up --build            # пересобрать образы перед запуском
-dck up --pull             # скачать образы перед запуском
-dck up -d                 # фоновый режим (только ID контейнеров)
-dck up --autostart        # установить systemd-сервис для автостарта при загрузке
+dck up myapp              # запустить только сервис "myapp"
+dck bootstrap --install  # отдельно установить recovery при загрузке
 ```
 
 ## `dck down [имя] [-f <файл>]`
@@ -31,9 +27,9 @@ dck up --autostart        # установить systemd-сервис для а�
 dck down                  # остановить + удалить
 dck down myapp            # только "myapp"
 dck down -f dck.toml
-dck down -a               # удалить ВСЕ контейнеры
-dck down --volumes        # также удалить тома
-dck down --rmi            # также удалить образы
+dck down -a               # удалить ВСЕ контейнеры без чтения config
+# Именованные volumes удаляйте отдельно и осторожно:
+dck volume prune
 ```
 
 ## compose.yaml справочник
@@ -333,8 +329,8 @@ volumes:
 
 ```
 cd /data
-dck up           # запустит все 3 сервиса
-dck up bot       # только бота
+dck up           # запустить все 3 сервиса
+dck up bot       # запустить только бота
 ```
 
 ---
@@ -510,7 +506,9 @@ secrets:
 
 ```
 cd /data/dck
-dck up --autostart
+dck up
+# Recovery при загрузке устанавливается отдельно:
+dck bootstrap --install
 ```
 
 ---
@@ -559,9 +557,9 @@ depends_on:
 ### Автостарт при загрузке
 
 ```bash
-dck up --autostart       # одной командой: up + systemd-сервис
-# или отдельно:
-dck bootstrap --install  # установить systemd-сервис для существующих контейнеров
+dck up                    # запустить настроенные сервисы
+# recovery при загрузке устанавливается отдельно:
+dck bootstrap --install  # установить systemd-сервис
 ```
 
 После перезагрузки: `systemctl status dck-bootstrap` проверит, что все контейнеры с `restart: always` запущены.

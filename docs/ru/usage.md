@@ -3,6 +3,8 @@
 dck — лёгкий container runtime. Нет демона, нет Docker. Просто контейнеры.
 ~5 MB статический бинарник, OCI образы, bridge-сеть, кластеризация, FaaS.
 
+> Полный список команд, алиасов, префиксов и флагов находится в [полном справочнике CLI](commands.md). Практические рецепты — в [примерах команд](examples.md).
+
 ---
 
 ## Содержание
@@ -251,7 +253,7 @@ dck run -d --name myapp --ports 8080:80 --volume /app:/app --restart always --im
 
 ```bash
 dck stop web
-dck stop web db       # несколько
+dck stop --all         # остановить все работающие контейнеры
 ```
 
 ### `dck start <контейнер>`
@@ -837,12 +839,9 @@ depends_on = { db = "service_healthy" }
 dck up                    # автоопределение
 dck up myapp              # только сервис "myapp"
 dck up -f compose.prod.yaml
-dck up --no-net           # без настройки сети
-dck up --no-start         # создать, но не запускать
-dck up --build            # пересобрать образы
-dck up --pull             # скачать образы
-dck up -d                 # в фоне
-dck up                    # сам установит bootstrap если есть --restart always
+dck up                    # запустить конфигурацию
+dck up -f compose.prod.yaml
+dck up myapp              # только сервис "myapp"
 dck up --generate         # создать dck.toml из существующих контейнеров
 ```
 
@@ -855,8 +854,8 @@ dck down                  # stop + remove
 dck down myapp            # только "myapp"
 dck down -f dck.toml
 dck down -a               # удалить ВСЕ контейнеры
-dck down --volumes        # также удалить тома
-dck down --rmi            # также удалить образы
+# Для удаления всех контейнеров без чтения конфигурации:
+dck down -a
 ```
 
 ---

@@ -50,7 +50,7 @@ echo "<h1>Hello from dck!</h1>" > /data/www/mysite/index.html
 # Запустить nginx с примонтированными файлами (лимит: 256MB RAM, 0.5 CPU, 1GB диск)
 dck run -d --restart always \
   -n mysite -p 80:80 \
-  -v /data/www/mysite:/usr/share/nginx/html:ro \
+  -v /data/www/mysite:/usr/share/nginx/html \
   --memory 256m --cpus 0.5 --disk 1G \
   nginx:alpine
 
@@ -77,8 +77,8 @@ EOF
 
 dck run -d --restart always \
   -n mysite -p 80:80 \
-  -v /data/www/mysite:/usr/share/nginx/html:ro \
-  -v /data/nginx-conf:/etc/nginx/conf.d:ro \
+  -v /data/www/mysite:/usr/share/nginx/html \
+  -v /data/nginx-conf:/etc/nginx/conf.d \
   nginx:alpine
 ```
 
@@ -116,7 +116,7 @@ EOF
 # Запустить
 dck run -d --restart always \
   -n mysite -p 443:443 \
-  -v /data/www/mysite:/usr/share/nginx/html:ro \
+  -v /data/www/mysite:/usr/share/nginx/html \
   -v /data/nginx-conf:/etc/nginx/conf.d \
   nginx:alpine
 
@@ -154,9 +154,9 @@ EOF
 # Запустить nginx
 dck run -d --restart always \
   -n mysite -p 80:80 -p 443:443 \
-  -v /data/www/mysite:/usr/share/nginx/html:ro \
-  -v /data/nginx-ssl:/etc/nginx/conf.d:ro \
-  -v /data/letsencrypt:/etc/letsencrypt:ro \
+  -v /data/www/mysite:/usr/share/nginx/html \
+  -v /data/nginx-ssl:/etc/nginx/conf.d \
+  -v /data/letsencrypt:/etc/letsencrypt \
   nginx:alpine
 ```
 
@@ -195,7 +195,7 @@ dck cp ./file.txt abc123def456:/tmp/
 
 ```bash
 dck run -d -n web -p 80:80 \
-  -v /data/www/mysite:/usr/share/nginx/html:ro \
+  -v /data/www/mysite:/usr/share/nginx/html \
   nginx:alpine
 
 # Редактируйте файлы на хосте — nginx отдаёт их мгновенно
@@ -406,8 +406,8 @@ sed -i "s/127.0.0.1:9000/$PHP_IP:9000/" /data/php-nginx/default.conf
 # Nginx
 dck run -d --restart always \
   -n php-web -p 80:80 \
-  -v /data/php-app:/var/www/html:ro \
-  -v /data/php-nginx:/etc/nginx/conf.d:ro \
+  -v /data/php-app:/var/www/html \
+  -v /data/php-nginx:/etc/nginx/conf.d \
   nginx:alpine
 ```
 
@@ -555,7 +555,7 @@ volumes:
 ```
 
 ```bash
-dck up -d
+dck up
 ```
 
 ---

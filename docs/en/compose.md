@@ -15,12 +15,8 @@ Auto-detection order:
 dck up                    # auto-detect
 dck up myapp              # start only the "myapp" service
 dck up -f docker-compose.prod.yaml
-dck up --no-net           # skip network setup
-dck up --no-start         # create but don't start
-dck up --build            # rebuild images before starting
-dck up --pull             # pull images before starting
-dck up -d                 # detach (output only container IDs)
-dck up --autostart        # also install systemd service for auto-start on boot
+dck up myapp              # start only the "myapp" service
+dck bootstrap --install  # install boot recovery separately
 ```
 
 ## `dck down [name] [-f <file>]`
@@ -31,9 +27,9 @@ Stop and remove containers from a compose file.
 dck down                  # stop + remove
 dck down myapp            # stop + remove only "myapp"
 dck down -f dck.toml
-dck down -a               # remove ALL containers
-dck down --volumes        # also remove volumes
-dck down --rmi            # also remove images
+dck down -a               # remove ALL containers (ignore config)
+# Remove named volumes separately, only when you are sure:
+dck volume prune
 ```
 
 ## compose.yaml reference
@@ -338,9 +334,9 @@ volumes:
 ```
 
 ```
-cd /opt
-dck up           # запустит все 3 сервиса
-dck up bot       # только бота
+cd /data
+dck up           # start all 3 services
+dck up bot       # start only the bot
 ```
 
 ---
@@ -516,7 +512,9 @@ secrets:
 
 ```
 cd /data/dck
-dck up --autostart
+dck up
+# Install boot recovery separately:
+dck bootstrap --install
 ```
 
 ---
@@ -565,9 +563,9 @@ depends_on:
 ### Auto-start on boot
 
 ```bash
-dck up --autostart       # instant: up + installs systemd service
-# or separately:
-dck bootstrap --install  # installs systemd service for existing containers
+dck up                    # start the configured services
+# install boot recovery separately:
+dck bootstrap --install  # install systemd service for existing containers
 ```
 
 After reboot: `systemctl status dck-bootstrap` checks all containers with `restart: always` are running.
