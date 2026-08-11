@@ -119,7 +119,10 @@ func Run(args []string) {
 
 	startupScript := fs.String("startup", "", "Startup script (inline script or @filepath)")
 
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing run options: %v\n", err)
+		os.Exit(1)
+	}
 
 	freeArgs := fs.Args()
 

@@ -60,7 +60,10 @@ func volumeCreate(args []string) {
 	fs.Var(&labels, "l", "Set volume labels")
 	fs.Var(&labels, "label", "Set volume labels")
 
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing volume create options: %v\n", err)
+		os.Exit(1)
+	}
 
 	freeArgs := fs.Args()
 	var name string

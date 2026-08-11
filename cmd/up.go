@@ -28,7 +28,10 @@ func Up(args []string) {
 	fs := flag.NewFlagSet("up", flag.ExitOnError)
 	configPath := fs.String("f", "", "Path to config file")
 	generate := fs.Bool("generate", false, "Generate dck.toml from existing containers")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing up options: %v\n", err)
+		os.Exit(1)
+	}
 
 	if *generate {
 		outPath := *configPath

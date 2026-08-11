@@ -15,7 +15,10 @@ func Push(args []string) {
 	username := fs.String("u", "", "Registry username")
 	password := fs.String("p", "", "Registry password")
 
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing push options: %v\n", err)
+		os.Exit(1)
+	}
 
 	freeArgs := fs.Args()
 	if len(freeArgs) < 1 {

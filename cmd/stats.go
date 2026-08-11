@@ -14,7 +14,10 @@ import (
 func Stats(args []string) {
 	fs := flag.NewFlagSet("stats", flag.ExitOnError)
 	noStream := fs.Bool("no-stream", false, "Show one-time stats and exit")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing stats options: %v\n", err)
+		os.Exit(1)
+	}
 
 	remainder := fs.Args()
 	if len(remainder) == 0 {

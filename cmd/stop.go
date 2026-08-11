@@ -13,7 +13,10 @@ import (
 func Stop(args []string) {
 	fs := flag.NewFlagSet("stop", flag.ExitOnError)
 	all := fs.Bool("all", false, "Stop all running containers")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing stop options: %v\n", err)
+		os.Exit(1)
+	}
 
 	if *all {
 		containers, err := container.List(false)

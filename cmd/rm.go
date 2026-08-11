@@ -13,7 +13,10 @@ import (
 func Rm(args []string) {
 	fs := flag.NewFlagSet("rm", flag.ExitOnError)
 	force := fs.Bool("f", false, "Force remove")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing rm options: %v\n", err)
+		os.Exit(1)
+	}
 
 	if fs.NArg() < 1 {
 		fmt.Println("Usage: dck rm [-f] <container>")
