@@ -199,15 +199,31 @@ func adoptEligibleContainers(managed map[string]time.Time, finalized map[string]
 		if !container.AllowAutomaticRestart(c) {
 			continue
 		}
+		// The container may have been removed (dck rm) between the List above
+		// and now; never resurrect a deleted container. Re-load the state so we
+		// decide from the latest file on disk, and honor the removal tombstone
+		// in case rm is mid-cleanup.
+		if container.IsBeingRemoved(c.ID) {
+			delete(managed, c.ID)
+			continue
+		}
+		fresh, err := container.Load(c.ID)
+		if err != nil {
+			delete(managed, c.ID)
+			continue
+		}
+		if fresh.Status == container.Running || fresh.StoppedByUser || fresh.RestartBlocked {
+			continue
+		}
 		managed[c.ID] = time.Time{}
-		if err := c.Start(); err != nil {
-			managed[c.ID] = time.Now().Add(supervisorRestartDelay(c))
-			fmt.Fprintf(os.Stderr, "dck supervisor: start %s: %v\n", c.Name, err)
+		if err := fresh.Start(); err != nil {
+			managed[c.ID] = time.Now().Add(supervisorRestartDelay(fresh))
+			fmt.Fprintf(os.Stderr, "dck supervisor: start %s: %v\n", fresh.Name, err)
 		}
 		// A successful (re)start means this container is alive again; forget any
 		// earlier finalization so that if it crashes again within the same poll
 		// interval (crash-looping), its next exit is finalized and cleaned up.
-		delete(finalized, c.ID)
+		delete(finalized, fresh.ID)
 	}
 }
 

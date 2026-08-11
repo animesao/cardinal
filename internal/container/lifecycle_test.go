@@ -6,6 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
+
+	"dck/internal/state"
 )
 
 // TestNormalizeLoadedStateKeepsLiveContainer verifies that a container whose
@@ -112,6 +115,66 @@ func TestContainerProcessAlive(t *testing.T) {
 	mismatch := &Container{ID: "totally-different-id", UnsharePID: other.Process.Pid}
 	if ContainerProcessAlive(mismatch) {
 		t.Fatal("unrelated live process reported as container process")
+	}
+}
+
+// TestPidAliveTreatsZombieAsDead verifies that a zombie (defunct) process is
+// not reported alive. Detached containers are reparented to init once the CLI
+// exits, so their corpses can linger until systemd reaps them; treating them as
+// alive would stall exit detection and leave status stuck on "running".
+func TestPidAliveTreatsZombieAsDead(t *testing.T) {
+	cmd := exec.Command("sh", "-c", "sleep 30")
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start helper: %v", err)
+	}
+	defer func() { _ = cmd.Process.Kill() }()
+	defer func() { _ = cmd.Wait() }()
+
+	if !pidAlive(cmd.Process.Pid) {
+		t.Fatal("live process reported dead")
+	}
+
+	if err := cmd.Process.Kill(); err != nil {
+		t.Fatalf("kill helper: %v", err)
+	}
+	// The helper is now a zombie until the test reaps it via Wait.
+	deadline := time.Now().Add(2 * time.Second)
+	for pidAlive(cmd.Process.Pid) {
+		if time.Now().After(deadline) {
+			t.Fatal("zombie process still reported alive")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+// TestRemovalTombstone verifies that the removal marker written by Remove()
+// is visible to the supervisor so an automatic restart cannot resurrect a
+// container mid-removal.
+func TestRemovalTombstone(t *testing.T) {
+	origDataDir := os.Getenv("DCK_DATA_DIR")
+	defer os.Setenv("DCK_DATA_DIR", origDataDir)
+	os.Setenv("DCK_DATA_DIR", t.TempDir())
+	if err := state.EnsureDirs(); err != nil {
+		t.Fatalf("ensure dirs: %v", err)
+	}
+
+	c := &Container{ID: "tombstone-test"}
+	if IsBeingRemoved(c.ID) {
+		t.Fatal("marker reported before any removal")
+	}
+
+	marker := removalMarkerPath(c.ID)
+	if err := os.WriteFile(marker, []byte("removing\n"), 0600); err != nil {
+		t.Fatalf("write marker: %v", err)
+	}
+	if !IsBeingRemoved(c.ID) {
+		t.Fatal("marker not detected")
+	}
+	if err := os.Remove(marker); err != nil {
+		t.Fatalf("remove marker: %v", err)
+	}
+	if IsBeingRemoved(c.ID) {
+		t.Fatal("marker still reported after cleanup")
 	}
 }
 

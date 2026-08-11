@@ -16,8 +16,24 @@ func pidAlive(pid int) bool {
 	if pid <= 0 {
 		return false
 	}
-	_, err := os.Stat("/proc/" + strconv.Itoa(pid))
-	return err == nil
+	// A zombie (defunct) process has already exited; only its kernel stub
+	// remains. /proc/<pid> still exists for zombies, so a plain Stat() would
+	// report them alive and stall exit detection until the parent (systemd, on
+	// a host where the detached CLI is long gone) gets around to reaping it.
+	// Read the state from /proc/<pid>/stat and treat Z/X as dead.
+	b, err := os.ReadFile("/proc/" + strconv.Itoa(pid) + "/stat")
+	if err != nil {
+		return false
+	}
+	// Format: pid (comm) state ppid ... — comm may contain spaces and parens,
+	// so parse from the last closing paren.
+	if i := strings.LastIndexByte(string(b), ')'); i >= 0 {
+		fields := strings.Fields(string(b[i+1:]))
+		if len(fields) > 0 && (fields[0] == "Z" || fields[0] == "X") {
+			return false
+		}
+	}
+	return true
 }
 
 // processCmdline returns the NUL-separated command line of a process joined

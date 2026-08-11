@@ -223,7 +223,23 @@ func (c *Container) cancelHealthcheck() {
 }
 
 func isAlive(pid int) bool {
-	return syscall.Kill(pid, 0) == nil
+	if syscall.Kill(pid, 0) != nil {
+		return false
+	}
+	// kill(pid, 0) also succeeds for zombie (defunct) processes, which would
+	// make graceful-stop waits stall for the full timeout waiting on a corpse.
+	// A zombie has already exited; treat it as not alive.
+	b, err := os.ReadFile("/proc/" + strconv.Itoa(pid) + "/stat")
+	if err != nil {
+		return false
+	}
+	if i := strings.LastIndexByte(string(b), ')'); i >= 0 {
+		fields := strings.Fields(string(b[i+1:]))
+		if len(fields) > 0 && (fields[0] == "Z" || fields[0] == "X") {
+			return false
+		}
+	}
+	return true
 }
 
 func waitForExit(pid int, timeout time.Duration) bool {

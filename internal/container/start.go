@@ -114,6 +114,14 @@ func (c *Container) startInternal() error {
 	if err != nil {
 		return fmt.Errorf("record container namespaces: %w", err)
 	}
+	// The container may have been removed (dck rm) while this start was in
+	// flight (the supervisor's automatic restart racing a user removal). Never
+	// resurrect a deleted container: tear down what we just spawned instead of
+	// re-persisting its state.
+	if !state.FileExists(state.ContainerPath(c.ID)) || IsBeingRemoved(c.ID) {
+		c.abortStart(cmd)
+		return fmt.Errorf("container %s was removed during start", c.ID)
+	}
 	c.dataMu.Lock()
 	c.PID = childPID
 	c.UnsharePID = cmd.Process.Pid
@@ -272,6 +280,7 @@ func (c *Container) setupIO(cmd *exec.Cmd) (func(), error) {
 func (c *Container) abortStart(cmd *exec.Cmd) {
 	_ = cmd.Process.Kill()
 	_ = cmd.Wait()
+	UnregisterDNSName(c.Name)
 	c.cleanupRootlessPorts()
 	c.killConsoleServe()
 	c.cleanupNetwork()

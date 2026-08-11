@@ -12,7 +12,34 @@ import (
 	"dck/internal/state"
 )
 
+// removalMarkerPath returns the tombstone path that marks a container as being
+// removed, so a concurrent supervisor automatic restart can never resurrect it.
+func removalMarkerPath(id string) string {
+	return filepath.Join(state.ContainersDir(), id+".removing")
+}
+
+// IsBeingRemoved reports whether a removal is currently in progress for the
+// container. The supervisor checks this before an automatic restart so that
+// `dck rm` tearing a container down is never raced by the restart loop.
+func IsBeingRemoved(id string) bool {
+	return state.FileExists(removalMarkerPath(id))
+}
+
 func (c *Container) Remove(force bool) error {
+	// Write the removal tombstone FIRST, before any check or cleanup: the
+	// supervisor re-loads container state before each automatic restart, and
+	// the rest of Remove (Stop grace period, resource cleanup, DeleteState)
+	// takes far longer than a supervisor poll interval. Without the marker a
+	// crash-looping container could be resurrected while we are still removing
+	// it (exactly what was observed: dck rm -f printed the ID, then the
+	// container reappeared in dck ps -a). The defer removes the marker on every
+	// return path, including the !force error below.
+	marker := removalMarkerPath(c.ID)
+	if err := os.WriteFile(marker, []byte("removing\n"), 0600); err != nil {
+		log.Warn("write removal marker %s: %v", marker, err)
+	}
+	defer func() { _ = os.Remove(marker) }()
+
 	// Never trust the persisted status alone: stale state can say "stopped"
 	// while the process tree is still alive (recorded-PID races, states written
 	// before unshare PID tracking). Detect live processes directly before
