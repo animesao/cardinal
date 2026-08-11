@@ -346,18 +346,28 @@ func InitContainer(id, merged string) error {
 		}
 	}
 
-	for i := 0; i < 200; i++ {
-		out, _ := exec.Command("ip", "addr", "show", "eth0").Output()
-		if len(out) > 0 {
-			s := string(out)
-			if !strings.Contains(s, "NO-CARRIER") && strings.Contains(s, "inet ") {
-				if err := exec.Command("ip", "link", "set", "eth0", "up").Run(); err != nil {
-					log.Warn("enable eth0: %v", err)
+	// Bring up the container's primary interface once the host-side veth setup
+	// (which runs concurrently with this init) has attached an address. With
+	// --network none there is no eth0 at all, and with host networking the
+	// host's interface is already up, so both skip the wait entirely — the old
+	// unconditional 200x100ms loop made every --network none container stall
+	// ~20s before its command started, which in turn made crash-loop restarts
+	// take ~26s per cycle. The bounded wait also means a missing interface can
+	// never stall startup indefinitely.
+	if c.NetworkMode != "none" && c.NetworkMode != "host" {
+		for i := 0; i < 50; i++ {
+			out, _ := exec.Command("ip", "addr", "show", "eth0").Output()
+			if len(out) > 0 {
+				s := string(out)
+				if !strings.Contains(s, "NO-CARRIER") && strings.Contains(s, "inet ") {
+					if err := exec.Command("ip", "link", "set", "eth0", "up").Run(); err != nil {
+						log.Warn("enable eth0: %v", err)
+					}
+					break
 				}
-				break
 			}
+			time.Sleep(100 * time.Millisecond)
 		}
-		time.Sleep(100 * time.Millisecond)
 	}
 
 	ensureUsrMerge()
