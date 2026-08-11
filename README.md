@@ -794,6 +794,22 @@ rm /usr/local/bin/dck
 rm -rf ~/.dck
 ```
 
+## Contributors
+
+The project maintainer and verified contributors are listed in
+[`CONTRIBUTORS.md`](CONTRIBUTORS.md). GitHub's contributor graph is generated
+from commit authors, so contributors should use their own GitHub identity when
+opening pull requests or submitting commits.
+
+- [animesao](https://github.com/animesao) — maintainer and primary author.
+- `github-actions[bot]` — automated release and versioning workflow.
+
+See [CONTRIBUTORS.md](CONTRIBUTORS.md) for contribution rules and the process
+for adding new contributors with their permission.
+
 ## License
 
-[MIT](LICENSE)
+This project is released under the MIT License. The full license text is in
+[LICENSE](LICENSE).
+
+Contributor and maintainer attribution: [CONTRIBUTORS.md](CONTRIBUTORS.md).
