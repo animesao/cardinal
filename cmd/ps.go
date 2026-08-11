@@ -13,7 +13,10 @@ import (
 func Ps(args []string) {
 	fs := flag.NewFlagSet("ps", flag.ExitOnError)
 	all := fs.Bool("a", false, "Show all containers")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing ps options: %v\n", err)
+		os.Exit(1)
+	}
 
 	containers, err := container.List(*all)
 	if err != nil {

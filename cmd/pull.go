@@ -13,7 +13,10 @@ import (
 func Pull(args []string) {
 	fs := flag.NewFlagSet("pull", flag.ExitOnError)
 	platform := fs.String("platform", "", "Platform (e.g. linux/amd64, linux/arm64)")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing pull options: %v\n", err)
+		os.Exit(1)
+	}
 
 	if fs.NArg() < 1 {
 		fmt.Println("Usage: dck pull [--platform linux/amd64] <image>[:<tag>]")

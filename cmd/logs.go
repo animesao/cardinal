@@ -14,7 +14,10 @@ func Logs(args []string) {
 	fs := flag.NewFlagSet("logs", flag.ExitOnError)
 	follow := fs.Bool("f", false, "Follow log output")
 	tail := fs.Int("tail", 0, "Show only last N lines")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing logs options: %v\n", err)
+		os.Exit(1)
+	}
 
 	if fs.NArg() < 1 {
 		fmt.Println("Usage: dck logs [-f] [--tail <n>] <container>")
