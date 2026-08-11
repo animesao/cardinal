@@ -78,6 +78,16 @@ dck pull alpine:latest
 dck run --rm alpine:latest echo "hello from dck"
 ```
 
+Для workflow pull → verify → run проверяйте целостность образа после скачивания и перед запуском. `dck verify` сверяет config и диджесты всех слоёв с сохранённым манифестом локально, без обращения к registry:
+
+```bash
+dck pull alpine:latest
+dck verify alpine:latest
+dck run --rm alpine:latest echo "hello from dck"
+```
+
+`dck verify` завершится с ненулевым кодом, если образ отсутствует локально, диджест config не совпадает с сохранённой мета-информацией или манифестом, либо повреждён какой-либо файл слоя. Это быстрая офлайн-проверка для образов, восстановленных через `dck import` или перенесённых между хостами.
+
 Тег указывается через двоеточие. Это разные ссылки:
 
 ```text

@@ -78,6 +78,16 @@ dck pull alpine:latest
 dck run --rm alpine:latest echo "hello from dck"
 ```
 
+For a pull → verify → run workflow, check the image's integrity after pulling and before running. `dck verify` compares the config digest and every layer digest against the stored manifest locally, without contacting the registry:
+
+```bash
+dck pull alpine:latest
+dck verify alpine:latest
+dck run --rm alpine:latest echo "hello from dck"
+```
+
+`dck verify` exits non-zero if the image is not present locally, the config digest does not match the stored metadata or manifest, or any layer file is corrupt. It is a fast offline sanity check for images restored from `dck import` or transferred between hosts.
+
 Use a tag with a colon. These references have different meanings:
 
 ```text
