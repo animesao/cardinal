@@ -13,8 +13,8 @@
 </p>
 
 <p align="center">
-  <a href="CONTRIBUTORS.md">👥 Contributors</a> ·
-  <a href="https://github.com/animesao/dck/graphs/contributors">GitHub contributor graph</a> ·
+  <a href="CONTRIBUTING.md">🤝 Contributing</a> ·
+  <a href="https://github.com/animesao/dck/graphs/contributors">GitHub contributors</a> ·
   <a href="LICENSE">MIT License</a>
 </p>
 
@@ -776,7 +776,7 @@ Downloads the latest binary and replaces `/usr/local/bin/dck`.
 
 ## Documentation
 
-- [Contributors and contribution guide](CONTRIBUTORS.md)
+- [Contributors and contribution guide](CONTRIBUTING.md)
 
 | English | Русский |
 |---|---|
@@ -800,17 +800,17 @@ rm /usr/local/bin/dck
 rm -rf ~/.dck
 ```
 
-## Contributors
+## Contributing
 
 The project maintainer and verified contributors are listed in
-[`CONTRIBUTORS.md`](CONTRIBUTORS.md). GitHub's contributor graph is generated
+[`CONTRIBUTING.md`](CONTRIBUTING.md). GitHub's contributor graph is generated
 from commit authors, so contributors should use their own GitHub identity when
 opening pull requests or submitting commits.
 
 - [animesao](https://github.com/animesao) — maintainer and primary author.
 - `github-actions[bot]` — automated release and versioning workflow.
 
-See [CONTRIBUTORS.md](CONTRIBUTORS.md) for contribution rules and the process
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution rules and the process
 for adding new contributors with their permission.
 
 ## License
@@ -818,4 +818,4 @@ for adding new contributors with their permission.
 This project is released under the MIT License. The full license text is in
 [LICENSE](LICENSE).
 
-Contributor and maintainer attribution: [CONTRIBUTORS.md](CONTRIBUTORS.md).
+Contributor and maintainer attribution: [CONTRIBUTING.md](CONTRIBUTING.md).

@@ -13,7 +13,7 @@ Version: `1.22.19` — [GitHub](https://github.com/animesao/dck)
 
 ## Start here
 
-- [Contributors and contribution guide](../CONTRIBUTORS.md)
+- [Contributing guide](../CONTRIBUTING.md)
 - [Running guide (English)](en/running.md)
 - [Руководство по запуску (русский)](ru/running.md)
 
