@@ -105,6 +105,7 @@ dck rm -f web                               # Force remove (deletes files)
 dck rename web web-new                      # Rename container
 dck set web --memory 2g --cpus 4            # Change container params (preserves data)
 dck set web --restart always                # Enable auto-restart
+dck set web --restart-delay 1m             # Wait 1 minute before recovery
 dck system prune                            # Remove unused containers and images
 dck info                                    # System information
 dck commit web my-image:v1                  # Create image from container
@@ -190,6 +191,7 @@ Use `-v` (bind mount) for live file sharing — changes on host are instantly vi
 | `-t` | Allocate TTY |
 | `--rm` | Auto-remove on exit |
 | `--restart` | Restart policy: `no`, `always`, `on-failure`, `unless-stopped` |
+| `--restart-delay` | Wait before automatic restart (e.g. `10s`, `1m`) |
 | `--memory` | RAM limit (e.g. `512m`, `2g`) |
 | `--cpus` | CPU limit (e.g. `1.5`, `4`) |
 | `--disk` | Disk limit (e.g. `10G`) |
@@ -767,6 +769,8 @@ Downloads the latest binary and replaces `/usr/local/bin/dck`.
 ---
 
 ## Documentation
+
+- [Contributors and contribution guide](CONTRIBUTORS.md)
 
 | English | Русский |
 |---|---|

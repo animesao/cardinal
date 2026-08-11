@@ -14,45 +14,46 @@ type composeFile struct {
 	Services map[string]composeService    `yaml:"services"`
 	Volumes  map[string]composeVolume     `yaml:"volumes"`
 	Networks map[string]composeNetwork    `yaml:"networks"`
-	Secrets  map[string]composeSecretSpec  `yaml:"secrets"`
-	Configs  map[string]composeConfigSpec  `yaml:"configs"`
+	Secrets  map[string]composeSecretSpec `yaml:"secrets"`
+	Configs  map[string]composeConfigSpec `yaml:"configs"`
 }
 
 type composeService struct {
-	Image       string                  `yaml:"image"`
-	ContainerName string                `yaml:"container_name"`
-	Ports       []string                `yaml:"ports"`
-	Environment interface{}             `yaml:"environment"`
-	EnvFile     interface{}             `yaml:"env_file"`
-	Volumes     []interface{}           `yaml:"volumes"`
-	DependsOn   interface{}             `yaml:"depends_on"`
-	Restart     string                  `yaml:"restart"`
-	Command     interface{}             `yaml:"command"`
-	Entrypoint  interface{}             `yaml:"entrypoint"`
-	WorkingDir  string                  `yaml:"working_dir"`
-	User        string                  `yaml:"user"`
-	DNS         interface{}             `yaml:"dns"`
-	CapAdd      []string                `yaml:"cap_add"`
-	CapDrop     []string                `yaml:"cap_drop"`
-	Labels      map[string]string       `yaml:"labels"`
-	Healthcheck *composeHealthcheck     `yaml:"healthcheck"`
-	Networks    interface{}             `yaml:"networks"`
-	NetworkMode string                  `yaml:"network_mode"`
-	ReadOnly    bool                    `yaml:"read_only"`
-	StdinOpen   bool                    `yaml:"stdin_open"`
-	TTY         bool                    `yaml:"tty"`
-	StopSignal  string                  `yaml:"stop_signal"`
-	StopGracePeriod string              `yaml:"stop_grace_period"`
-	Sysctls     map[string]string       `yaml:"sysctls"`
-	Ulimits     map[string]composeUlimit `yaml:"ulimits"`
-	Memory      string                  `yaml:"memory"`
-	MemLimit    string                  `yaml:"mem_limit"`
-	CPUs        float64                 `yaml:"cpus"`
-	CPUSet      string                  `yaml:"cpuset"`
-	Privileged  bool                    `yaml:"privileged"`
-	Hostname    string                  `yaml:"hostname"`
-	Expose      []string                `yaml:"expose"`
-	ExtraHosts  []string                `yaml:"extra_hosts"`
+	Image           string                   `yaml:"image"`
+	ContainerName   string                   `yaml:"container_name"`
+	Ports           []string                 `yaml:"ports"`
+	Environment     interface{}              `yaml:"environment"`
+	EnvFile         interface{}              `yaml:"env_file"`
+	Volumes         []interface{}            `yaml:"volumes"`
+	DependsOn       interface{}              `yaml:"depends_on"`
+	Restart         string                   `yaml:"restart"`
+	RestartDelay    string                   `yaml:"restart_delay"`
+	Command         interface{}              `yaml:"command"`
+	Entrypoint      interface{}              `yaml:"entrypoint"`
+	WorkingDir      string                   `yaml:"working_dir"`
+	User            string                   `yaml:"user"`
+	DNS             interface{}              `yaml:"dns"`
+	CapAdd          []string                 `yaml:"cap_add"`
+	CapDrop         []string                 `yaml:"cap_drop"`
+	Labels          map[string]string        `yaml:"labels"`
+	Healthcheck     *composeHealthcheck      `yaml:"healthcheck"`
+	Networks        interface{}              `yaml:"networks"`
+	NetworkMode     string                   `yaml:"network_mode"`
+	ReadOnly        bool                     `yaml:"read_only"`
+	StdinOpen       bool                     `yaml:"stdin_open"`
+	TTY             bool                     `yaml:"tty"`
+	StopSignal      string                   `yaml:"stop_signal"`
+	StopGracePeriod string                   `yaml:"stop_grace_period"`
+	Sysctls         map[string]string        `yaml:"sysctls"`
+	Ulimits         map[string]composeUlimit `yaml:"ulimits"`
+	Memory          string                   `yaml:"memory"`
+	MemLimit        string                   `yaml:"mem_limit"`
+	CPUs            float64                  `yaml:"cpus"`
+	CPUSet          string                   `yaml:"cpuset"`
+	Privileged      bool                     `yaml:"privileged"`
+	Hostname        string                   `yaml:"hostname"`
+	Expose          []string                 `yaml:"expose"`
+	ExtraHosts      []string                 `yaml:"extra_hosts"`
 
 	// Deploy section
 	Deploy *composeDeployConfig `yaml:"deploy"`
@@ -61,17 +62,17 @@ type composeService struct {
 	SecretsRaw interface{} `yaml:"secrets"`
 	ConfigsRaw interface{} `yaml:"configs"`
 
-	Build       interface{}            `yaml:"build"`
+	Build interface{} `yaml:"build"`
 }
 
 type composeDeployConfig struct {
-	Mode          string                    `yaml:"mode"`
-	Replicas      int                       `yaml:"replicas"`
-	Resources     *composeResources         `yaml:"resources"`
-	RestartPolicy *composeRestartPolicy     `yaml:"restart_policy"`
-	UpdateConfig  *composeUpdateConfig      `yaml:"update_config"`
-	Placement     *composePlacement         `yaml:"placement"`
-	Labels        map[string]string         `yaml:"labels"`
+	Mode          string                `yaml:"mode"`
+	Replicas      int                   `yaml:"replicas"`
+	Resources     *composeResources     `yaml:"resources"`
+	RestartPolicy *composeRestartPolicy `yaml:"restart_policy"`
+	UpdateConfig  *composeUpdateConfig  `yaml:"update_config"`
+	Placement     *composePlacement     `yaml:"placement"`
+	Labels        map[string]string     `yaml:"labels"`
 }
 
 type composeResources struct {
@@ -80,7 +81,7 @@ type composeResources struct {
 }
 
 type composeResourceSpec struct {
-	CPUs   interface{} `yaml:"cpus"`   // string or float64
+	CPUs   interface{} `yaml:"cpus"` // string or float64
 	Memory string      `yaml:"memory"`
 }
 
@@ -176,9 +177,9 @@ func LoadCompose(path string) (*Config, error) {
 	}
 
 	cfg := &Config{
-		Secrets:    make(map[string]SecretSpec),
-		Configs:    make(map[string]ConfigSpec),
-		Container:  make(map[string]ContainerConfig),
+		Secrets:   make(map[string]SecretSpec),
+		Configs:   make(map[string]ConfigSpec),
+		Container: make(map[string]ContainerConfig),
 	}
 
 	// Top-level secrets
@@ -193,19 +194,20 @@ func LoadCompose(path string) (*Config, error) {
 
 	for name, svc := range cf.Services {
 		cc := ContainerConfig{
-			Image:       svc.Image,
-			Restart:     svc.Restart,
-			Hostname:    svc.Hostname,
-			WorkDir:     svc.WorkingDir,
-			User:        svc.User,
-			NetworkMode: svc.NetworkMode,
-			Readonly:    svc.ReadOnly,
-			NoNewPrivs:  false,
-			Labels:      svc.Labels,
-			CapAdd:      svc.CapAdd,
-			CapDrop:     svc.CapDrop,
-			Sysctls:     svc.Sysctls,
-			DNS:         toStringSlice(svc.DNS),
+			Image:        svc.Image,
+			Restart:      svc.Restart,
+			RestartDelay: svc.RestartDelay,
+			Hostname:     svc.Hostname,
+			WorkDir:      svc.WorkingDir,
+			User:         svc.User,
+			NetworkMode:  svc.NetworkMode,
+			Readonly:     svc.ReadOnly,
+			NoNewPrivs:   false,
+			Labels:       svc.Labels,
+			CapAdd:       svc.CapAdd,
+			CapDrop:      svc.CapDrop,
+			Sysctls:      svc.Sysctls,
+			DNS:          toStringSlice(svc.DNS),
 		}
 
 		if svc.ContainerName != "" {
@@ -268,6 +270,9 @@ func LoadCompose(path string) (*Config, error) {
 		// --- Deploy section ---
 		if svc.Deploy != nil {
 			cc.Deploy = parseDeployConfig(svc.Deploy)
+			if cc.RestartDelay == "" && svc.Deploy.RestartPolicy != nil {
+				cc.RestartDelay = svc.Deploy.RestartPolicy.Delay
+			}
 			// Pull replicas from deploy section if set
 			if svc.Deploy.Replicas > 0 {
 				cc.Replicas = svc.Deploy.Replicas

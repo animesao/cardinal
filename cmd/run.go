@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"dck/internal/builder"
 	"dck/internal/container"
@@ -73,6 +74,7 @@ func Run(args []string) {
 	rm := fs.Bool("rm", false, "Remove container on exit")
 	hostname := fs.String("h", "", "Container hostname")
 	restart := fs.String("restart", "", "Restart policy")
+	restartDelay := fs.String("restart-delay", "", "Delay before automatic restart (e.g. 10s, 1m)")
 	var envVars stringSlice
 	fs.Var(&envVars, "e", "Environment variables (key=val)")
 	envFile := fs.String("env-file", "", "Path to .env file")
@@ -238,6 +240,14 @@ func Run(args []string) {
 		os.Exit(1)
 	}
 
+	if *restartDelay != "" {
+		delay, err := time.ParseDuration(*restartDelay)
+		if err != nil || delay <= 0 {
+			fmt.Fprintf(os.Stderr, "Error: invalid restart delay %q (use e.g. 10s, 1m)\n", *restartDelay)
+			os.Exit(1)
+		}
+	}
+
 	if *name != "" {
 		if existing := container.FindByName(*name); existing != nil {
 			fmt.Fprintf(os.Stderr, "Error: container with name %q already exists (%s)\n", *name, shortID(existing.ID))
@@ -315,6 +325,7 @@ func Run(args []string) {
 		Env:             env,
 		Hostname:        *hostname,
 		Restart:         *restart,
+		RestartDelay:    *restartDelay,
 		Detach:          *detach,
 		Interactive:     *interactive || *tty,
 		TTY:             *tty,

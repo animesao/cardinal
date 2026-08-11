@@ -70,6 +70,7 @@ func New(img *image.Image, opts CreateOpts) *Container {
 		Env:             opts.Env,
 		Hostname:        hostname,
 		Restart:         opts.Restart,
+		RestartDelay:    opts.RestartDelay,
 		Detach:          opts.Detach,
 		Interactive:     opts.Interactive,
 		TTY:             opts.TTY,

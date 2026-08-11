@@ -43,6 +43,19 @@ func (c *Container) Stop() error {
 	pid := c.PID
 	c.dataMu.RUnlock()
 	if status != Running {
+		// A stopped container may still have a delayed automatic restart pending.
+		// Treat dck stop as an explicit cancellation instead of reporting an
+		// error, so the pending restart cannot bring it back unexpectedly.
+		if status == Stopped && c.Restart != "" && c.Restart != "no" {
+			c.dataMu.Lock()
+			c.StoppedByUser = true
+			c.dataMu.Unlock()
+			stoppedContainers.Store(c.ID, true)
+			if err := c.Save(); err != nil {
+				return fmt.Errorf("save stopped container: %w", err)
+			}
+			return nil
+		}
 		return fmt.Errorf("container %s is not running", c.ID)
 	}
 
@@ -52,9 +65,11 @@ func (c *Container) Stop() error {
 		return nil
 	}
 	c.cleanupStarted = true
-	c.StoppedByUser = true
-	stoppedContainers.Store(c.ID, true)
 	c.mu.Unlock()
+	c.dataMu.Lock()
+	c.StoppedByUser = true
+	c.dataMu.Unlock()
+	stoppedContainers.Store(c.ID, true)
 
 	if err := c.Save(); err != nil {
 		return fmt.Errorf("save stopping container: %w", err)

@@ -43,6 +43,7 @@ type Container struct {
 	Env             []string           `json:"env,omitempty"`
 	Hostname        string             `json:"hostname,omitempty"`
 	Restart         string             `json:"restart,omitempty"`
+	RestartDelay    string             `json:"restart_delay,omitempty"`
 	IP              string             `json:"ip,omitempty"`
 	Detach          bool               `json:"detach,omitempty"`
 	Interactive     bool               `json:"interactive,omitempty"`
@@ -117,6 +118,7 @@ type CreateOpts struct {
 	Env             []string
 	Hostname        string
 	Restart         string
+	RestartDelay    string
 	Detach          bool
 	Interactive     bool
 	TTY             bool

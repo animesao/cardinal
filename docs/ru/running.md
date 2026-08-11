@@ -85,11 +85,14 @@ dck pull nanozoo/python3.12:3.12--d46ab4d
 
 Общий вид команды:
 
+`--restart-delay` принимает значения длительности: `10s`, `30s` или `1m`.
+
 ```bash
 dck run -d \
   -n ИМЯ_ПРИЛОЖЕНИЯ \
   -p ПОРТ_ХОСТА:ПОРТ_КОНТЕЙНЕРА \
   --restart unless-stopped \
+  --restart-delay 1m \
   ОБРАЗ[:ТЕГ] \
   КОМАНДА [АРГУМЕНТЫ...]
 ```
@@ -109,7 +112,7 @@ dck ps -a
 dck logs web
 ```
 
-Доступные политики перезапуска: `no`, `always`, `on-failure`, `unless-stopped`.
+Доступные политики перезапуска: `no`, `always`, `on-failure`, `unless-stopped`. Добавьте `--restart-delay 1m` (или короткое значение `10s`), чтобы задать задержку перед автоматическим запуском после неожиданного завершения процесса. Намеренный `dck stop` эту задержку не отменяет и контейнер не запускает.
 
 ## 5. Bind mount и именованные тома
 
@@ -358,6 +361,7 @@ dck run -d \
   -n ИМЯ \
   -p ПОРТ_ХОСТА:ПОРТ_КОНТЕЙНЕРА \
   --restart ПОЛИТИКА \
+  --restart-delay 1m \
   --env-file "$PWD/.env" \
   --vol "$PWD:/app" \
   --workdir /app \
@@ -375,7 +379,7 @@ dck run -d \
 | `always` | Перезапуск | Явно остановленный контейнер не запускается этим действием | Запускается автоматически |
 | `unless-stopped` | Перезапуск | Останется остановленным до явного `dck start` | Запускается автоматически, если не был остановлен вручную |
 
-`dck run --restart always` и `dck run --restart unless-stopped`, запущенные от root, автоматически устанавливают systemd-службу bootstrap. Установить её вручную можно так:
+`dck run --restart always` и `dck run --restart unless-stopped`, запущенные от root, автоматически устанавливают systemd-службу bootstrap. `--restart-delay` влияет на восстановление после завершения процесса и не задерживает первоначальный запуск после reboot. Установить bootstrap вручную можно так:
 
 ```bash
 dck bootstrap --install
@@ -399,6 +403,7 @@ dck run -d \
   -n bot \
   -p 23323:23332 \
   --restart unless-stopped \
+  --restart-delay 1m \
   --env-file "$PWD/.env" \
   --vol "$PWD:/bot" \
   --workdir /bot \
@@ -501,6 +506,7 @@ dck run -d \
   -n minecraft \
   -p 25565:25565 \
   --restart unless-stopped \
+  --restart-delay 1m \
   --vol /data/minecraft:/data \
   --workdir /data \
   eclipse-temurin:21 \
@@ -574,7 +580,7 @@ dck run -d \
   ./start-server.sh
 ```
 
-Для ручного запуска удалите `--restart always`. Всегда проверьте EULA, порты, команду запуска, каталог сохранений и необходимые переменные окружения выбранного образа.
+Для ручного запуска удалите `--restart always`. Если нужен перезапуск через минуту после сбоя, добавьте `--restart-delay 1m`. Всегда проверьте EULA, порты, команду запуска, каталог сохранений и необходимые переменные окружения выбранного образа.
 
 ### Проверка, остановка и восстановление
 

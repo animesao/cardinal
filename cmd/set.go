@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"dck/internal/container"
 )
@@ -19,6 +20,7 @@ func Set(args []string) {
 		fmt.Println("  --cpu <num>     CPU limit (alias for --cpus)")
 		fmt.Println("  --disk <lim>    Disk limit")
 		fmt.Println("  --restart       Restart policy")
+		fmt.Println("  --restart-delay <duration> Delay before automatic restart")
 		fmt.Println("  --workdir <dir> Working directory")
 		fmt.Println("  -e K=V          Environment variable")
 		fmt.Println("  --entrypoint    Override entrypoint")
@@ -40,6 +42,7 @@ func Set(args []string) {
 	cpuAlias := fs.Float64("cpu", -1, "CPU limit (alias for --cpus)")
 	disk := fs.String("disk", "", "Disk limit (e.g. 1G, 512M)")
 	restart := fs.String("restart", "", "Restart policy (no, always, on-failure, unless-stopped)")
+	restartDelay := fs.String("restart-delay", "", "Delay before automatic restart (e.g. 10s, 1m)")
 	workdir := fs.String("workdir", "", "Working directory inside container")
 	var envVars stringSlice
 	fs.Var(&envVars, "e", "Environment variables (key=val)")
@@ -101,6 +104,16 @@ func Set(args []string) {
 		if *restart == "always" || *restart == "unless-stopped" {
 			ensureBootstrap()
 		}
+	}
+
+	if *restartDelay != "" {
+		delay, err := time.ParseDuration(*restartDelay)
+		if err != nil || delay <= 0 {
+			fmt.Fprintf(os.Stderr, "Error: invalid restart delay %q (use e.g. 10s, 1m)\n", *restartDelay)
+			os.Exit(1)
+		}
+		c.RestartDelay = *restartDelay
+		changed = true
 	}
 
 	if *workdir != "" {

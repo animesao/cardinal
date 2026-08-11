@@ -55,19 +55,20 @@ func Up(args []string) {
 				continue
 			}
 			cc := config.ContainerConfig{
-				Image:       c.ImageName + ":" + c.ImageTag,
-				Restart:     c.Restart,
-				Hostname:    c.Hostname,
-				WorkDir:     c.WorkingDir,
-				User:        c.User,
-				Readonly:    c.ReadonlyRootfs,
-				NoNewPrivs:  c.NoNewPrivileges,
-				NetworkMode: c.NetworkMode,
-				Entrypoint:  c.Entrypoint,
-				Labels:      c.Labels,
-				CapAdd:      c.CapAdd,
-				CapDrop:     c.CapDrop,
-				DNS:         c.DNS,
+				Image:        c.ImageName + ":" + c.ImageTag,
+				Restart:      c.Restart,
+				RestartDelay: c.RestartDelay,
+				Hostname:     c.Hostname,
+				WorkDir:      c.WorkingDir,
+				User:         c.User,
+				Readonly:     c.ReadonlyRootfs,
+				NoNewPrivs:   c.NoNewPrivileges,
+				NetworkMode:  c.NetworkMode,
+				Entrypoint:   c.Entrypoint,
+				Labels:       c.Labels,
+				CapAdd:       c.CapAdd,
+				CapDrop:      c.CapDrop,
+				DNS:          c.DNS,
 			}
 			if c.CPUCount > 0 {
 				cc.CPUs = c.CPUCount
@@ -203,6 +204,21 @@ func Up(args []string) {
 			}
 		}
 		if existing != nil {
+			configChanged := false
+			if cc.Restart != "" && existing.Restart != cc.Restart {
+				existing.Restart = cc.Restart
+				configChanged = true
+			}
+			if cc.RestartDelay != "" && existing.RestartDelay != cc.RestartDelay {
+				existing.RestartDelay = cc.RestartDelay
+				configChanged = true
+			}
+			if configChanged {
+				if err := existing.Save(); err != nil {
+					fmt.Fprintf(os.Stderr, "  %s: error saving restart settings: %v\n", name, err)
+					continue
+				}
+			}
 			if existing.Status == container.Running {
 				fmt.Printf("  %s: already running\n", name)
 				composeState[name] = existing.ID
@@ -224,10 +240,12 @@ func Up(args []string) {
 		}
 
 		opts := container.CreateOpts{
-			Name:    name,
-			Detach:  true,
-			Restart: cc.Restart,
+			Name:         name,
+			Detach:       true,
+			Restart:      cc.Restart,
+			RestartDelay: cc.RestartDelay,
 		}
+
 		if opts.Restart == "" {
 			opts.Restart = "always"
 		}

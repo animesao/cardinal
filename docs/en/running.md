@@ -85,11 +85,14 @@ dck pull nanozoo/python3.12:3.12--d46ab4d
 
 The general form is:
 
+`--restart-delay` accepts Go duration values such as `10s`, `30s`, or `1m`.
+
 ```bash
 dck run -d \
   -n APP_NAME \
   -p HOST_PORT:CONTAINER_PORT \
   --restart unless-stopped \
+  --restart-delay 1m \
   IMAGE[:TAG] \
   COMMAND [ARGUMENTS...]
 ```
@@ -109,7 +112,7 @@ dck ps -a
 dck logs web
 ```
 
-Supported restart policies are `no`, `always`, `on-failure`, and `unless-stopped`.
+Supported restart policies are `no`, `always`, `on-failure`, and `unless-stopped`. Add `--restart-delay 1m` (or a shorter value such as `10s`) to control how long dck waits after an unexpected process exit before starting the container again. The delay does not override an intentional `dck stop`.
 
 ## 5. Bind mounts and named volumes
 
@@ -358,6 +361,7 @@ dck run -d \
   -n NAME \
   -p HOST_PORT:CONTAINER_PORT \
   --restart POLICY \
+  --restart-delay 1m \
   --env-file "$PWD/.env" \
   --vol "$PWD:/app" \
   --workdir /app \
@@ -375,7 +379,7 @@ Put all dck flags before the image name. Anything after the image and command is
 | `always` | Restart | Stay stopped when stopped explicitly | Start automatically |
 | `unless-stopped` | Restart | Stay stopped until an explicit `dck start` | Start automatically unless it was manually stopped |
 
-`dck run --restart always` and `dck run --restart unless-stopped` install the systemd bootstrap service when run as root. To install it manually:
+`dck run --restart always` and `dck run --restart unless-stopped` install the systemd bootstrap service when run as root. `--restart-delay` affects automatic recovery after a process exit; it does not delay the initial boot. To install bootstrap manually:
 
 ```bash
 dck bootstrap --install
@@ -399,6 +403,7 @@ dck run -d \
   -n bot \
   -p 23323:23332 \
   --restart unless-stopped \
+  --restart-delay 1m \
   --env-file "$PWD/.env" \
   --vol "$PWD:/bot" \
   --workdir /bot \
@@ -501,6 +506,7 @@ dck run -d \
   -n minecraft \
   -p 25565:25565 \
   --restart unless-stopped \
+  --restart-delay 1m \
   --vol /data/minecraft:/data \
   --workdir /data \
   eclipse-temurin:21 \
@@ -519,7 +525,7 @@ dck run -d \
   java -Xms1G -Xmx4G -jar server.jar nogui
 ```
 
-The Minecraft server must listen on `0.0.0.0:25565`. Its own logs and worlds are preserved in `/data/minecraft`; dck stdout/stderr logs are reset at each new container start.
+The Minecraft server must listen on `0.0.0.0:25565`. Its own logs and worlds are preserved in `/data/minecraft`; dck stdout/stderr logs are reset at each new container start. Add `--restart-delay 1m` when recovery should wait one minute after a crash.
 
 ### Terraria
 
@@ -574,7 +580,7 @@ dck run -d \
   ./start-server.sh
 ```
 
-For a one-time/manual server, remove `--restart always`. Always check the image documentation for EULA acceptance, ports, startup command, save location, and required environment variables.
+For a one-time/manual server, remove `--restart always`. Use `--restart-delay 1m` when you want a one-minute wait after a crash before recovery. Always check the image documentation for EULA acceptance, ports, startup command, save location, and required environment variables.
 
 ### Inspect, stop, and recover
 

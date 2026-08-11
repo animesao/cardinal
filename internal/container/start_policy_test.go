@@ -14,7 +14,7 @@ func TestShouldRestart(t *testing.T) {
 	}{
 		{name: "no never restarts", policy: "no", exitCode: 1, want: false},
 		{name: "always restarts after success", policy: "always", exitCode: 0, want: true},
-		{name: "always restarts after manual flag", policy: "always", exitCode: 1, stoppedByUser: true, want: true},
+		{name: "always stays stopped after manual flag", policy: "always", exitCode: 1, stoppedByUser: true, want: false},
 		{name: "on failure restarts on error", policy: "on-failure", exitCode: 1, want: true},
 		{name: "on failure does not restart on success", policy: "on-failure", exitCode: 0, want: false},
 		{name: "unless stopped restarts after crash", policy: "unless-stopped", exitCode: 1, want: true},

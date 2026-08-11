@@ -286,7 +286,7 @@ func (c *Container) runForeground(cmd *exec.Cmd) error {
 	if exitErr, ok := err.(*exec.ExitError); ok {
 		exitCode = exitErr.ExitCode()
 	}
-	if shouldRestart(c.Restart, exitCode, c.StoppedByUser) {
+	if shouldRestart(c.Restart, exitCode, c.stoppedByUser()) {
 		return c.restart()
 	}
 	if c.RemoveOnExit {
@@ -356,11 +356,14 @@ func setupNetworking(c *Container, pid int) error {
 }
 
 func shouldRestart(policy string, exitCode int, stoppedByUser bool) bool {
+	if stoppedByUser {
+		return false
+	}
 	switch policy {
 	case "always":
 		return true
 	case "unless-stopped":
-		return !stoppedByUser
+		return true
 	case "on-failure":
 		return exitCode != 0
 	default:
@@ -369,7 +372,10 @@ func shouldRestart(policy string, exitCode int, stoppedByUser bool) bool {
 }
 
 func (c *Container) restart() error {
-	time.Sleep(time.Second)
+	time.Sleep(c.restartDelay())
+	if !c.canRestartAfterDelay() {
+		return nil
+	}
 	c.dataMu.Lock()
 	c.Status = Created
 	c.dataMu.Unlock()
@@ -401,7 +407,7 @@ func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 		c.cleanupStarted = true
 		c.mu.Unlock()
 
-		stoppedByUser := c.StoppedByUser
+		stoppedByUser := c.stoppedByUser()
 		if !stoppedByUser {
 			if _, ok := stoppedContainers.Load(c.ID); ok {
 				stoppedByUser = true
@@ -418,7 +424,10 @@ func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 
 		if shouldRestart(c.Restart, exitCode, stoppedByUser) {
 			go func() {
-				time.Sleep(time.Second)
+				time.Sleep(c.restartDelay())
+				if !c.canRestartAfterDelay() {
+					return
+				}
 				c.dataMu.Lock()
 				c.Status = Created
 				c.dataMu.Unlock()
@@ -431,6 +440,35 @@ func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 			cleanupContainer(c)
 		}
 	}()
+}
+
+func (c *Container) canRestartAfterDelay() bool {
+	if _, stopped := stoppedContainers.Load(c.ID); stopped {
+		return false
+	}
+	latest, err := Load(c.ID)
+	if err != nil {
+		return false
+	}
+	if latest.Status != Stopped {
+		return false
+	}
+	return !latest.stoppedByUser()
+}
+
+func (c *Container) stoppedByUser() bool {
+	c.dataMu.RLock()
+	defer c.dataMu.RUnlock()
+	return c.StoppedByUser
+}
+
+func (c *Container) restartDelay() time.Duration {
+	if c.RestartDelay != "" {
+		if delay, err := time.ParseDuration(c.RestartDelay); err == nil && delay > 0 {
+			return delay
+		}
+	}
+	return time.Second
 }
 
 func (c *Container) runHealthcheck(ctx context.Context) {

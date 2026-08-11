@@ -233,6 +233,7 @@ Run options:
   -t              Allocate TTY                                           e.g. -t
   --rm            Remove on exit                                         e.g. --rm
   --restart       Restart policy (no|always|on-failure|unless-stopped)    e.g. --restart always
+  --restart-delay  Wait before automatic restart                          e.g. --restart-delay 1m
   --memory <lim>  Memory limit                                           e.g. --memory 1g, --memory 512m
   --ram <lim>     Memory limit (alias for --memory)                      e.g. --ram 2g
   --cpus <num>    CPU limit                                              e.g. --cpus 2, --cpus 0.5

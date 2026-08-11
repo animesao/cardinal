@@ -13,6 +13,7 @@ Version: `1.22.19` — [GitHub](https://github.com/animesao/dck)
 
 ## Start here
 
+- [Contributors and contribution guide](../CONTRIBUTORS.md)
 - [Running guide (English)](en/running.md)
 - [Руководство по запуску (русский)](ru/running.md)
 
@@ -163,6 +164,7 @@ The running guides cover installation, image/tag syntax, bind mounts, `.env`, Py
 | `-t` | Allocate TTY |
 | `--rm` | Auto-remove on exit |
 | `--restart <policy>` | `no`, `always`, `on-failure`, `unless-stopped` |
+| `--restart-delay <duration>` | Wait before automatic restart, e.g. `10s`, `1m` |
 | `--memory / --ram <lim>` | Memory limit (e.g. `1g`, `512m`) |
 | `--cpus / --cpu <num>` | CPU limit (e.g. `1.5`, `4`) |
 | `--disk <lim>` | Disk limit (e.g. `10G`) |
