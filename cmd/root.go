@@ -240,12 +240,9 @@ Usage:
     dck blueprint repo list                List repositories
 
   System:
-    dck inspect [--sensitive] <container> Show container state as JSON
     dck serve [-p 2375] [--token TOKEN]    Start REST API server
     dck serve --tls-cert cert.pem --tls-key key.pem  Enable HTTPS API
     dck system prune                       Clean up unused resources
-    dck doctor [--strict]                  Read-only host/runtime diagnostics
-    dck security check [--strict]          Security-focused diagnostics
     dck update [--check]                   Check for updates and self-update
     dck bootstrap [--install|--remove]     Auto-start containers on boot
     dck supervisor                         Run persistent restart supervisor
