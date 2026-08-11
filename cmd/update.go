@@ -178,20 +178,26 @@ func parseSHA256Checksum(contents string) (string, error) {
 	return strings.ToLower(checksum), nil
 }
 
+// binaryDownloadTimeout is long enough for multi-megabyte release binaries over
+// slow links; the default 10s client timeout is too tight for that.
+const binaryDownloadTimeout = 5 * time.Minute
+
 func fetchURLBytes(url string) ([]byte, error) {
 	body, err := fetchURLGoBytes(url)
 	if err == nil {
 		return body, nil
 	}
+	goErr := err
 	body, err = fetchURLWithCurlBytes(url)
 	if err == nil {
 		return body, nil
 	}
+	curlErr := err
 	body, err = fetchURLWithWgetBytes(url)
 	if err == nil {
 		return body, nil
 	}
-	return nil, fmt.Errorf("all methods failed")
+	return nil, fmt.Errorf("all methods failed (go: %v; curl: %v; wget: %v)", goErr, curlErr, err)
 }
 
 func fetchURL(url string) (string, error) {
@@ -199,20 +205,22 @@ func fetchURL(url string) (string, error) {
 	if err == nil {
 		return body, nil
 	}
+	goErr := err
 	body, err = fetchURLWithCurl(url)
 	if err == nil {
 		return body, nil
 	}
+	curlErr := err
 	body, err = fetchURLWithWget(url)
 	if err == nil {
 		return body, nil
 	}
-	return "", fmt.Errorf("all methods failed")
+	return "", fmt.Errorf("all methods failed (go: %v; curl: %v; wget: %v)", goErr, curlErr, err)
 }
 
 func fetchURLGoBytes(url string) ([]byte, error) {
 	client := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: binaryDownloadTimeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 3 {
 				return fmt.Errorf("too many redirects")
@@ -241,7 +249,7 @@ func fetchURLGo(url string) (string, error) {
 
 func fetchURLWithCurlBytes(url string) ([]byte, error) {
 	var stderr bytes.Buffer
-	cmd := exec.Command("curl", "-fsSL", url)
+	cmd := exec.Command("curl", "-fsSL", "--connect-timeout", "10", "--max-time", "300", url)
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
@@ -252,7 +260,7 @@ func fetchURLWithCurlBytes(url string) ([]byte, error) {
 
 func fetchURLWithWgetBytes(url string) ([]byte, error) {
 	var stderr bytes.Buffer
-	cmd := exec.Command("wget", "-qO-", url)
+	cmd := exec.Command("wget", "-qO-", "--timeout=20", "--tries=3", url)
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
