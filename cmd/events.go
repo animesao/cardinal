@@ -17,7 +17,10 @@ import (
 func Events(args []string) {
 	fs := flag.NewFlagSet("events", flag.ExitOnError)
 	sinceStr := fs.String("since", "", "Show events created since timestamp")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing events options: %v\n", err)
+		os.Exit(1)
+	}
 
 	var since time.Time
 	if *sinceStr != "" {

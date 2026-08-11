@@ -25,7 +25,10 @@ func Serve(args []string) {
 	daemon := fs.Bool("d", false, "Run as daemon (background)")
 	token := fs.String("token", "", "Authentication token (or DCK_TOKEN env)")
 
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing serve options: %v\n", err)
+		os.Exit(1)
+	}
 
 	// Allow override via DCK_HOST env
 	if envHost := os.Getenv("DCK_HOST"); envHost != "" {
@@ -75,7 +78,9 @@ func Serve(args []string) {
 			for _, c := range containers {
 				if c.Status == container.Running {
 					log.Info("Stopping %s (%s)...", c.Name, shortID(c.ID))
-					c.Stop()
+					if err := c.Stop(); err != nil {
+						log.Warn("failed to stop %s: %v", c.Name, err)
+					}
 				}
 			}
 		}

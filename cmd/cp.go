@@ -41,7 +41,7 @@ func Cp(args []string) {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		defer outFile.Close()
+		defer func() { _ = outFile.Close() }()
 
 		if err := c.CopyFromContainer(srcPath, outFile); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -59,7 +59,7 @@ func Cp(args []string) {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		defer inFile.Close()
+		defer func() { _ = inFile.Close() }()
 
 		if err := c.CopyToContainer(dstPath, inFile); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)

@@ -15,7 +15,10 @@ func Login(args []string) {
 	username := fs.String("u", "", "Registry username")
 	password := fs.String("p", "", "Registry password")
 	passwordStdin := fs.Bool("password-stdin", false, "Read password from stdin")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing login options: %v\n", err)
+		os.Exit(1)
+	}
 
 	freeArgs := fs.Args()
 	if len(freeArgs) < 1 {
@@ -29,11 +32,17 @@ func Login(args []string) {
 
 	if user == "" {
 		fmt.Print("Username: ")
-		fmt.Scanln(&user)
+		if _, err := fmt.Scanln(&user); err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading username: %v\n", err)
+			os.Exit(1)
+		}
 	}
 	if pass == "" && !*passwordStdin {
 		fmt.Print("Password: ")
-		fmt.Scanln(&pass)
+		if _, err := fmt.Scanln(&pass); err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading password: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	if err := image.Login(registry, user, pass); err != nil {

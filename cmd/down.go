@@ -15,7 +15,10 @@ func Down(args []string) {
 	fs := flag.NewFlagSet("down", flag.ExitOnError)
 	configPath := fs.String("f", "", "Path to config file")
 	all := fs.Bool("a", false, "Remove all containers (ignore config)")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing down options: %v\n", err)
+		os.Exit(1)
+	}
 
 	freeArgs := fs.Args()
 	var filter string

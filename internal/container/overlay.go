@@ -72,7 +72,9 @@ func SetupDiskLimit(overlayBase, id string, limitBytes int64) error {
 			_ = f.Close()
 			return fmt.Errorf("truncate disk image: %w", err)
 		}
-		f.Close()
+		if err := f.Close(); err != nil {
+			return fmt.Errorf("close disk image: %w", err)
+		}
 		if out, err := exec.Command("mkfs.ext4", "-F", imgPath).CombinedOutput(); err != nil {
 			return fmt.Errorf("mkfs.ext4: %s: %w", strings.TrimSpace(string(out)), err)
 		}

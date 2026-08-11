@@ -116,10 +116,10 @@ func readMemInfo() (total, used uint64, pct float64) {
 	var memTotal, memAvail uint64
 	for _, line := range strings.Split(string(b), "\n") {
 		if strings.HasPrefix(line, "MemTotal:") {
-			fmt.Sscanf(line, "MemTotal: %d kB", &memTotal)
+			_, _ = fmt.Sscanf(line, "MemTotal: %d kB", &memTotal)
 		}
 		if strings.HasPrefix(line, "MemAvailable:") {
-			fmt.Sscanf(line, "MemAvailable: %d kB", &memAvail)
+			_, _ = fmt.Sscanf(line, "MemAvailable: %d kB", &memAvail)
 		}
 	}
 	memTotal *= 1024
@@ -141,7 +141,7 @@ func readCPUPercent() float64 {
 			return cpuTimes{}
 		}
 		var ct cpuTimes
-		fmt.Sscanf(string(b), "cpu %d %d %d %d", &ct.user, &ct.nice, &ct.system, &ct.idle)
+		_, _ = fmt.Sscanf(string(b), "cpu %d %d %d %d", &ct.user, &ct.nice, &ct.system, &ct.idle)
 		return ct
 	}
 	t1 := readCPU()
@@ -167,7 +167,7 @@ func readLoadAvg() (load1, load5, load15 float64) {
 	if err != nil {
 		return 0, 0, 0
 	}
-	fmt.Sscanf(string(b), "%f %f %f", &load1, &load5, &load15)
+	_, _ = fmt.Sscanf(string(b), "%f %f %f", &load1, &load5, &load15)
 	return load1, load5, load15
 }
 

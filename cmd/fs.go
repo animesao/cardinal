@@ -185,7 +185,10 @@ func fsFind(merged, label string, args []string) {
 			opts.typ = args[i+1]
 			i += 2
 		case args[i] == "--max-depth" && i+1 < len(args):
-			fmt.Sscanf(args[i+1], "%d", &opts.maxDepth)
+			if _, err := fmt.Sscanf(args[i+1], "%d", &opts.maxDepth); err != nil {
+				fmt.Fprintf(os.Stderr, "invalid max depth %q: %v\n", args[i+1], err)
+				os.Exit(1)
+			}
 			i += 2
 		default:
 			if !strings.HasPrefix(args[i], "--") && i == 0 {

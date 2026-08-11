@@ -316,7 +316,9 @@ func readMemTotal() int64 {
 			parts := strings.Fields(line)
 			if len(parts) >= 2 {
 				val := int64(0)
-				fmt.Sscanf(parts[1], "%d", &val)
+				if _, err := fmt.Sscanf(parts[1], "%d", &val); err != nil {
+					continue
+				}
 				return val * 1024 // kB to bytes
 			}
 		}

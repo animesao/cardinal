@@ -123,7 +123,10 @@ func Up(args []string) {
 			fmt.Fprintf(os.Stderr, "Error writing %s: %v\n", outPath, err)
 			os.Exit(1)
 		}
-		f.Close()
+		if err := f.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error closing %s: %v\n", outPath, err)
+			os.Exit(1)
+		}
 		fmt.Printf("Generated %s with %d containers\n", outPath, written)
 		return
 	}
@@ -255,8 +258,12 @@ func Up(args []string) {
 			parts := strings.SplitN(portSpec, ":", 2)
 			if len(parts) == 2 {
 				var host, cont int
-				fmt.Sscanf(parts[0], "%d", &host)
-				fmt.Sscanf(parts[1], "%d", &cont)
+				if _, err := fmt.Sscanf(parts[0], "%d", &host); err != nil {
+					continue
+				}
+				if _, err := fmt.Sscanf(parts[1], "%d", &cont); err != nil {
+					continue
+				}
 				if host > 0 && cont > 0 {
 					opts.Ports = append(opts.Ports, container.PortMap{
 						HostPort:      host,
@@ -421,8 +428,14 @@ func loadComposeState(configPath string) composeState {
 }
 
 func saveComposeState(configPath string, s composeState) {
-	data, _ := json.Marshal(s)
-	os.WriteFile(composeStatePath(configPath), data, 0644)
+	data, err := json.Marshal(s)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: encode compose state: %v\n", err)
+		return
+	}
+	if err := os.WriteFile(composeStatePath(configPath), data, 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: save compose state: %v\n", err)
+	}
 }
 
 func findContainerByID(id string) *container.Container {

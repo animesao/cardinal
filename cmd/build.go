@@ -23,7 +23,10 @@ func Build(args []string) {
 	cpu := fs.Float64("cpu", 0, "CPU cores (e.g. 0.5, 2)")
 	memory := fs.Int("memory", 0, "Memory limit in bytes (e.g. 536870912 for 512MB)")
 
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing build options: %v\n", err)
+		os.Exit(1)
+	}
 
 	if *tag == "" {
 		fmt.Println("Usage: dck build -t <name>[:<tag>] [options] <context>")

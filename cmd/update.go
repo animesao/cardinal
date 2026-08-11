@@ -56,7 +56,10 @@ func Update(args []string) {
 
 	fmt.Print("Download and install? [y/N] ")
 	var confirm string
-	fmt.Scanln(&confirm)
+	if _, err := fmt.Scanln(&confirm); err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading confirmation: %v\n", err)
+		return
+	}
 	if confirm != "y" && confirm != "Y" {
 		fmt.Println("Update cancelled.")
 		return
@@ -112,22 +115,45 @@ func Update(args []string) {
 	}
 	tmpPath := tmpFile.Name()
 	if _, err := tmpFile.WriteString(body); err != nil {
-		tmpFile.Close()
-		os.Remove(tmpPath)
-		fmt.Fprintf(os.Stderr, "Failed to write temp file: %v\n", err)
+		closeErr := tmpFile.Close()
+		removeErr := os.Remove(tmpPath)
+		fmt.Fprintf(os.Stderr, "Failed to write temp file: %v", err)
+		if closeErr != nil {
+			fmt.Fprintf(os.Stderr, "; close failed: %v", closeErr)
+		}
+		if removeErr != nil {
+			fmt.Fprintf(os.Stderr, "; cleanup failed: %v", removeErr)
+		}
+		fmt.Fprintln(os.Stderr)
 		os.Exit(1)
 	}
-	tmpFile.Close()
+	if err := tmpFile.Close(); err != nil {
+		removeErr := os.Remove(tmpPath)
+		fmt.Fprintf(os.Stderr, "Failed to close temp file: %v", err)
+		if removeErr != nil {
+			fmt.Fprintf(os.Stderr, "; cleanup failed: %v", removeErr)
+		}
+		fmt.Fprintln(os.Stderr)
+		os.Exit(1)
+	}
 	if err := os.Chmod(tmpPath, 0755); err != nil {
-		os.Remove(tmpPath)
-		fmt.Fprintf(os.Stderr, "Failed to chmod temp file: %v\n", err)
+		removeErr := os.Remove(tmpPath)
+		fmt.Fprintf(os.Stderr, "Failed to chmod temp file: %v", err)
+		if removeErr != nil {
+			fmt.Fprintf(os.Stderr, "; cleanup failed: %v", removeErr)
+		}
+		fmt.Fprintln(os.Stderr)
 		os.Exit(1)
 	}
 
 	cmd := exec.Command("mv", tmpPath, selfPath)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		os.Remove(tmpPath)
-		fmt.Fprintf(os.Stderr, "Failed to install update: %v: %s\n", err, string(out))
+		removeErr := os.Remove(tmpPath)
+		fmt.Fprintf(os.Stderr, "Failed to install update: %v: %s", err, string(out))
+		if removeErr != nil {
+			fmt.Fprintf(os.Stderr, "; cleanup failed: %v", removeErr)
+		}
+		fmt.Fprintln(os.Stderr)
 		os.Exit(1)
 	}
 
@@ -259,10 +285,10 @@ func compareVersions(a, b string) int {
 	for i := 0; i < max; i++ {
 		var ai, bi int
 		if i < len(ap) {
-			fmt.Sscanf(ap[i], "%d", &ai)
+			_, _ = fmt.Sscanf(ap[i], "%d", &ai)
 		}
 		if i < len(bp) {
-			fmt.Sscanf(bp[i], "%d", &bi)
+			_, _ = fmt.Sscanf(bp[i], "%d", &bi)
 		}
 		if ai < bi {
 			return -1

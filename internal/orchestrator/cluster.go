@@ -148,7 +148,7 @@ func JoinCluster(peerAddr string, bindAddr string, bindPort int) error {
 	if err != nil {
 		return fmt.Errorf("join request to %s: %w", peerAddr, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("join rejected by %s: status %d", peerAddr, resp.StatusCode)
@@ -223,15 +223,23 @@ func LeaveCluster() error {
 
 	// Reset local config
 	backupPath := filepath.Join(state.DataDir(), ClusterStateDir, "cluster.json.bak")
-	saveClusterConfigTo(backupPath)
+	if err := saveClusterConfigTo(backupPath); err != nil {
+		return fmt.Errorf("backup cluster config: %w", err)
+	}
 
-	clusterConf = &ClusterConfig{
+	previousName := clusterConf.ClusterName
+	previousConfig := clusterConf
+	newConfig := &ClusterConfig{
 		Nodes:    make(map[string]*Node),
 		Services: make(map[string]*Service),
 	}
-	saveClusterConfig()
+	clusterConf = newConfig
+	if err := saveClusterConfig(); err != nil {
+		clusterConf = previousConfig
+		return fmt.Errorf("reset cluster config: %w", err)
+	}
 
-	log.Info("Left cluster %s", clusterConf.ClusterName)
+	log.Info("Left cluster %s", previousName)
 	return nil
 }
 
@@ -274,7 +282,9 @@ func GetNode() (*Node, error) {
 func GetClusterInfo() *ClusterConfig {
 	clusterLock.Lock()
 	defer clusterLock.Unlock()
-	loadClusterConfig()
+	if err := loadClusterConfig(); err != nil {
+		log.Warn("load cluster config: %v", err)
+	}
 	return clusterConf
 }
 
@@ -328,7 +338,10 @@ func handleJoin(w http.ResponseWriter, r *http.Request) {
 		JoinedAt: time.Now(),
 	}
 	clusterConf.Nodes[node.ID] = node
-	saveClusterConfig()
+	if err := saveClusterConfig(); err != nil {
+		http.Error(w, fmt.Sprintf("save cluster config: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"cluster_id":   clusterConf.ClusterID,
@@ -355,7 +368,10 @@ func handleLeave(w http.ResponseWriter, r *http.Request) {
 
 	if n, ok := clusterConf.Nodes[req.NodeID]; ok {
 		n.State = NodeStateLeft
-		saveClusterConfig()
+		if err := saveClusterConfig(); err != nil {
+			http.Error(w, fmt.Sprintf("save cluster config: %v", err), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)

@@ -32,29 +32,29 @@ func ConsoleServe(args []string) {
 	if err != nil {
 		os.Exit(1)
 	}
-	defer logFile.Close()
+	defer func() { _ = logFile.Close() }()
 
 	stdinW := os.NewFile(3, "stdinW")
 	stdoutR := os.NewFile(4, "stdoutR")
 	if stdinW == nil || stdoutR == nil {
-		logFile.WriteString("[console-serve] failed: missing FDs\n")
+		_, _ = logFile.WriteString("[console-serve] failed: missing FDs\n")
 		os.Exit(1)
 	}
-	defer stdinW.Close()
-	defer stdoutR.Close()
+	defer func() { _ = stdinW.Close() }()
+	defer func() { _ = stdoutR.Close() }()
 
 	sockPath := state.ConsolePath(id)
 	os.Remove(sockPath)
 
 	listener, err := net.Listen("unix", sockPath)
 	if err != nil {
-		logFile.WriteString(fmt.Sprintf("[console-serve] listen error: %v\n", err))
+		_, _ = logFile.WriteString(fmt.Sprintf("[console-serve] listen error: %v\n", err))
 		os.Exit(1)
 	}
 	defer os.Remove(sockPath)
 	defer listener.Close()
 
-	logFile.WriteString("[console-serve] started\n")
+	_, _ = logFile.WriteString("[console-serve] started\n")
 
 	var mu sync.Mutex
 	clients := make(map[net.Conn]struct{})
@@ -64,24 +64,25 @@ func ConsoleServe(args []string) {
 		for {
 			n, err := stdoutR.Read(buf)
 			if err != nil {
-				logFile.WriteString(fmt.Sprintf("[console-serve] stdout read done: %v\n", err))
+				_, _ = logFile.WriteString(fmt.Sprintf("[console-serve] stdout read done: %v\n", err))
 				return
 			}
 
-			logFile.Write(buf[:n])
+			_, _ = logFile.Write(buf[:n])
 
 			mu.Lock()
 			for c := range clients {
 				if err := c.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
 					delete(clients, c)
-					c.Close()
+					_ = c.Close()
 					continue
 				}
 				if _, err := c.Write(buf[:n]); err != nil {
 					delete(clients, c)
-					c.Close()
+					_ = c.Close()
+					continue
 				}
-				c.SetWriteDeadline(time.Time{})
+				_ = c.SetWriteDeadline(time.Time{})
 			}
 			mu.Unlock()
 		}
@@ -90,11 +91,11 @@ func ConsoleServe(args []string) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			logFile.WriteString(fmt.Sprintf("[console-serve] listener done: %v\n", err))
+			_, _ = logFile.WriteString(fmt.Sprintf("[console-serve] listener done: %v\n", err))
 			break
 		}
 
-		logFile.WriteString("[console-serve] client connected\n")
+		_, _ = logFile.WriteString("[console-serve] client connected\n")
 
 		// Send log tail before adding to broadcast list (no lock needed)
 		if fi, err := os.Stat(logPath); err == nil {
@@ -129,5 +130,5 @@ func ConsoleServe(args []string) {
 		}(conn)
 	}
 
-	logFile.WriteString("[console-serve] exiting\n")
+	_, _ = logFile.WriteString("[console-serve] exiting\n")
 }
