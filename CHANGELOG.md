@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### Documentation
+
+- The running guides (EN/RU) document `dck verify` as the middle step of the pull → verify → run workflow.
+- The Russian websites guide is now fully synchronized with the English one, including five previously missing content blocks (Flask + nginx proxy, Next.js, Spring Boot, Go HTTP server, FastAPI + PostgreSQL + Redis) and the Python API + PostgreSQL + Nginx compose example.
+- CHANGELOG entries restored for releases 1.22.38, 1.22.39, and 1.22.40.
+
+## 1.22.40 (2026-08-11)
+
+### CLI
+
+- `dck --help` no longer duplicates the backup, inspect, doctor, and security check entries in the System section (they remain listed under Container).
+
+### Documentation
+
+- Documented the previously undocumented `dck verify IMAGE[:TAG]` (offline config and layer digest verification) and `dck backup verify FILE.tar.gz` (checksum verification) commands, plus `-v SRC:DST` mount modes (`:ro`/`:rw`, propagation flags, tmpfs and NFS specs).
+
+## 1.22.39 (2026-08-11)
+
+### Documentation
+
+- The README and running guides document crash-loop protection with `--restart-max-attempts` and `--restart-window` and the `restart_blocked` state.
+
+## 1.22.38 (2026-08-11)
+
 ### Update reliability
 
 - `dck update` now allows up to five minutes for the release download instead of timing out after ten seconds, which was too short for multi-megabyte binaries on slow links.
