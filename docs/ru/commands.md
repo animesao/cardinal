@@ -96,7 +96,7 @@ dck commit web registry.example.com/team/web:snapshot
 |---|---|
 | `-t NAME[:TAG]` | Обязательное имя и tag образа |
 | `-f FILE` | Путь к Dockerfile; по умолчанию `<context>/Dockerfile` |
-| `--no-cache` | Зарезервированный флаг; текущая реализация пока не применяет его |
+| `--no-cache` | Принимается для совместимости; сейчас результаты отдельных инструкций не переиспользуются |
 | `--build-arg KEY=VALUE` | Повторяемая переменная времени сборки |
 | `--quiet` | Скрыть вывод сборки |
 | `--cpu N` | Ограничение CPU сборки |
@@ -169,7 +169,7 @@ dck logout registry.example.com
 | `--image IMAGE` | Образ вместо позиционного аргумента |
 | `--cmd`, `--command COMMAND` | Команда вместо позиционных аргументов |
 | `--entrypoint COMMAND` | Переопределить entrypoint образа |
-| `--network MODE` | `bridge` (по умолчанию), `none` или `host` |
+| `--network MODE` | `bridge` (по умолчанию), `none`, `host` или имя пользовательской сети |
 | `-l`, `--label KEY=VALUE` | Повторяемая метка контейнера |
 | `--cap-add CAP` | Добавить Linux capability; можно повторять |
 | `--cap-drop CAP` | Убрать capability; можно повторять |
@@ -267,7 +267,35 @@ dck set minecraft --restart unless-stopped --restart-delay 1m
 dck set web --memory 2g --cpus 2
 ```
 
-## 4. Логи, мониторинг, выполнение и файлы
+## 4. Сетевые команды
+
+### `dck network create [--subnet CIDR] NAME`
+
+Создать пользовательскую Linux bridge-сеть. Если `--subnet` не указан, dck выберет свободную private-сеть `/24`.
+
+```bash
+dck network create --subnet 10.20.0.0/24 appnet
+dck network ls
+dck network inspect appnet
+dck run -d --network appnet alpine sleep infinity
+dck network rm appnet
+```
+
+`network rm` откажет, пока сеть используется и IP-адреса заняты. Сначала удалите контейнеры сети. Пользовательский bridge требует root или `CAP_NET_ADMIN`, а также `ip`/`iptables`.
+
+### `dck network ls|list`
+
+Показать пользовательские bridge-сети. Встроенная сеть `dck0` сюда не входит.
+
+### `dck network inspect NAME`
+
+Показать ID, driver, subnet, gateway, bridge-интерфейс и число занятых IP.
+
+### `dck network rm|remove NAME`
+
+Удалить неиспользуемую пользовательскую сеть и её firewall-правила.
+
+## 5. Логи, мониторинг, выполнение и файлы
 
 ### `dck logs [-f] [--tail N] [--previous] [--all] CONTAINER`
 
@@ -341,7 +369,7 @@ dck fs find [--name PATTERN] [--grep TEXT] [--type f|d] [--max-depth N]
 
 Поток событий контейнеров в JSON. `--since` принимает RFC3339 или `YYYY-MM-DD HH:MM:SS`.
 
-## 5. Порты, volumes и backup
+## 6. Порты, volumes и backup
 
 ### `dck port CONTAINER`
 
@@ -404,7 +432,7 @@ dck volume create -l env=prod app-data
 
 Backup содержит writable overlay и именованные volumes, но не host bind mounts. Плановый backup ненадолго останавливает работающий контейнер, создаёт согласованный архив и запускает контейнер снова. Включение расписания не создаёт архив немедленно; первый архив появится после указанного интервала. До создания первого архива `backup status` может показывать время инициализации расписания, а не время готового архива. Для продолжения после выхода CLI установите supervisor: `dck bootstrap --install`.
 
-## 6. Compose-подобная конфигурация
+## 7. Compose-подобная конфигурация
 
 ### `dck up [-f FILE] [SERVICE]`
 
@@ -431,7 +459,7 @@ dck down -f production.toml api
 dck down -a
 ```
 
-## 7. API, cluster, services и functions
+## 8. API, cluster, services и functions
 
 ### `dck serve [-p PORT] [-H HOST] [-d] [--token TOKEN]`
 
@@ -492,7 +520,7 @@ Defaults `fn deploy`: port `8080`, handler `/handler`, timeout `30` секунд
 
 `blueprint info` принимает полное имя или совпадающий prefix. `-y` пропускает подтверждения установки.
 
-## 8. Системные команды
+## 9. Системные команды
 
 ### `dck system prune`
 
@@ -528,7 +556,7 @@ dck bootstrap --remove
 
 `dck init <container-id> <merged-path>` подготавливает namespace контейнера и вызывается runtime. `dck console-serve` обслуживает attach-подключения. Обычно пользователю их запускать не нужно.
 
-## 9. Данные и переменные окружения
+## 10. Данные и переменные окружения
 
 - `DCK_DATA_DIR` меняет каталог состояния runtime; для root по умолчанию `/root/.dck`.
 - `DCK_TOKEN` передаёт authentication для API/cluster, если token-флаг не указан.

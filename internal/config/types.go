@@ -94,6 +94,7 @@ type ContainerConfig struct {
 	Healthcheck  *HealthcheckConfig `toml:"healthcheck,omitempty"`
 	Entrypoint   string             `toml:"entrypoint,omitempty"`
 	NetworkMode  string             `toml:"network_mode,omitempty"`
+	Network      string             `toml:"network,omitempty"`
 	Labels       map[string]string  `toml:"labels,omitempty"`
 	CapAdd       []string           `toml:"cap_add,omitempty"`
 	CapDrop      []string           `toml:"cap_drop,omitempty"`

@@ -23,6 +23,7 @@ func (c *Container) Remove(force bool) error {
 		}
 	}
 
+	c.cleanupRootlessPorts()
 	c.cleanupNetwork()
 	cleanupContainerCgroup(c.ID, c.CgroupPath)
 

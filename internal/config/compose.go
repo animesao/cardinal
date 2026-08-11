@@ -193,6 +193,10 @@ func LoadCompose(path string) (*Config, error) {
 	}
 
 	for name, svc := range cf.Services {
+		networkName := svc.NetworkMode
+		if networkName == "" {
+			networkName = composeNetworkName(svc.Networks)
+		}
 		cc := ContainerConfig{
 			Image:        svc.Image,
 			Restart:      svc.Restart,
@@ -200,7 +204,8 @@ func LoadCompose(path string) (*Config, error) {
 			Hostname:     svc.Hostname,
 			WorkDir:      svc.WorkingDir,
 			User:         svc.User,
-			NetworkMode:  svc.NetworkMode,
+			NetworkMode:  networkName,
+			Network:      networkName,
 			Readonly:     svc.ReadOnly,
 			NoNewPrivs:   false,
 			Labels:       svc.Labels,
@@ -706,6 +711,31 @@ func parseComposeDependsOn(d interface{}) DependsOnConfig {
 	}
 
 	return result
+}
+
+func composeNetworkName(v interface{}) string {
+	if v == nil {
+		return ""
+	}
+	switch networks := v.(type) {
+	case []interface{}:
+		if len(networks) > 0 {
+			return fmt.Sprintf("%v", networks[0])
+		}
+	case []string:
+		if len(networks) > 0 {
+			return networks[0]
+		}
+	case map[string]interface{}:
+		for name := range networks {
+			return name
+		}
+	case map[interface{}]interface{}:
+		for name := range networks {
+			return fmt.Sprintf("%v", name)
+		}
+	}
+	return ""
 }
 
 func toStringSlice(v interface{}) []string {

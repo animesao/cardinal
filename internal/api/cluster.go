@@ -100,13 +100,12 @@ func handleReplicaCreate(w http.ResponseWriter, r *http.Request) {
 
 	var volumes []container.VolumeMount
 	for _, v := range req.Volumes {
-		parts := strings.SplitN(v, ":", 2)
-		if len(parts) == 2 {
-			volumes = append(volumes, container.VolumeMount{
-				Source: parts[0],
-				Target: parts[1],
-			})
+		mount, parseErr := container.VolumeMountFromSpec(v)
+		if parseErr != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid volume %q: %v", v, parseErr))
+			return
 		}
+		volumes = append(volumes, mount)
 	}
 
 	env := make([]string, 0, len(req.Env))

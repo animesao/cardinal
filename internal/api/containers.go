@@ -47,6 +47,48 @@ func handleContainersList(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, result)
 }
 
+func mountMode(v container.VolumeMount) string {
+	var options []string
+	if v.ReadOnly {
+		options = append(options, "ro")
+	} else {
+		options = append(options, "rw")
+	}
+	if v.Propagation != "" {
+		options = append(options, v.Propagation)
+	}
+	if v.SELinuxRelabel != "" {
+		options = append(options, v.SELinuxRelabel)
+	}
+	if v.NoCopy {
+		options = append(options, "nocopy")
+	}
+	return strings.Join(options, ",")
+}
+
+func mountSpec(v container.VolumeMount) string {
+	value := v.Source + ":" + v.Target
+	var options []string
+	if v.ReadOnly {
+		options = append(options, "ro")
+	} else if v.Propagation != "" || v.SELinuxRelabel != "" || v.NoCopy {
+		options = append(options, "rw")
+	}
+	if v.Propagation != "" {
+		options = append(options, v.Propagation)
+	}
+	if v.SELinuxRelabel != "" {
+		options = append(options, v.SELinuxRelabel)
+	}
+	if v.NoCopy {
+		options = append(options, "nocopy")
+	}
+	if len(options) > 0 {
+		value += ":" + strings.Join(options, ",")
+	}
+	return value
+}
+
 func containerToSummary(c *container.Container) Container {
 	imageName := fmt.Sprintf("%s:%s", c.ImageName, c.ImageTag)
 	cmd := strings.Join(c.Cmd, " ")
@@ -62,12 +104,16 @@ func containerToSummary(c *container.Container) Container {
 
 	var mounts []Mount
 	for _, v := range c.Volumes {
+		mountType := string(v.Type)
+		if mountType == "" {
+			mountType = "volume"
+		}
 		mounts = append(mounts, Mount{
-			Type:        "volume",
+			Type:        mountType,
 			Source:      v.Source,
 			Destination: v.Target,
-			Mode:        "",
-			RW:          true,
+			Mode:        mountMode(v),
+			RW:          !v.ReadOnly,
 		})
 	}
 
@@ -191,16 +237,21 @@ func containerToInspect(c *container.Container) *ContainerInspect {
 		Memory:         c.MemoryLimit,
 	}
 	for i, v := range c.Volumes {
-		hostConfig.Binds[i] = v.Source + ":" + v.Target
+		hostConfig.Binds[i] = mountSpec(v)
 	}
 
 	var mounts []Mount
 	for _, v := range c.Volumes {
+		mountType := string(v.Type)
+		if mountType == "" {
+			mountType = "volume"
+		}
 		mounts = append(mounts, Mount{
-			Type:        "volume",
+			Type:        mountType,
 			Source:      v.Source,
 			Destination: v.Target,
-			RW:          true,
+			Mode:        mountMode(v),
+			RW:          !v.ReadOnly,
 		})
 	}
 
@@ -310,13 +361,20 @@ func handleContainersCreate(w http.ResponseWriter, r *http.Request) {
 	var volumes []container.VolumeMount
 	if req.HostConfig != nil {
 		for _, bind := range req.HostConfig.Binds {
-			parts := strings.SplitN(bind, ":", 2)
-			if len(parts) == 2 {
-				volumes = append(volumes, container.VolumeMount{
-					Source: parts[0],
-					Target: parts[1],
-				})
+			spec, parseErr := container.ParseVolumeSpec(bind)
+			if parseErr != nil {
+				writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid bind %q: %v", bind, parseErr))
+				return
 			}
+			volumes = append(volumes, container.VolumeMount{
+				Type:           spec.Type,
+				Source:         spec.Source,
+				Target:         spec.Target,
+				ReadOnly:       spec.ReadOnly,
+				Propagation:    spec.Propagation,
+				SELinuxRelabel: spec.SELinuxRelabel,
+				NoCopy:         spec.NoCopy,
+			})
 		}
 	}
 

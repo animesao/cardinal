@@ -129,7 +129,7 @@ VOLUME, SHELL, ARG, HEALTHCHECK, STOPSIGNAL, ONBUILD.
 - ✅ Multi-stage builds (`FROM ... AS alias`, `COPY --from=`)
 - ✅ ARG substitution (`$VAR` / `${VAR}` in all instructions)
 - ✅ HEALTHCHECK with `--start-period`
-- `--no-cache` flag (reserved, not yet enforced)
+- `--no-cache` is accepted for CLI compatibility; dck currently rebuilds every Dockerfile instruction and does not reuse instruction results
 
 ### `dck commit <container> <image>[:tag]`
 
@@ -240,7 +240,7 @@ dck run -d --name myapp --ports 8080:80 --volume /app:/app --restart always --im
 | `--ulimit <opt>` | Ulimit: `name=soft:hard` | `--ulimit nofile=1024:2048` |
 | `-l, --label <k=v>` | Container label | `-l env=prod` |
 | `--dns <ip>` | DNS server (can repeat) | `--dns 8.8.8.8` |
-| `--network <mode>` | Network: `bridge` (default), `none`, `host` | `--network host` |
+| `--network <mode>` | Network: `bridge` (default), `none`, `host`, or a user-defined network name | `--network appnet` |
 | `--startup <s>` | Startup script (inline or `@file`) | `--startup @setup.sh` |
 | `--healthcheck-cmd <cmd>` | Health check command | `--healthcheck-cmd "curl -f http://localhost"` |
 | `--healthcheck-interval <s>` | Health check interval (seconds) | `--healthcheck-interval 30` |
@@ -447,11 +447,18 @@ dck info
 | `bridge` (default) | Each container gets IP `10.0.2.X` on bridge `dck0`. Host at `10.0.2.1`. |
 | `none` | No network (loopback only) |
 | `host` | Shares host network namespace (for VPN containers, packet capture) |
+| `<name>` | User-defined Linux bridge network created with `dck network create` | `--network appnet` |
 
 ```bash
 dck run -d -n web -p 80:80 nginx:alpine       # bridge (default)
 dck run -d --network none alpine sleep infinity
 dck run -d --network host myvpn-container
+
+dck network create --subnet 10.20.0.0/24 appnet
+dck network ls
+dck run -d --network appnet -n app alpine sleep infinity
+dck network inspect appnet
+dck network rm appnet   # only after containers using it are removed
 ```
 
 ### Network layout

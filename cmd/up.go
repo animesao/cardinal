@@ -19,6 +19,7 @@ import (
 	"dck/internal/config"
 	"dck/internal/container"
 	"dck/internal/image"
+	"dck/internal/network"
 )
 
 const depTimeout = 120 * time.Second
@@ -64,6 +65,7 @@ func Up(args []string) {
 				Readonly:     c.ReadonlyRootfs,
 				NoNewPrivs:   c.NoNewPrivileges,
 				NetworkMode:  c.NetworkMode,
+				Network:      c.NetworkMode,
 				Entrypoint:   c.Entrypoint,
 				Labels:       c.Labels,
 				CapAdd:       c.CapAdd,
@@ -90,7 +92,26 @@ func Up(args []string) {
 				cc.Ports = append(cc.Ports, fmt.Sprintf("%d:%d%s", p.HostPort, p.ContainerPort, proto))
 			}
 			for _, v := range c.Volumes {
-				cc.Volumes = append(cc.Volumes, v.Source+":"+v.Target)
+				mount := v.Source + ":" + v.Target
+				var options []string
+				if v.ReadOnly {
+					options = append(options, "ro")
+				} else if v.Propagation != "" || v.SELinuxRelabel != "" || v.NoCopy {
+					options = append(options, "rw")
+				}
+				if v.Propagation != "" {
+					options = append(options, v.Propagation)
+				}
+				if v.SELinuxRelabel != "" {
+					options = append(options, v.SELinuxRelabel)
+				}
+				if v.NoCopy {
+					options = append(options, "nocopy")
+				}
+				if len(options) > 0 {
+					mount += ":" + strings.Join(options, ",")
+				}
+				cc.Volumes = append(cc.Volumes, mount)
 			}
 			if len(c.Env) > 0 {
 				cc.Env = make(map[string]string)
@@ -296,13 +317,12 @@ func Up(args []string) {
 		}
 
 		for _, v := range cc.Volumes {
-			parts := strings.SplitN(v, ":", 2)
-			if len(parts) == 2 {
-				opts.Volumes = append(opts.Volumes, container.VolumeMount{
-					Source: parts[0],
-					Target: parts[1],
-				})
+			mount, parseErr := container.VolumeMountFromSpec(v)
+			if parseErr != nil {
+				fmt.Fprintf(os.Stderr, "  %s: invalid volume %q: %v\\n", name, v, parseErr)
+				continue
 			}
+			opts.Volumes = append(opts.Volumes, mount)
 		}
 
 		for k, v := range cc.Env {
@@ -331,6 +351,14 @@ func Up(args []string) {
 		}
 		if cc.NetworkMode != "" {
 			opts.NetworkMode = cc.NetworkMode
+			if cc.NetworkMode != "bridge" && cc.NetworkMode != "host" && cc.NetworkMode != "none" {
+				if _, err := network.LoadNetwork(cc.NetworkMode); err != nil {
+					if _, createErr := network.CreateNetwork(cc.NetworkMode, ""); createErr != nil {
+						fmt.Fprintf(os.Stderr, "  %s: error creating network %q: %v\\n", name, cc.NetworkMode, createErr)
+						continue
+					}
+				}
+			}
 		}
 		if len(cc.Labels) > 0 {
 			opts.Labels = cc.Labels

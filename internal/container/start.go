@@ -47,8 +47,15 @@ func (c *Container) startInternal() error {
 		c.dataMu.Unlock()
 		return fmt.Errorf("container %s is already running", c.ID)
 	}
+	staleIP := c.IP
 	c.Status = Created
 	c.dataMu.Unlock()
+	if staleIP != "" {
+		// A hard host crash can leave persisted allocation state behind even
+		// though the process is no longer alive. Release it before allocating a
+		// fresh address for this start.
+		c.cleanupNetwork()
+	}
 
 	// A previous detached console server may outlive a failed or automatic
 	// restart. Stop it before the next run truncates the shared log file.
@@ -56,6 +63,9 @@ func (c *Container) startInternal() error {
 
 	if err := state.EnsureDirs(); err != nil {
 		return err
+	}
+	if IsRootless() && c.NetworkMode != "" && c.NetworkMode != "bridge" && c.NetworkMode != "host" && c.NetworkMode != "none" {
+		return fmt.Errorf("rootless mode does not support user-defined bridge network %q", c.NetworkMode)
 	}
 
 	merged, err := c.setupFilesystem()
@@ -84,7 +94,20 @@ func (c *Container) startInternal() error {
 	}
 
 	childPID := c.resolveChildPID(cmd.Process.Pid)
-	c.setupContainerResources(childPID)
+	if err := c.setupContainerResources(childPID); err != nil {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		c.cleanupRootlessPorts()
+		c.killConsoleServe()
+		c.cleanupNetwork()
+		upper, _, mergedDir := c.OverlayDirs()
+		unmountOverlay(mergedDir)
+		TeardownDiskLimit(state.OverlayDir(), c.ID)
+		cleanupContainerCgroup(c.ID, c.CgroupPath)
+		_ = os.Remove(state.ConsolePath(c.ID))
+		_ = os.RemoveAll(filepath.Dir(upper))
+		return fmt.Errorf("configure container resources: %w", err)
+	}
 
 	if c.IP != "" {
 		RegisterDNSName(c.Name, c.IP)
@@ -97,6 +120,7 @@ func (c *Container) startInternal() error {
 	c.PID = childPID
 	c.Status = Running
 	c.StoppedByUser = false
+	c.LastStartedAt = time.Now()
 	c.dataMu.Unlock()
 	if err := c.Save(); err != nil {
 		return err
@@ -143,7 +167,22 @@ func (c *Container) setupFilesystem() (merged string, err error) {
 	}
 
 	for _, vol := range c.Volumes {
-		spec := ParseVolumeString(vol.Source + ":" + vol.Target)
+		mountType := vol.Type
+		if mountType == "" {
+			mountType = VolumeTypeBind
+			if !strings.Contains(vol.Source, "/") && !strings.Contains(vol.Source, "\\") {
+				mountType = VolumeTypeVolume
+			}
+		}
+		spec := &VolumeSpec{
+			Type:           mountType,
+			Source:         vol.Source,
+			Target:         vol.Target,
+			ReadOnly:       vol.ReadOnly,
+			Propagation:    vol.Propagation,
+			SELinuxRelabel: vol.SELinuxRelabel,
+			NoCopy:         vol.NoCopy,
+		}
 		if err := MountVolume(spec, mergedDir); err != nil {
 			return "", fmt.Errorf("mount volume %s -> %s: %w", vol.Source, vol.Target, err)
 		}
@@ -232,7 +271,7 @@ func (c *Container) resolveChildPID(unsharePID int) int {
 	return childPID
 }
 
-func (c *Container) setupContainerResources(childPID int) {
+func (c *Container) setupContainerResources(childPID int) error {
 	cpath, err := setupContainerCgroup(c.ID, childPID, c.MemoryLimit, c.CPUCount)
 	if err != nil {
 		log.Warn("Cgroup setup: %v (container will run without resource limits)", err)
@@ -242,8 +281,11 @@ func (c *Container) setupContainerResources(childPID int) {
 
 	if c.NeedsNetwork() && runtime.GOOS == "linux" {
 		if IsRootless() {
+			if c.NetworkMode != "" && c.NetworkMode != "bridge" && c.NetworkMode != "host" && c.NetworkMode != "none" {
+				return fmt.Errorf("rootless mode does not support user-defined bridge network %q; use bridge/none/host", c.NetworkMode)
+			}
 			if ip, err := SetupRootlessNetwork(childPID, c.ID); err != nil {
-				log.Warn("Rootless network: %v (container will run without network)", err)
+				return fmt.Errorf("rootless network: %w", err)
 			} else {
 				c.IP = ip
 				for _, p := range c.Ports {
@@ -256,9 +298,10 @@ func (c *Container) setupContainerResources(childPID int) {
 				}
 			}
 		} else if err := setupNetworking(c, childPID); err != nil {
-			log.Warn("Network setup: %v (container will run without network)", err)
+			return fmt.Errorf("network setup: %w", err)
 		}
 	}
+	return nil
 }
 
 func (c *Container) runForeground(cmd *exec.Cmd) error {
@@ -292,7 +335,12 @@ func (c *Container) runForeground(cmd *exec.Cmd) error {
 	if exitErr, ok := err.(*exec.ExitError); ok {
 		exitCode = exitErr.ExitCode()
 	}
+	c.markStableIfNeeded(time.Now())
 	if shouldRestart(c.Restart, exitCode, c.stoppedByUser()) {
+		if !c.allowAutomaticRestart(time.Now()) {
+			log.Warn("container %s stopped restarting after crash-loop limit (%d attempts in %s)", c.Name, c.restartMaxAttempts(), c.restartWindowDuration())
+			return err
+		}
 		return c.restart()
 	}
 	if c.RemoveOnExit {
@@ -343,13 +391,42 @@ func findChildPID(ppid int) int {
 }
 
 func setupNetworking(c *Container, pid int) error {
-	network.EnsureNetBase()
-	ip, err := network.AllocateIP()
+	bridge := network.BridgeName
+	gateway := network.BridgeIP
+	prefix := "24"
+	allocationName := ""
+
+	if c.NetworkMode != "" && c.NetworkMode != "bridge" {
+		n, err := network.LoadNetwork(c.NetworkMode)
+		if err != nil {
+			return err
+		}
+		if err := network.EnsureUserNetwork(n.Name); err != nil {
+			return err
+		}
+		bridge = n.Bridge
+		gateway = n.Gateway
+		allocationName = n.Name
+		prefix = network.CIDRPrefix(n.Subnet)
+	}
+
+	var ip string
+	var err error
+	if allocationName == "" {
+		network.EnsureNetBase()
+		ip, err = network.AllocateIP()
+	} else {
+		ip, err = network.AllocateNetworkIP(allocationName)
+	}
 	if err != nil {
 		return err
 	}
-	if err := network.SetupVeth(c.ID, pid, ip); err != nil {
-		network.ReleaseIP(ip)
+	if err := network.SetupVethOnBridge(c.ID, pid, ip, bridge, gateway, prefix); err != nil {
+		if allocationName == "" {
+			network.ReleaseIP(ip)
+		} else {
+			network.ReleaseNetworkIP(allocationName, ip)
+		}
 		return err
 	}
 	for _, p := range c.Ports {
@@ -430,7 +507,12 @@ func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 			log.Warn("save stopped container %s: %v", c.Name, saveErr)
 		}
 
+		c.markStableIfNeeded(time.Now())
 		if shouldRestart(c.Restart, exitCode, stoppedByUser) && (!c.Detach || c.Restart == "on-failure") {
+			if !c.allowAutomaticRestart(time.Now()) {
+				log.Warn("container %s stopped restarting after crash-loop limit (%d attempts in %s)", c.Name, c.restartMaxAttempts(), c.restartWindowDuration())
+				return
+			}
 			go func() {
 				time.Sleep(c.restartDelay())
 				if !c.canRestartAfterDelay() {
@@ -539,6 +621,7 @@ func (c *Container) execHealthcheck(cmd string, timeout time.Duration) error {
 }
 
 func (c *Container) cleanupNetwork() {
+	c.cleanupRootlessPorts()
 	if c.IP == "" {
 		return
 	}
@@ -546,7 +629,15 @@ func (c *Container) cleanupNetwork() {
 	for _, p := range c.Ports {
 		ports = append(ports, network.PortRule{HostPort: p.HostPort, ContainerPort: p.ContainerPort, Protocol: p.Protocol, ContainerIP: c.IP})
 	}
-	network.CleanupContainerNetwork(c.ID, c.IP, ports)
+	if c.NetworkMode != "" && c.NetworkMode != "bridge" {
+		network.ReleaseNetworkIP(c.NetworkMode, c.IP)
+		network.RemoveVeth(c.ID)
+		for _, p := range ports {
+			network.RemovePortForwarding(c.IP, p.HostPort, p.ContainerPort, p.Protocol)
+		}
+	} else {
+		network.CleanupContainerNetwork(c.ID, c.IP, ports)
+	}
 	c.IP = ""
 }
 

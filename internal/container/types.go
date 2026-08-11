@@ -44,6 +44,12 @@ type Container struct {
 	Hostname            string             `json:"hostname,omitempty"`
 	Restart             string             `json:"restart,omitempty"`
 	RestartDelay        string             `json:"restart_delay,omitempty"`
+	RestartMaxAttempts  int                `json:"restart_max_attempts,omitempty"`
+	RestartWindow       string             `json:"restart_window,omitempty"`
+	RestartAttempts     int                `json:"restart_attempts,omitempty"`
+	RestartWindowStart  time.Time          `json:"restart_window_start,omitempty"`
+	LastStartedAt       time.Time          `json:"last_started_at,omitempty"`
+	RestartBlocked      bool               `json:"restart_blocked,omitempty"`
 	AutoBackup          bool               `json:"auto_backup,omitempty"`
 	BackupInterval      string             `json:"backup_interval,omitempty"`
 	BackupRetention     int                `json:"backup_retention,omitempty"`
@@ -72,6 +78,7 @@ type Container struct {
 	Sysctls             map[string]string  `json:"sysctls,omitempty"`
 	DNS                 []string           `json:"dns,omitempty"`
 	NetworkMode         string             `json:"network_mode,omitempty"`
+	NetworkIP           string             `json:"network_ip,omitempty"`
 	Entrypoint          string             `json:"entrypoint,omitempty"`
 	Ulimits             []Ulimit           `json:"ulimits,omitempty"`
 
@@ -112,44 +119,52 @@ type PortMap struct {
 }
 
 type VolumeMount struct {
-	Source string `json:"source"`
-	Target string `json:"target"`
+	Type           VolumeType `json:"type,omitempty"`
+	Source         string     `json:"source"`
+	Target         string     `json:"target"`
+	ReadOnly       bool       `json:"read_only,omitempty"`
+	Propagation    string     `json:"propagation,omitempty"`
+	SELinuxRelabel string     `json:"selinux_relabel,omitempty"`
+	NoCopy         bool       `json:"no_copy,omitempty"`
 }
 
 type CreateOpts struct {
-	Name            string
-	Cmd             []string
-	StartupScript   string
-	Ports           []PortMap
-	Volumes         []VolumeMount
-	Env             []string
-	Hostname        string
-	Restart         string
-	RestartDelay    string
-	AutoBackup      bool
-	BackupInterval  string
-	BackupRetention int
-	BackupDir       string
-	Detach          bool
-	Interactive     bool
-	TTY             bool
-	RemoveOnExit    bool
-	MemoryLimit     int64
-	CPUCount        float64
-	DiskLimit       int64
-	WorkingDir      string
-	Healthcheck     *HealthcheckConfig
-	Labels          map[string]string
-	CapAdd          []string
-	CapDrop         []string
-	User            string
-	ReadonlyRootfs  bool
-	NoNewPrivileges bool
-	Sysctls         map[string]string
-	DNS             []string
-	NetworkMode     string
-	Entrypoint      string
-	Ulimits         []Ulimit
+	Name               string
+	Cmd                []string
+	StartupScript      string
+	Ports              []PortMap
+	Volumes            []VolumeMount
+	Env                []string
+	Hostname           string
+	Restart            string
+	RestartDelay       string
+	RestartMaxAttempts int
+	RestartWindow      string
+	AutoBackup         bool
+	BackupInterval     string
+	BackupRetention    int
+	BackupDir          string
+	Detach             bool
+	Interactive        bool
+	TTY                bool
+	RemoveOnExit       bool
+	MemoryLimit        int64
+	CPUCount           float64
+	DiskLimit          int64
+	WorkingDir         string
+	Healthcheck        *HealthcheckConfig
+	Labels             map[string]string
+	CapAdd             []string
+	CapDrop            []string
+	User               string
+	ReadonlyRootfs     bool
+	NoNewPrivileges    bool
+	Sysctls            map[string]string
+	DNS                []string
+	NetworkMode        string
+	NetworkIP          string
+	Entrypoint         string
+	Ulimits            []Ulimit
 }
 
 func shortID(id string, n int) string {

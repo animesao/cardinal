@@ -75,14 +75,16 @@ func Run(args []string) {
 	hostname := fs.String("h", "", "Container hostname")
 	restart := fs.String("restart", "", "Restart policy")
 	restartDelay := fs.String("restart-delay", "", "Delay before automatic restart (e.g. 10s, 1m)")
+	restartMaxAttempts := fs.Int("restart-max-attempts", 0, "Maximum automatic restarts in the restart window (default: 5)")
+	restartWindow := fs.String("restart-window", "", "Crash-loop restart window (e.g. 10m)")
 	var envVars stringSlice
 	fs.Var(&envVars, "e", "Environment variables (key=val)")
 	envFile := fs.String("env-file", "", "Path to .env file")
 	portMapping := fs.String("p", "", "Port mapping (host:container[/protocol])")
 	portsAlias := fs.String("ports", "", "Port mapping (host:container[/protocol])")
-	volumeMounts := fs.String("v", "", "Volume mounts (src:dst)")
-	volumeAlias := fs.String("volume", "", "Volume mounts (src:dst)")
-	volAlias := fs.String("vol", "", "Volume mounts (src:dst)")
+	volumeMounts := fs.String("v", "", "Volume mounts (src:dst[:ro|rw])")
+	volumeAlias := fs.String("volume", "", "Volume mounts (src:dst[:ro|rw])")
+	volAlias := fs.String("vol", "", "Volume mounts (src:dst[:ro|rw])")
 	memory := fs.String("memory", "", "Memory limit (e.g. 512m, 1g)")
 	ramAlias := fs.String("ram", "", "Memory limit (e.g. 512m, 1g)")
 	cpus := fs.Float64("cpus", 0, "CPU limit (number of CPUs, e.g. 1.5)")
@@ -95,7 +97,7 @@ func Run(args []string) {
 
 	// New flags
 	entrypoint := fs.String("entrypoint", "", "Override image entrypoint")
-	networkMode := fs.String("network", "", "Network mode (bridge/host/none)")
+	networkMode := fs.String("network", "", "Network mode or user-defined network name (bridge/host/none/name)")
 	var labels stringSlice
 	fs.Var(&labels, "label", "Container labels (key=val)")
 	fs.Var(&labels, "l", "Container labels (key=val)")
@@ -207,11 +209,21 @@ func Run(args []string) {
 
 	var volumes []container.VolumeMount
 	if *volumeMounts != "" {
-		for _, v := range strings.Split(*volumeMounts, ",") {
-			parts := strings.Split(v, ":")
-			if len(parts) == 2 {
-				volumes = append(volumes, container.VolumeMount{Source: parts[0], Target: parts[1]})
+		for _, v := range container.SplitVolumeSpecs(*volumeMounts) {
+			spec, err := container.ParseVolumeSpec(strings.TrimSpace(v))
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: invalid volume %q: %v\n", v, err)
+				os.Exit(1)
 			}
+			volumes = append(volumes, container.VolumeMount{
+				Type:           spec.Type,
+				Source:         spec.Source,
+				Target:         spec.Target,
+				ReadOnly:       spec.ReadOnly,
+				Propagation:    spec.Propagation,
+				SELinuxRelabel: spec.SELinuxRelabel,
+				NoCopy:         spec.NoCopy,
+			})
 		}
 	}
 
@@ -244,6 +256,17 @@ func Run(args []string) {
 		delay, err := time.ParseDuration(*restartDelay)
 		if err != nil || delay <= 0 {
 			fmt.Fprintf(os.Stderr, "Error: invalid restart delay %q (use e.g. 10s, 1m)\n", *restartDelay)
+			os.Exit(1)
+		}
+	}
+	if *restartMaxAttempts < 0 {
+		fmt.Fprintln(os.Stderr, "Error: restart-max-attempts cannot be negative")
+		os.Exit(1)
+	}
+	if *restartWindow != "" {
+		window, err := time.ParseDuration(*restartWindow)
+		if err != nil || window <= 0 {
+			fmt.Fprintf(os.Stderr, "Error: invalid restart window %q (use e.g. 10m)\n", *restartWindow)
 			os.Exit(1)
 		}
 	}
@@ -317,35 +340,37 @@ func Run(args []string) {
 	}
 
 	opts := container.CreateOpts{
-		Name:            *name,
-		Cmd:             cmd,
-		StartupScript:   startupScriptVal,
-		Ports:           ports,
-		Volumes:         volumes,
-		Env:             env,
-		Hostname:        *hostname,
-		Restart:         *restart,
-		RestartDelay:    *restartDelay,
-		Detach:          *detach,
-		Interactive:     *interactive || *tty,
-		TTY:             *tty,
-		RemoveOnExit:    *rm,
-		MemoryLimit:     memoryLimit,
-		CPUCount:        *cpus,
-		DiskLimit:       diskLimit,
-		WorkingDir:      *workdir,
-		Healthcheck:     hc,
-		Labels:          labelMap,
-		CapAdd:          capAdd,
-		CapDrop:         capDrop,
-		User:            *user,
-		ReadonlyRootfs:  *readonly,
-		NoNewPrivileges: *noNewPrivs,
-		Sysctls:         sysctlMap,
-		DNS:             dns,
-		NetworkMode:     *networkMode,
-		Entrypoint:      *entrypoint,
-		Ulimits:         parsedUlimits,
+		Name:               *name,
+		Cmd:                cmd,
+		StartupScript:      startupScriptVal,
+		Ports:              ports,
+		Volumes:            volumes,
+		Env:                env,
+		Hostname:           *hostname,
+		Restart:            *restart,
+		RestartDelay:       *restartDelay,
+		RestartMaxAttempts: *restartMaxAttempts,
+		RestartWindow:      *restartWindow,
+		Detach:             *detach,
+		Interactive:        *interactive || *tty,
+		TTY:                *tty,
+		RemoveOnExit:       *rm,
+		MemoryLimit:        memoryLimit,
+		CPUCount:           *cpus,
+		DiskLimit:          diskLimit,
+		WorkingDir:         *workdir,
+		Healthcheck:        hc,
+		Labels:             labelMap,
+		CapAdd:             capAdd,
+		CapDrop:            capDrop,
+		User:               *user,
+		ReadonlyRootfs:     *readonly,
+		NoNewPrivileges:    *noNewPrivs,
+		Sysctls:            sysctlMap,
+		DNS:                dns,
+		NetworkMode:        *networkMode,
+		Entrypoint:         *entrypoint,
+		Ulimits:            parsedUlimits,
 	}
 
 	c := container.New(img, opts)

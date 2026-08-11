@@ -427,12 +427,10 @@ func mountBind(spec *VolumeSpec, target string) error {
 		}
 	}
 
-	// Mount bind
-	bindOpts := "--bind"
-	if spec.ReadOnly {
-		bindOpts = "--bind"
-	}
-	if err := exec.Command("mount", bindOpts, source, target).Run(); err != nil {
+	// Mount bind. Read-only bind mounts require a second remount operation;
+	// applying `ro` only to the initial bind does not reliably make the mount
+	// read-only on all supported Linux kernels.
+	if err := exec.Command("mount", "--bind", source, target).Run(); err != nil {
 		return fmt.Errorf("mount bind %s: %w", source, err)
 	}
 
@@ -500,6 +498,24 @@ func safeContainerPath(root, target string) (string, error) {
 		return "", fmt.Errorf("container mount target escapes rootfs: %q", target)
 	}
 	return path, nil
+}
+
+// VolumeMountFromSpec parses a CLI/Compose volume specification and preserves
+// read-only, propagation, and no-copy options in container state.
+func VolumeMountFromSpec(value string) (VolumeMount, error) {
+	spec, err := ParseVolumeSpec(strings.TrimSpace(value))
+	if err != nil {
+		return VolumeMount{}, err
+	}
+	return VolumeMount{
+		Type:           spec.Type,
+		Source:         spec.Source,
+		Target:         spec.Target,
+		ReadOnly:       spec.ReadOnly,
+		Propagation:    spec.Propagation,
+		SELinuxRelabel: spec.SELinuxRelabel,
+		NoCopy:         spec.NoCopy,
+	}, nil
 }
 
 // ParseVolumeString is a convenience for parsing the old-format volume string

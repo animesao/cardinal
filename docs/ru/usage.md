@@ -129,7 +129,7 @@ VOLUME, SHELL, ARG, HEALTHCHECK, STOPSIGNAL, ONBUILD.
 - ✅ Многоэтапная сборка (`FROM ... AS alias`, `COPY --from=`)
 - ✅ Подстановка ARG (`$VAR` / `${VAR}` во всех инструкциях)
 - ✅ HEALTHCHECK с `--start-period`
-- `--no-cache` (зарезервировано, пока не влияет)
+- `--no-cache` принимается для совместимости CLI; сейчас dck всё равно выполняет каждую инструкцию Dockerfile и не использует кэш результатов инструкций
 
 ### `dck commit <контейнер> <образ>[:тег]`
 
@@ -240,7 +240,7 @@ dck run -d --name myapp --ports 8080:80 --volume /app:/app --restart always --im
 | `--ulimit <опция>` | Ulimit: `name=soft:hard` | `--ulimit nofile=1024:2048` |
 | `-l, --label <k=v>` | Метка контейнера | `-l env=prod` |
 | `--dns <ip>` | DNS сервер (можно повторять) | `--dns 8.8.8.8` |
-| `--network <режим>` | Сеть: `bridge` (по умолч.), `none`, `host` | `--network host` |
+| `--network <режим>` | Сеть: `bridge` (по умолч.), `none`, `host` или имя пользовательской сети | `--network appnet` |
 | `--startup <s>` | Стартовый скрипт (строка или `@файл`) | `--startup @setup.sh` |
 | `--healthcheck-cmd <cmd>` | Команда проверки здоровья | `--healthcheck-cmd "curl -f http://localhost"` |
 | `--healthcheck-interval <s>` | Интервал проверки (секунды) | `--healthcheck-interval 30` |
@@ -457,11 +457,18 @@ dck info
 | `bridge` (по умолч.) | Каждый контейнер получает IP `10.0.2.X` на bridge `dck0`. Хост: `10.0.2.1`. |
 | `none` | Без сети (только loopback) |
 | `host` | Общая сеть с хостом (для VPN, сниффинга) |
+| `<имя>` | Пользовательский Linux bridge, созданный через `dck network create` | `--network appnet` |
 
 ```bash
 dck run -d -n web -p 80:80 nginx:alpine       # bridge (по умолч.)
 dck run -d --network none alpine sleep infinity
 dck run -d --network host myvpn-container
+
+dck network create --subnet 10.20.0.0/24 appnet
+dck network ls
+dck run -d --network appnet -n app alpine sleep infinity
+dck network inspect appnet
+dck network rm appnet   # только после удаления контейнеров сети
 ```
 
 ### Схема сети

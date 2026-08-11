@@ -33,6 +33,8 @@ func Execute() {
 		Backup(args)
 	case "port":
 		Port(args)
+	case "network":
+		Network(args)
 	case "stop":
 		Stop(args)
 	case "start":
@@ -61,6 +63,8 @@ func Execute() {
 		Volume(args)
 	case "images":
 		Images(args)
+	case "verify":
+		Verify(args)
 	case "rmi":
 		Rmi(args)
 	case "update":
@@ -133,6 +137,7 @@ Usage:
     dck pull [--platform] <image>[:tag]    Pull image from registry
     dck push <image>[:tag]                 Push image to registry
     dck images                             List local images
+    dck verify <image>[:tag]               Verify local config and layer digests
     dck search <term>                     Search images on Docker Hub
     dck rmi <image>[:tag]                  Remove image
     dck commit <c> <img>[:tag]             Create image from container
@@ -162,6 +167,10 @@ Usage:
     dck info                               System-wide info
 
   Network:
+    dck network create <name>              Create a user-defined bridge network
+    dck network ls                         List user-defined networks
+    dck network inspect <name>             Inspect a user-defined network
+    dck network rm <name>                  Remove an unused user-defined network
     dck port <container>                   Show port mappings
     dck port add <c> H:C[/p]               Add port mapping
     dck port rm <c> H[/p]                  Remove port mapping
@@ -245,9 +254,9 @@ Run options:
   -n <name>       Container name                                         e.g. -n myapp
   -p H:C[/proto]  Port mapping (host:container/tcp|udp)                  e.g. -p 8080:80, -p 53:53/udp
   --ports H:C     Port mapping (alias for -p)                            e.g. --ports 8080:80
-  -v S:D          Volume mount (src:dst)                                  e.g. -v /data:/data
-  --volume S:D    Volume mount (alias for -v)                             e.g. --volume /data:/data
-  --vol S:D       Volume mount (alias for -v)                             e.g. --vol myvol:/data
+  -v S:D[:mode]   Volume mount (src:dst[:ro|rw])                          e.g. -v /data:/data:ro
+  --volume S:D    Volume mount (alias for -v)                             e.g. --volume /data:/data:ro
+  --vol S:D       Volume mount (alias for -v)                             e.g. --vol myvol:/data:rw
   -e K=V          Environment variable                                   e.g. -e DB_HOST=localhost
   --env-file <f>  Read environment variables from file                    e.g. --env-file .env
   -i              Interactive                                            e.g. -i
@@ -255,6 +264,8 @@ Run options:
   --rm            Remove on exit                                         e.g. --rm
   --restart       Restart policy (no|always|on-failure|unless-stopped)    e.g. --restart always
   --restart-delay  Wait before automatic restart                          e.g. --restart-delay 1m
+  --restart-max-attempts  Stop crash-loop after N retries                  e.g. --restart-max-attempts 5
+  --restart-window  Count retries within this duration                     e.g. --restart-window 10m
   --memory <lim>  Memory limit                                           e.g. --memory 1g, --memory 512m
   --ram <lim>     Memory limit (alias for --memory)                      e.g. --ram 2g
   --cpus <num>    CPU limit                                              e.g. --cpus 2, --cpus 0.5
@@ -275,7 +286,7 @@ Run options:
   --ulimit <opt>  Ulimit options (name=soft:hard)                        e.g. --ulimit nofile=1024:2048
   -l, --label     Container labels (key=val)                             e.g. -l env=prod
   --dns <ip>      DNS server (can repeat)                                e.g. --dns 8.8.8.8
-  --network <m>   Network mode (bridge|none|host)                        e.g. --network host
+  --network <m>   Network mode or user network name (bridge|none|host|name) e.g. --network appnet
   --startup <s>   Startup script (inline or @file)                       e.g. --startup @setup.sh
   --healthcheck-cmd <cmd>      Health check command                      e.g. --healthcheck-cmd "curl -f http://localhost"
   --healthcheck-interval <s>   Health check interval (seconds)           e.g. --healthcheck-interval 30

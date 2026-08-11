@@ -153,9 +153,7 @@ func ReleaseIP(ip string) {
 }
 
 func flushBridgeNeigh(ip string) {
-	if err := exec.Command("ip", "neigh", "flush", "dev", BridgeName, "to", ip).Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: ip neigh flush: %v\n", err)
-	}
+	flushBridgeNeighOnBridge(BridgeName, ip)
 }
 
 func removeOrphanVeths() {
@@ -239,6 +237,12 @@ func networkShortID(id string) string {
 }
 
 func SetupVeth(containerID string, pid int, containerIP string) error {
+	return SetupVethOnBridge(containerID, pid, containerIP, BridgeName, BridgeIP, "24")
+}
+
+// SetupVethOnBridge attaches a container namespace to a selected bridge.
+// The caller must ensure the bridge and its gateway already exist.
+func SetupVethOnBridge(containerID string, pid int, containerIP, bridge, gateway, prefix string) error {
 	short := networkShortID(containerID)
 	hostIf := fmt.Sprintf("ve%s", short)
 	contIf := fmt.Sprintf("vc%s", short)
@@ -246,11 +250,17 @@ func SetupVeth(containerID string, pid int, containerIP string) error {
 	if err := exec.Command("ip", "link", "add", hostIf, "type", "veth", "peer", "name", contIf).Run(); err != nil {
 		return fmt.Errorf("create veth pair: %w", err)
 	}
+	rollback := true
+	defer func() {
+		if rollback {
+			_ = exec.Command("ip", "link", "delete", hostIf).Run()
+		}
+	}()
 
 	if err := exec.Command("ip", "link", "set", contIf, "netns", fmt.Sprintf("%d", pid)).Run(); err != nil {
 		return fmt.Errorf("move veth to netns: %w", err)
 	}
-	if err := exec.Command("ip", "link", "set", hostIf, "master", BridgeName).Run(); err != nil {
+	if err := exec.Command("ip", "link", "set", hostIf, "master", bridge).Run(); err != nil {
 		return fmt.Errorf("attach veth to bridge: %w", err)
 	}
 	if err := exec.Command("ip", "link", "set", hostIf, "up").Run(); err != nil {
@@ -263,19 +273,25 @@ func SetupVeth(containerID string, pid int, containerIP string) error {
 	if err := runInNetns(pid, "ip", "link", "set", contIf, "name", "eth0"); err != nil {
 		return fmt.Errorf("rename container interface: %w", err)
 	}
-	if err := runInNetns(pid, "ip", "addr", "add", fmt.Sprintf("%s/24", containerIP), "dev", "eth0"); err != nil {
+	if err := runInNetns(pid, "ip", "addr", "add", fmt.Sprintf("%s/%s", containerIP, prefix), "dev", "eth0"); err != nil {
 		return fmt.Errorf("configure container address: %w", err)
 	}
 	if err := runInNetns(pid, "ip", "link", "set", "eth0", "up"); err != nil {
 		return fmt.Errorf("enable container interface: %w", err)
 	}
-	if err := runInNetns(pid, "ip", "route", "add", "default", "via", BridgeIP); err != nil {
+	if err := runInNetns(pid, "ip", "route", "add", "default", "via", gateway); err != nil {
 		return fmt.Errorf("configure container route: %w", err)
 	}
 
-	flushBridgeNeigh(containerIP)
-
+	flushBridgeNeighOnBridge(bridge, containerIP)
+	rollback = false
 	return nil
+}
+
+func flushBridgeNeighOnBridge(bridge, ip string) {
+	if err := exec.Command("ip", "neigh", "flush", "dev", bridge, "to", ip).Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: ip neigh flush: %v\n", err)
+	}
 }
 
 func runInNetns(pid int, args ...string) error {

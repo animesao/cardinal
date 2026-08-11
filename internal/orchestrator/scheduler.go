@@ -86,13 +86,11 @@ func startLocalReplica(ctx context.Context, serviceName string, svc *Service) er
 
 	var volumes []container.VolumeMount
 	for _, v := range svc.Volumes {
-		parts := strings.SplitN(v, ":", 2)
-		if len(parts) == 2 {
-			volumes = append(volumes, container.VolumeMount{
-				Source: parts[0],
-				Target: parts[1],
-			})
+		mount, parseErr := container.VolumeMountFromSpec(v)
+		if parseErr != nil {
+			return fmt.Errorf("parse volume %q: %w", v, parseErr)
 		}
+		volumes = append(volumes, mount)
 	}
 
 	env := make([]string, 0, len(svc.Env))

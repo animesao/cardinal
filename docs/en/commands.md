@@ -96,7 +96,7 @@ Build an image from a Dockerfile. The context defaults to `.` and the tag is req
 |---|---|
 | `-t NAME[:TAG]` | Required image name and tag |
 | `-f FILE` | Dockerfile path; defaults to `<context>/Dockerfile` |
-| `--no-cache` | Reserved build option; currently not enforced by the implementation |
+| `--no-cache` | Accepted for compatibility; builds currently do not reuse instruction results |
 | `--build-arg KEY=VALUE` | Repeatable build-time variable |
 | `--quiet` | Suppress build output |
 | `--cpu N` | CPU limit for build work |
@@ -169,7 +169,7 @@ Create and start a container. The image may instead be supplied with `--image`, 
 | `--image IMAGE` | Image instead of the positional image |
 | `--cmd`, `--command COMMAND` | Command instead of positional command arguments |
 | `--entrypoint COMMAND` | Override image entrypoint |
-| `--network MODE` | `bridge` (default), `none`, or `host` |
+| `--network MODE` | `bridge` (default), `none`, `host`, or a user-defined network name |
 | `-l`, `--label KEY=VALUE` | Repeatable container label |
 | `--cap-add CAP` | Repeatable Linux capability to add |
 | `--cap-drop CAP` | Repeatable Linux capability to drop |
@@ -267,7 +267,35 @@ dck set minecraft --restart unless-stopped --restart-delay 1m
 dck set web --memory 2g --cpus 2
 ```
 
-## 4. Logs, monitoring, execution, and files
+## 4. Network commands
+
+### `dck network create [--subnet CIDR] NAME`
+
+Create a user-defined Linux bridge network. If `--subnet` is omitted, dck selects a free private `/24`.
+
+```bash
+dck network create --subnet 10.20.0.0/24 appnet
+dck network ls
+dck network inspect appnet
+dck run -d --network appnet alpine sleep infinity
+dck network rm appnet
+```
+
+`network rm` refuses while IP addresses are allocated. Remove containers using the network first. Custom bridges require root or `CAP_NET_ADMIN` and `ip`/`iptables`.
+
+### `dck network ls|list`
+
+List user-defined bridge networks. The built-in `dck0` bridge is not listed.
+
+### `dck network inspect NAME`
+
+Show network ID, driver, subnet, gateway, bridge interface, and allocated IP count.
+
+### `dck network rm|remove NAME`
+
+Remove an unused user-defined network and its firewall rules.
+
+## 5. Logs, monitoring, execution, and files
 
 ### `dck logs [-f] [--tail N] [--previous] [--all] CONTAINER`
 
@@ -341,7 +369,7 @@ Show host, runtime, storage, CPU, memory, disk, and container summary informatio
 
 Stream container events as JSON. `--since` accepts RFC3339 or `YYYY-MM-DD HH:MM:SS`.
 
-## 5. Ports, volumes, and backups
+## 6. Ports, volumes, and backups
 
 ### `dck port CONTAINER`
 
@@ -404,7 +432,7 @@ Remove local volumes not referenced by any container.
 
 Backups contain writable overlay data and named volumes, not host bind mounts. Scheduled backups briefly stop a running container for consistency, archive it, then start it again. Enabling a schedule does not create an immediate archive; the first archive is created after the interval. Until that first archive exists, `backup status` may show the schedule's initialization time rather than a completed archive. Install the persistent supervisor with `dck bootstrap --install`.
 
-## 6. Compose-style configuration
+## 7. Compose-style configuration
 
 ### `dck up [-f FILE] [SERVICE]`
 
@@ -431,7 +459,7 @@ dck down -f production.toml api
 dck down -a
 ```
 
-## 7. API, cluster, services, and functions
+## 8. API, cluster, services, and functions
 
 ### `dck serve [-p PORT] [-H HOST] [-d] [--token TOKEN]`
 
@@ -492,7 +520,7 @@ dck serve -H 0.0.0.0 -p 2375 --token "$DCK_TOKEN" -d
 
 Blueprint `info` accepts a full name or a matching prefix. `-y` skips installation prompts.
 
-## 8. System and maintenance commands
+## 9. System and maintenance commands
 
 ### `dck system prune`
 
@@ -528,7 +556,7 @@ Print the built-in command overview. Individual commands also print usage when r
 
 `dck init <container-id> <merged-path>` initializes a container namespace and is invoked by the runtime. `dck console-serve` serves attach connections. These are implementation commands and are not intended as normal application entry points.
 
-## 9. Data and environment
+## 10. Data and environment
 
 - `DCK_DATA_DIR` changes the runtime state directory; the default for root is `/root/.dck`.
 - `DCK_TOKEN` supplies API/cluster authentication when a token flag is absent.

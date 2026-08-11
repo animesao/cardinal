@@ -152,7 +152,7 @@ func supervisorRestartDelay(c *container.Container) time.Duration {
 }
 
 func eligibleForSupervisor(c *container.Container) bool {
-	if c == nil || !c.Detach || c.StoppedByUser || c.Status == container.Running {
+	if c == nil || !c.Detach || c.StoppedByUser || c.Status == container.Running || c.RestartBlocked {
 		return false
 	}
 	switch c.Restart {

@@ -5,6 +5,8 @@ package cmd
 import (
 	"archive/tar"
 	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -38,6 +40,8 @@ func Backup(args []string) {
 		backupDisable(args[1:])
 	case "status":
 		backupStatus(args[1:])
+	case "verify":
+		backupVerify(args[1:])
 	default:
 		fmt.Printf("unknown backup command: %s\n", args[0])
 		printBackupUsage()
@@ -55,6 +59,7 @@ Commands:
   enable <container> [options]         Enable scheduled backups
   disable <container>                  Disable scheduled backups
   status <container>                   Show scheduled backup settings
+  verify <file.tar.gz>                 Verify archive checksum
 
 Enable options:
   --interval <duration>                Backup interval (default: 24h)
@@ -207,7 +212,13 @@ func backupCreate(args []string) {
 		}
 		output = filepath.Join(backupDir(), fmt.Sprintf("%s-%s.tar.gz", c.Name, time.Now().Format("20060102-150405")))
 	}
-	if err := os.MkdirAll(filepath.Dir(output), 0700); err != nil {
+	parent, err := validateBackupDirectory(filepath.Dir(output))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: invalid backup output directory: %v\n", err)
+		os.Exit(1)
+	}
+	output = filepath.Join(parent, filepath.Base(output))
+	if err := os.MkdirAll(parent, 0700); err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating backup parent: %v\n", err)
 		os.Exit(1)
 	}
@@ -216,7 +227,13 @@ func backupCreate(args []string) {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+	if err := writeBackupChecksum(output); err != nil {
+		_ = os.Remove(output)
+		fmt.Fprintf(os.Stderr, "Error writing checksum: %v\n", err)
+		os.Exit(1)
+	}
 	fmt.Printf("Created backup: %s (%d bytes)\n", output, fileSize(output))
+	fmt.Printf("Checksum: %s\n", backupChecksumPath(output))
 }
 
 func validateBackupDirectory(path string) (string, error) {
@@ -353,7 +370,11 @@ func pruneAutomaticBackups(c *container.Container) error {
 		return nil
 	}
 	for _, entry := range backups[retention:] {
-		if err := os.Remove(filepath.Join(dir, entry.name)); err != nil && !os.IsNotExist(err) {
+		archivePath := filepath.Join(dir, entry.name)
+		if err := os.Remove(archivePath); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		if err := os.Remove(backupChecksumPath(archivePath)); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 	}
@@ -419,6 +440,10 @@ func performAutomaticBackup(c *container.Container) error {
 	if err := createContainerBackup(c, output); err != nil {
 		_ = os.Remove(output)
 		return fmt.Errorf("create backup: %w", err)
+	}
+	if err := writeBackupChecksum(output); err != nil {
+		_ = os.Remove(output)
+		return fmt.Errorf("write backup checksum: %w", err)
 	}
 	if err := pruneAutomaticBackups(c); err != nil {
 		return fmt.Errorf("prune backups: %w", err)
@@ -572,6 +597,22 @@ func backupList(args []string) {
 	}
 }
 
+func backupVerify(args []string) {
+	if len(args) < 1 {
+		fmt.Println("Usage: dck backup verify <file.tar.gz>")
+		os.Exit(1)
+	}
+	if _, err := os.Stat(backupChecksumPath(args[0])); os.IsNotExist(err) {
+		fmt.Printf("Backup is valid but unverified (no checksum sidecar): %s\n", args[0])
+		return
+	}
+	if err := verifyBackupChecksum(args[0]); err != nil {
+		fmt.Fprintf(os.Stderr, "Backup verification failed: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Backup verified: %s\n", args[0])
+}
+
 func backupRestore(args []string) {
 	if len(args) < 2 {
 		fmt.Println("Usage: dck backup restore <container> <file.tar.gz>")
@@ -594,6 +635,9 @@ func backupRestore(args []string) {
 }
 
 func restoreContainerBackup(c *container.Container, archivePath string) error {
+	if err := verifyBackupChecksum(archivePath); err != nil {
+		return fmt.Errorf("verify backup checksum: %w", err)
+	}
 	stage, err := os.MkdirTemp(state.DataDir(), ".dck-restore-")
 	if err != nil {
 		return fmt.Errorf("create restore staging directory: %w", err)
@@ -873,6 +917,91 @@ func atomicRestoreSymlink(target, link string) error {
 	if err := os.Rename(tmpPath, target); err != nil {
 		_ = os.Remove(tmpPath)
 		return err
+	}
+	return nil
+}
+
+func backupChecksumPath(archivePath string) string {
+	return archivePath + ".sha256"
+}
+
+func backupDigest(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = f.Close() }()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+func writeBackupChecksum(archivePath string) error {
+	digest, err := backupDigest(archivePath)
+	if err != nil {
+		return fmt.Errorf("hash archive: %w", err)
+	}
+	checksumPath := backupChecksumPath(archivePath)
+	tmp, err := os.CreateTemp(filepath.Dir(checksumPath), ".dck-checksum-")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	removeTemp := true
+	defer func() {
+		if removeTemp {
+			_ = os.Remove(tmpPath)
+		}
+	}()
+	if _, err := fmt.Fprintf(tmp, "%s  %s\n", digest, filepath.Base(archivePath)); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmpPath, 0600); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpPath, checksumPath); err != nil {
+		return err
+	}
+	removeTemp = false
+	return nil
+}
+
+func verifyBackupChecksum(archivePath string) error {
+	checksumPath := backupChecksumPath(archivePath)
+	data, err := os.ReadFile(checksumPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Archives created before checksum sidecars were introduced remain
+			// restorable. `dck backup verify` still reports this as unverified.
+			return nil
+		}
+		return err
+	}
+	fields := strings.Fields(string(data))
+	if len(fields) < 1 || len(fields[0]) != sha256.Size*2 {
+		return fmt.Errorf("invalid checksum file %s", checksumPath)
+	}
+	for _, r := range fields[0] {
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
+			return fmt.Errorf("invalid checksum value in %s", checksumPath)
+		}
+	}
+	actual, err := backupDigest(archivePath)
+	if err != nil {
+		return fmt.Errorf("hash archive: %w", err)
+	}
+	if !strings.EqualFold(actual, fields[0]) {
+		return fmt.Errorf("checksum mismatch: expected %s, got %s", fields[0], actual)
 	}
 	return nil
 }

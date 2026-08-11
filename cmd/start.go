@@ -22,6 +22,7 @@ func StartCmd(args []string) {
 	}
 
 	c.Status = container.Created
+	c.ResetRestartGuard()
 	if err := c.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting: %v\n", err)
 		os.Exit(1)

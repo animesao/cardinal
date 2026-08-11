@@ -168,12 +168,33 @@ func RootlessPortForward(hostPort, containerPort int, protocol, containerIP stri
 	return nil, fmt.Errorf("no port forwarding available (install rootlesskit or socat)")
 }
 
-// CleanupRootlessPorts kills socat/rootlesskit processes for a container.
-func CleanupRootlessPorts(pids []int) {
+// CleanupRootlessPorts kills only forwarding processes that match the
+// container's configured endpoints. PIDs are persisted in state and may be
+// stale after a reboot or PID reuse, so a generic PID-only kill is unsafe.
+func CleanupRootlessPorts(pids []int, ports []PortMap) {
 	for _, pid := range pids {
-		if pid > 0 {
-			_ = exec.Command("kill", strconv.Itoa(pid)).Run()
+		if pid <= 0 {
+			continue
 		}
+		cmdline, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
+		if err != nil {
+			continue
+		}
+		command := strings.ReplaceAll(string(cmdline), "\x00", " ")
+		if !strings.Contains(command, "socat") && !strings.Contains(command, "rootlesskit") {
+			continue
+		}
+		matchesPort := false
+		for _, port := range ports {
+			if strings.Contains(command, fmt.Sprintf("LISTEN:%d", port.HostPort)) && strings.Contains(command, fmt.Sprintf(":%d", port.ContainerPort)) {
+				matchesPort = true
+				break
+			}
+		}
+		if !matchesPort {
+			continue
+		}
+		_ = exec.Command("kill", strconv.Itoa(pid)).Run()
 	}
 }
 

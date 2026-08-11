@@ -175,7 +175,7 @@ func blueprintInfo(args []string) {
 
 	if tpl.Volumes != "" {
 		fmt.Printf("  Volumes:\n")
-		for _, v := range strings.Split(tpl.Volumes, ",") {
+		for _, v := range container.SplitVolumeSpecs(tpl.Volumes) {
 			v = strings.TrimSpace(v)
 			if v != "" {
 				fmt.Printf("    -v %s\n", v)
@@ -553,18 +553,17 @@ func blueprintInstall(args []string) {
 	// Parse volumes
 	var volumes []container.VolumeMount
 	if tpl.Volumes != "" {
-		for _, v := range strings.Split(tpl.Volumes, ",") {
+		for _, v := range container.SplitVolumeSpecs(tpl.Volumes) {
 			v = strings.TrimSpace(v)
 			if v == "" {
 				continue
 			}
-			parts := strings.SplitN(v, ":", 2)
-			if len(parts) == 2 {
-				volumes = append(volumes, container.VolumeMount{
-					Source: parts[0],
-					Target: parts[1],
-				})
+			mount, parseErr := container.VolumeMountFromSpec(v)
+			if parseErr != nil {
+				fmt.Fprintf(os.Stderr, "Error: invalid blueprint volume %q: %v\\n", v, parseErr)
+				os.Exit(1)
 			}
+			volumes = append(volumes, mount)
 		}
 	}
 

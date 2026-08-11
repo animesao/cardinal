@@ -274,6 +274,11 @@ func (bs *buildState) handleFrom(inst Instruction, buildTmp string) error {
 		return nil
 	}
 
+	// dck does not reuse intermediate build layers, so every RUN/COPY
+	// instruction is already evaluated on each build. Keep the base image
+	// lookup on the normal content-addressed store; --no-cache controls build
+	// layers rather than deleting an image that may be used by running
+	// containers.
 	img, err = image.Pull(ref)
 	if err != nil {
 		return fmt.Errorf("pull base image %s: %w", ref, err)

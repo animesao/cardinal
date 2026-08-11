@@ -49,7 +49,7 @@ func Bootstrap(args []string) {
 
 	count := 0
 	for _, c := range all {
-		if !shouldBootstrap(c.Restart, c.StoppedByUser) {
+		if !shouldBootstrap(c.Restart, c.StoppedByUser) || c.RestartBlocked {
 			continue
 		}
 		fmt.Printf("  Starting %s (%s)... ", shortID(c.ID), c.Name)

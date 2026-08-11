@@ -136,7 +136,7 @@ postcleanup:
 
 func (c *Container) cleanupRootlessPorts() {
 	if len(c.PortForwardPIDs) > 0 {
-		CleanupRootlessPorts(c.PortForwardPIDs)
+		CleanupRootlessPorts(c.PortForwardPIDs, c.Ports)
 		c.PortForwardPIDs = nil
 	}
 }
