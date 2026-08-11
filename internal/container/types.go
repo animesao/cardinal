@@ -34,6 +34,11 @@ type Container struct {
 	ImageName           string             `json:"image_name"`
 	ImageTag            string             `json:"image_tag"`
 	PID                 int                `json:"pid"`
+	MountNamespace      uint64             `json:"mount_namespace,omitempty"`
+	PIDNamespace        uint64             `json:"pid_namespace,omitempty"`
+	NetworkNamespace    uint64             `json:"network_namespace,omitempty"`
+	IPCNamespace        uint64             `json:"ipc_namespace,omitempty"`
+	UTSNamespace        uint64             `json:"uts_namespace,omitempty"`
 	Status              Status             `json:"status"`
 	Cmd                 []string           `json:"cmd"`
 	StartupScript       string             `json:"startup_script,omitempty"`

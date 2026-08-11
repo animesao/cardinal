@@ -1,0 +1,52 @@
+name: Linux E2E
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.5'
+          cache: true
+
+      - name: Install runtime helpers
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y iproute2 iptables util-linux mount
+
+      - name: Build dck
+        run: CGO_ENABLED=0 go build -ldflags="-s -w -X dck/cmd.version=e2e" -o dck-e2e .
+
+      - name: Run privileged smoke tests
+        env:
+          DCK_DATA_DIR: /tmp/dck-e2e-state
+        run: |
+          set -euxo pipefail
+          cleanup() {
+            sudo -E ./dck-e2e rm -f e2e-restart 2>/dev/null || true
+            sudo -E ./dck-e2e rm -f e2e-backup 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          sudo -E ./dck-e2e doctor || test "$?" = 1
+          sudo -E ./dck-e2e pull alpine:latest
+          sudo -E ./dck-e2e run --rm --network none alpine:latest echo DCK_E2E_OK 2>&1 | grep -qx 'DCK_E2E_OK'
+
+          sudo -E ./dck-e2e run -d -n e2e-restart --network none --restart unless-stopped --restart-delay 2s alpine:latest sh -c 'sleep 30'
+          sudo -E ./dck-e2e ps -a | grep -q e2e-restart
+          sudo -E ./dck-e2e stop e2e-restart
+          sudo -E ./dck-e2e start e2e-restart
+          sudo -E ./dck-e2e ps | grep -q e2e-restart
+
+          sudo -E ./dck-e2e run -d -n e2e-backup --network none alpine:latest sh -c 'sleep 30'
+          sudo -E ./dck-e2e backup enable e2e-backup --interval 1h --retention 2
+          sudo -E ./dck-e2e backup status e2e-backup | grep -q 'Enabled: true'
+          sudo -E ./dck-e2e stop e2e-backup
+          sudo -E ./dck-e2e backup create e2e-backup -o /tmp/e2e-backup.tar.gz
+          sudo -E ./dck-e2e backup verify /tmp/e2e-backup.tar.gz

@@ -9,7 +9,7 @@ dck up                        dck cluster init
 dck serve                     dck fn deploy --name hello myfunc
 ```
 
-Version: `1.22.30` — [GitHub](https://github.com/animesao/dck)
+Version: see the root [`VERSION`](../VERSION) file — [GitHub](https://github.com/animesao/dck)
 
 ## Start here
 
@@ -18,6 +18,7 @@ Version: `1.22.30` — [GitHub](https://github.com/animesao/dck)
 - [Command examples (English)](en/examples.md)
 - [Примеры команд (русский)](ru/examples.md)
 - [Contributing guide](../CONTRIBUTING.md)
+- [Security model and vulnerability reporting](../SECURITY.md)
 - [Running guide (English)](en/running.md)
 - [Руководство по запуску (русский)](ru/running.md)
 
@@ -60,6 +61,8 @@ The running guides cover installation, image/tag syntax, bind mounts, `.env`, Py
 | `dck stats [container] [--no-stream]` | CPU, RAM, IO stats (live or one-shot) |
 | `dck top <container>` | Running processes |
 | `dck info` | System-wide info |
+| `dck doctor [--strict]` | Read-only host/runtime diagnostics |
+| `dck security check [--strict]` | Security-focused diagnostics |
 | `dck events` | Stream container events |
 
 ### Network
@@ -146,6 +149,7 @@ The running guides cover installation, image/tag syntax, bind mounts, `.env`, Py
 | Command | Description |
 |---------|-------------|
 | `dck serve [-p 2375] [-H host] [-d] [--token <key>]` | Start REST API server (localhost by default; external bind requires Bearer token) |
+| `dck serve --tls-cert cert.pem --tls-key key.pem` | Serve the API over HTTPS |
 | `dck system prune` | Clean up unused resources |
 | `dck update [--check]` | Self-update |
 | `dck bootstrap [--install\|--remove]` | Install/start or remove the systemd supervisor |
@@ -169,6 +173,8 @@ The running guides cover installation, image/tag syntax, bind mounts, `.env`, Py
 | `-t` | Allocate TTY |
 | `--rm` | Auto-remove on exit |
 | `--restart <policy>` | `no`, `always`, `on-failure`, `unless-stopped`; detached boot supervision applies to `always`/`unless-stopped` |
+| `--restart-max-attempts <n>` | Crash-loop budget before automatic restart is blocked |
+| `--restart-window <duration>` | Window used for the crash-loop budget |
 | `--restart-delay <duration>` | Wait before automatic restart, e.g. `10s`, `1m` |
 | `--memory / --ram <lim>` | Memory limit (e.g. `1g`, `512m`) |
 | `--cpus / --cpu <num>` | CPU limit (e.g. `1.5`, `4`) |
@@ -181,7 +187,7 @@ The running guides cover installation, image/tag syntax, bind mounts, `.env`, Py
 | `--cap-add / --cap-drop` | Linux capabilities |
 | `--user <uid>` | UID or UID:GID |
 | `--readonly` | Read-only rootfs |
-| `--no-new-privs` | Disable new privileges |
+| `--no-new-privs` | Explicitly request no-new-privileges (dck also enforces this security default) |
 | `--sysctl <k=v>` | Sysctl options |
 | `--ulimit <opt>` | Ulimit options |
 | `-l / --label <k=v>` | Container labels |

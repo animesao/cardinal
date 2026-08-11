@@ -779,7 +779,7 @@ dck run -d
 
 ## Changelog
 
-**v1.22.30** — Current release. OCI image extraction, protected bind-source validation, persistent restart policies with delays and systemd recovery, rotated dck logs, inspect JSON, manual and scheduled safe container backups with retention, cluster orchestration, FaaS, blueprints, services, Compose, healthchecks, startup scripts, dynamic ports, events, stats, Docker-compatible REST API, cross-architecture CI builds, and complete EN/RU CLI references with practical examples.
+**v1.22.31** — Current release. OCI image extraction, protected bind-source validation, persistent restart policies with delays and systemd recovery, rotated dck logs, inspect JSON, manual and scheduled safe container backups with retention, cluster orchestration, FaaS, blueprints, services, Compose, healthchecks, startup scripts, dynamic ports, events, stats, Docker-compatible REST API, cross-architecture CI builds, read-only doctor/security diagnostics, optional HTTPS API, and complete EN/RU CLI references with practical examples.
 
 **v1.20.0** — Dynamic port management (`dck port add/rm`). Russian (ru) docs.
 
@@ -814,6 +814,7 @@ Downloads the latest binary and replaces `/usr/local/bin/dck`.
 ## Documentation
 
 - [Contributors and contribution guide](CONTRIBUTING.md)
+- [Security model and vulnerability reporting](SECURITY.md)
 - [Build, CI, and versioning](docs/build.md) — local checks, cross-compilation, and release automation
 
 | English | Русский |

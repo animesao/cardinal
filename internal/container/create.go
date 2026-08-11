@@ -107,15 +107,7 @@ func Load(id string) (*Container, error) {
 		if err := state.ReadJSON(path, &c); err != nil {
 			return nil, err
 		}
-		c.dataMu.RLock()
-		running := c.Status == Running
-		pid := c.PID
-		c.dataMu.RUnlock()
-		if running && !pidAlive(pid) {
-			c.dataMu.Lock()
-			c.Status = Stopped
-			c.dataMu.Unlock()
-		}
+		normalizeLoadedState(&c)
 		return &c, nil
 	}
 
@@ -130,15 +122,7 @@ func Load(id string) (*Container, error) {
 			if err := state.ReadJSON(filepath.Join(state.ContainersDir(), e.Name()), &c); err != nil {
 				return nil, err
 			}
-			c.dataMu.RLock()
-			running := c.Status == Running
-			pid := c.PID
-			c.dataMu.RUnlock()
-			if running && !pidAlive(pid) {
-				c.dataMu.Lock()
-				c.Status = Stopped
-				c.dataMu.Unlock()
-			}
+			normalizeLoadedState(&c)
 			return &c, nil
 		}
 	}
@@ -149,19 +133,34 @@ func Load(id string) (*Container, error) {
 			continue
 		}
 		if c.Name == id {
-			c.dataMu.RLock()
-			running := c.Status == Running
-			pid := c.PID
-			c.dataMu.RUnlock()
-			if running && !pidAlive(pid) {
-				c.dataMu.Lock()
-				c.Status = Stopped
-				c.dataMu.Unlock()
-			}
+			normalizeLoadedState(&c)
 			return &c, nil
 		}
 	}
 	return nil, fmt.Errorf("container %s not found", id)
+}
+
+func normalizeLoadedState(c *Container) {
+	c.dataMu.Lock()
+	changed := c.Status == Running && (c.MountNamespace == 0 || c.PIDNamespace == 0 || c.NetworkNamespace == 0 || c.IPCNamespace == 0 || c.UTSNamespace == 0 || !pidAlive(c.PID))
+	if changed {
+		// State files created before namespace identities were persisted cannot
+		// be used safely by exec/cp/top. Persist the stopped state so the
+		// supervisor cannot make a decision from stale JSON on the next boot.
+		c.Status = Stopped
+		c.PID = 0
+		c.MountNamespace = 0
+		c.PIDNamespace = 0
+		c.NetworkNamespace = 0
+		c.IPCNamespace = 0
+		c.UTSNamespace = 0
+	}
+	c.dataMu.Unlock()
+	if changed {
+		if err := c.Save(); err != nil {
+			log.Warn("persist normalized container state %s: %v", c.ID, err)
+		}
+	}
 }
 
 func generateID() string {

@@ -385,10 +385,9 @@ func (bs *buildState) handleRun(inst Instruction, buildEnv []string, buildTmp st
 		}
 	}
 
-	// Build environment
-	env := os.Environ()
-	env = append(env, buildEnv...)
-	env = append(env, bs.config.Config.Env...)
+	// Build environment: do not leak host credentials/proxy variables into an
+	// untrusted Dockerfile RUN step.
+	env := buildEnvironment(buildEnv, bs.config.Config.Env)
 
 	// Execute command in chroot
 	var cmd *exec.Cmd
@@ -493,9 +492,14 @@ func (bs *buildState) handleCopy(inst Instruction, buildTmp string) error {
 		fmt.Printf("Step %d : COPY %v %s\n", step, srcs, dst)
 	}
 
-	// Resolve destination
-	dstPath := filepath.Join(bs.rootfs, dst)
-	os.MkdirAll(dstPath, 0755)
+	// Resolve destination inside the image rootfs.
+	dstPath, err := safeBuildDestination(bs.rootfs, dst)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dstPath, 0755); err != nil {
+		return err
+	}
 
 	// Create temp dir to track what was copied
 	copyDir := filepath.Join(buildTmp, fmt.Sprintf("copy_%d", step))
@@ -508,19 +512,27 @@ func (bs *buildState) handleCopy(inst Instruction, buildTmp string) error {
 		var srcPath string
 
 		if fromStage != "" {
-			// Copy from a previous stage's rootfs
+			// Copy from a previous stage's rootfs.
 			stage, ok := bs.stages[fromStage]
 			if !ok {
 				return fmt.Errorf("COPY --from=%s: stage not found", fromStage)
 			}
-			srcPath = filepath.Join(stage.rootfs, src)
+			srcPath, err = safeBuildDestination(stage.rootfs, src)
+			if err != nil {
+				return err
+			}
 		} else {
-			// Copy from build context
-			srcPath = filepath.Join(bs.cfg.ContextDir, src)
+			// Copy only from the declared build context; reject traversal and
+			// symlink escapes before any read occurs.
+			srcPath, err = safeBuildSource(bs.cfg.ContextDir, src)
+			if err != nil {
+				return err
+			}
 		}
 
 		// Copy to both the rootfs and the tracking dir
-		if err := copyRecursive(srcPath, filepath.Join(dstPath, filepath.Base(src))); err != nil {
+		destination := filepath.Join(dstPath, filepath.Base(src))
+		if err := copyRecursive(srcPath, destination); err != nil {
 			return fmt.Errorf("copy %s: %w", src, err)
 		}
 		if err := copyRecursive(srcPath, filepath.Join(copyDir, filepath.Base(src))); err != nil {
@@ -739,19 +751,52 @@ func (bs *buildState) handleMaintainer(inst Instruction) {
 }
 
 func substituteArgs(args []string, buildArgs map[string]string) []string {
-	if len(buildArgs) == 0 {
-		return args
-	}
 	result := make([]string, len(args))
 	for i, arg := range args {
-		result[i] = os.Expand(arg, func(key string) string {
-			if val, ok := buildArgs[key]; ok {
-				return val
-			}
-			return os.Getenv(key)
-		})
+		result[i] = expandBuildArg(arg, buildArgs)
 	}
 	return result
+}
+
+func expandBuildArg(value string, buildArgs map[string]string) string {
+	var out strings.Builder
+	for i := 0; i < len(value); {
+		if value[i] != '$' {
+			out.WriteByte(value[i])
+			i++
+			continue
+		}
+		start := i
+		i++
+		name := ""
+		if i < len(value) && value[i] == '{' {
+			i++
+			nameStart := i
+			for i < len(value) && value[i] != '}' {
+				i++
+			}
+			if i >= len(value) {
+				out.WriteString(value[start:])
+				break
+			}
+			name = value[nameStart:i]
+			i++
+		} else {
+			nameStart := i
+			for i < len(value) && (value[i] == '_' || value[i] >= 'a' && value[i] <= 'z' || value[i] >= 'A' && value[i] <= 'Z' || value[i] >= '0' && value[i] <= '9') {
+				i++
+			}
+			if i == nameStart {
+				out.WriteByte('$')
+				continue
+			}
+			name = value[nameStart:i]
+		}
+		if replacement, ok := buildArgs[name]; ok {
+			out.WriteString(replacement)
+		}
+	}
+	return out.String()
 }
 
 func handleArg(inst Instruction, buildArgs map[string]string) {
@@ -991,15 +1036,18 @@ func applyBuildCgroup(pid int, cpu float64, mem int64) {
 }
 
 func copyFile(src, dst string) error {
-	in, err := os.Open(src)
+	in, err := openCopySource(src)
 	if err != nil {
-		return err
+		return fmt.Errorf("open COPY source %q: %w", src, err)
 	}
 	defer func() { _ = in.Close() }()
 
-	out, err := os.Create(dst)
+	if info, err := os.Lstat(dst); err == nil && info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("refusing to overwrite symlink %q", dst)
+	}
+	out, err := openCopyDestination(dst)
 	if err != nil {
-		return err
+		return fmt.Errorf("open COPY destination %q: %w", dst, err)
 	}
 	defer func() { _ = out.Close() }()
 
@@ -1008,13 +1056,29 @@ func copyFile(src, dst string) error {
 }
 
 func copyRecursive(src, dst string) error {
-	srcInfo, err := os.Stat(src)
+	// Use Lstat and reject links/special files. Following a link discovered
+	// below a validated build-context root could otherwise read outside the
+	// context (for example COPY dir /app with dir/secret -> /etc/shadow).
+	srcInfo, err := os.Lstat(src)
 	if err != nil {
 		return err
 	}
+	if srcInfo.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("refusing to copy symlink %q", src)
+	}
+	if !srcInfo.IsDir() && !srcInfo.Mode().IsRegular() {
+		return fmt.Errorf("refusing to copy special file %q", src)
+	}
 
 	if srcInfo.IsDir() {
-		os.MkdirAll(dst, srcInfo.Mode())
+		if dstInfo, dstErr := os.Lstat(dst); dstErr == nil && dstInfo.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("refusing to copy into symlink directory %q", dst)
+		} else if dstErr != nil && !os.IsNotExist(dstErr) {
+			return dstErr
+		}
+		if err := os.MkdirAll(dst, srcInfo.Mode().Perm()); err != nil {
+			return err
+		}
 		entries, err := os.ReadDir(src)
 		if err != nil {
 			return err

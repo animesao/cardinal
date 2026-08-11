@@ -3,7 +3,6 @@
 package container
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -14,13 +13,13 @@ func (c *Container) Exec(cmd []string) error {
 }
 
 func (c *Container) ExecOpts(cmd []string, interactive, tty bool) error {
-	if c.Status != Running {
-		return fmt.Errorf("container %s is not running", c.ID)
+	if err := c.validateNamespaceTarget(); err != nil {
+		return err
 	}
 
 	args := []string{
 		"-t", strconv.Itoa(c.PID),
-		"-m", "-p", "-i", "-n",
+		"-m", "-p", "-i", "-n", "-r",
 		"--",
 	}
 	args = append(args, cmd...)

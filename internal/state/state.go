@@ -1,6 +1,8 @@
 package state
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -23,82 +25,83 @@ func DataDir() string {
 }
 
 func init() {
-	// Ensure Home is set for root when running under systemd
 	if os.Getuid() == 0 {
 		_ = os.Setenv("HOME", "/root")
 	}
 }
 
-func ImagesDir() string {
-	return filepath.Join(DataDir(), "images")
-}
-
-func ContainersDir() string {
-	return filepath.Join(DataDir(), "containers")
-}
-
-func LogsDir() string {
-	return filepath.Join(DataDir(), "logs")
-}
-
-func OverlayDir() string {
-	return filepath.Join(DataDir(), "overlay")
-}
-
-func VolumesDir() string {
-	return filepath.Join(DataDir(), "volumes")
-}
+func ImagesDir() string     { return filepath.Join(DataDir(), "images") }
+func ContainersDir() string { return filepath.Join(DataDir(), "containers") }
+func LogsDir() string       { return filepath.Join(DataDir(), "logs") }
+func OverlayDir() string    { return filepath.Join(DataDir(), "overlay") }
+func VolumesDir() string    { return filepath.Join(DataDir(), "volumes") }
 
 func ResolveVolume(source string) string {
-	// Named volumes (no path separators) are stored under VolumesDir
 	if !strings.Contains(source, "/") && !strings.Contains(source, "\\") {
-		return filepath.Join(VolumesDir(), source)
+		return filepath.Join(VolumesDir(), safePart(source))
 	}
 	return source
 }
 
 func ImageDir(name, tag string) string {
-	return filepath.Join(ImagesDir(), name, tag)
+	// Keep repository namespaces (for example library/alpine), but never allow
+	// an invalid reference to control a filesystem path. Invalid references are
+	// mapped to an unreachable-looking private key under images instead.
+	if !validImageName(name) || !validTag(tag) {
+		return filepath.Join(ImagesDir(), ".invalid", referenceKey(name, tag))
+	}
+	return filepath.Join(ImagesDir(), filepath.FromSlash(name), tag)
 }
 
-func ImageRootfsDir(name, tag string) string {
-	return filepath.Join(ImageDir(name, tag), "rootfs")
-}
-
-func ContainerPath(id string) string {
-	return filepath.Join(ContainersDir(), id+".json")
-}
-
-func LogPath(id string) string {
-	return filepath.Join(LogsDir(), id+".log")
-}
+func ImageRootfsDir(name, tag string) string { return filepath.Join(ImageDir(name, tag), "rootfs") }
+func ContainerPath(id string) string         { return filepath.Join(ContainersDir(), safePart(id)+".json") }
+func LogPath(id string) string               { return filepath.Join(LogsDir(), safePart(id)+".log") }
 
 func OverlayDirs(id string) (upper, work, merged string) {
-	base := filepath.Join(OverlayDir(), id)
-	return filepath.Join(base, "upper"),
-		filepath.Join(base, "work"),
-		filepath.Join(base, "merged")
+	base := filepath.Join(OverlayDir(), safePart(id))
+	return filepath.Join(base, "upper"), filepath.Join(base, "work"), filepath.Join(base, "merged")
 }
 
-func ConsolesDir() string {
-	return filepath.Join(DataDir(), "consoles")
-}
-
-func CacheDir() string {
-	return filepath.Join(DataDir(), "cache")
-}
-
-func LayerCacheDir() string {
-	return filepath.Join(CacheDir(), "layers")
-}
-
+func ConsolesDir() string   { return filepath.Join(DataDir(), "consoles") }
+func CacheDir() string      { return filepath.Join(DataDir(), "cache") }
+func LayerCacheDir() string { return filepath.Join(CacheDir(), "layers") }
 func LayerPath(digest string) string {
-	hash := strings.TrimPrefix(digest, "sha256:")
-	return filepath.Join(LayerCacheDir(), hash, "layer.tar.gz")
+	return filepath.Join(LayerCacheDir(), safePart(strings.TrimPrefix(digest, "sha256:")), "layer.tar.gz")
+}
+func ConsolePath(containerID string) string {
+	return filepath.Join(ConsolesDir(), safePart(containerID)+".sock")
 }
 
-func ConsolePath(containerID string) string {
-	return filepath.Join(ConsolesDir(), containerID+".sock")
+func safePart(value string) string {
+	if value != "" && value != "." && value != ".." && !strings.ContainsAny(value, `/\\`) && filepath.Base(value) == value {
+		return value
+	}
+	return referenceKey(value)
+}
+
+func referenceKey(parts ...string) string {
+	h := sha256.New()
+	for _, part := range parts {
+		_, _ = h.Write([]byte{0})
+		_, _ = h.Write([]byte(part))
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func validImageName(name string) bool {
+	if name == "" || strings.HasPrefix(name, "/") || strings.HasPrefix(name, "\\") || strings.Contains(name, "\\") {
+		return false
+	}
+	for _, part := range strings.Split(name, "/") {
+		if part == "" || part == "." || part == ".." {
+			return false
+		}
+	}
+	return true
+}
+
+func validTag(tag string) bool {
+	return tag != "" && tag != "." && tag != ".." && !strings.ContainsAny(tag, `/\\`)
 }
 
 func EnsureDirs() error {
@@ -129,7 +132,6 @@ func WriteFileAtomic(path string, data []byte, mode os.FileMode) error {
 	}
 	tmpPath := tmp.Name()
 	defer os.Remove(tmpPath)
-
 	if err := tmp.Chmod(mode); err != nil {
 		_ = tmp.Close()
 		return err

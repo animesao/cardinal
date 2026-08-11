@@ -93,6 +93,10 @@ func Execute() {
 		Set(args)
 	case "info":
 		Info(args)
+	case "doctor":
+		Doctor(args)
+	case "security":
+		Security(args)
 	case "serve":
 		Serve(args)
 	case "system":
@@ -165,6 +169,8 @@ Usage:
     dck stats [container]                  CPU, RAM, IO stats
     dck top <container>                    Show running processes
     dck info                               System-wide info
+    dck doctor [--strict]                  Read-only host/runtime diagnostics
+    dck security check [--strict]          Security-focused diagnostics
 
   Network:
     dck network create <name>              Create a user-defined bridge network
@@ -241,8 +247,11 @@ Usage:
     dck backup enable <c> --interval 24h   Enable scheduled backups
     dck backup disable <c>                 Disable scheduled backups
     dck backup status <c>                  Show scheduled backup settings
-    dck serve [-p 2375]                    Start REST API server
+    dck serve [-p 2375] [--token TOKEN]    Start REST API server
+    dck serve --tls-cert cert.pem --tls-key key.pem  Enable HTTPS API
     dck system prune                       Clean up unused resources
+    dck doctor [--strict]                  Read-only host/runtime diagnostics
+    dck security check [--strict]          Security-focused diagnostics
     dck update [--check]                   Check for updates and self-update
     dck bootstrap [--install|--remove]     Auto-start containers on boot
     dck supervisor                         Run persistent restart supervisor

@@ -125,6 +125,11 @@ postcleanup:
 	UnregisterDNSName(c.Name)
 	c.dataMu.Lock()
 	c.PID = 0
+	c.MountNamespace = 0
+	c.PIDNamespace = 0
+	c.NetworkNamespace = 0
+	c.IPCNamespace = 0
+	c.UTSNamespace = 0
 	c.Status = Stopped
 	c.dataMu.Unlock()
 	if err := c.Save(); err != nil {

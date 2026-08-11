@@ -8,16 +8,21 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"dck/internal/state"
 )
 
-const DockerAPIVersion = "1.44"
+const (
+	DockerAPIVersion = "1.44"
+	maxRequestBody   = 8 << 20
+)
 
 var (
 	authToken     string
@@ -38,6 +43,16 @@ func SetAuthToken(token string) {
 }
 
 func StartServer(port int, host string) error {
+	return StartServerWithTLS(port, host, "", "")
+}
+
+// StartServerWithTLS starts the API and optionally serves HTTPS when both
+// certificate and key paths are provided. External binds still require a
+// Bearer token even when TLS is enabled.
+func StartServerWithTLS(port int, host, certFile, keyFile string) error {
+	if (certFile == "") != (keyFile == "") {
+		return fmt.Errorf("TLS requires both certificate and key files")
+	}
 	if isExternalHost(host) && authToken == "" {
 		return fmt.Errorf("refusing to expose API on %s without an authentication token; use --token or DCK_TOKEN", host)
 	}
@@ -78,12 +93,27 @@ func StartServer(port int, host string) error {
 	}
 
 	fmt.Printf("dck API server listening on %s\n", addr)
-	fmt.Printf("Docker API compatible (Portainer: Settings > Docker > http://%s)\n", addr)
-	fmt.Printf("  curl http://%s/version\n", addr)
-	fmt.Printf("  curl http://%s/containers/json\n", addr)
-	fmt.Printf("  curl http://%s/images/json\n", addr)
+	scheme := "http"
+	if certFile != "" {
+		scheme = "https"
+	}
+	fmt.Printf("Docker API compatible (Portainer: Settings > Docker > %s://%s)\n", scheme, addr)
+	fmt.Printf("  curl %s://%s/version\n", scheme, addr)
+	fmt.Printf("  curl %s://%s/containers/json\n", scheme, addr)
+	fmt.Printf("  curl %s://%s/images/json\n", scheme, addr)
 
-	return http.Serve(listener, authMiddleware(corsMiddleware(jsonContentType(mux))))
+	server := &http.Server{
+		Handler:           corsMiddleware(authMiddleware(jsonContentType(mux))),
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20,
+	}
+	if certFile != "" {
+		return server.ServeTLS(listener, certFile, keyFile)
+	}
+	return server.Serve(listener)
 }
 
 func isExternalHost(host string) bool {
@@ -121,20 +151,47 @@ func authMiddleware(next http.Handler) http.Handler {
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		// Do not advertise credential-capable API operations to arbitrary web
+		// origins. Native clients use Authorization directly.
+		origin := r.Header.Get("Origin")
+		if !isAllowedCORSOrigin(origin) {
+			if r.Method == http.MethodOptions {
+				next.ServeHTTP(w, r)
+				return
+			}
+			next.ServeHTTP(w, r)
+			return
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Vary", "Origin")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(204)
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
 }
 
+func isAllowedCORSOrigin(origin string) bool {
+	parsed, err := url.Parse(origin)
+	if err != nil || parsed.User != nil || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return false
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return false
+	}
+	host := parsed.Hostname()
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
+}
+
 func jsonContentType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		if r.Body != nil && r.Method != http.MethodGet && r.Method != http.MethodHead {
+			r.Body = http.MaxBytesReader(w, r.Body, maxRequestBody)
+		}
 		next.ServeHTTP(w, r)
 	})
 }

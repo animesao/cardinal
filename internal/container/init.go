@@ -231,6 +231,21 @@ func ensureUsrMerge() {
 	}
 }
 
+func allowedContainerSysctl(name string) bool {
+	name = strings.ToLower(strings.TrimSpace(name))
+	// These are network-namespace scoped on supported Linux kernels. Refuse
+	// all other names rather than guessing whether a future kernel scopes them.
+	if !strings.HasPrefix(name, "net.") || strings.Contains(name, "/") || strings.Contains(name, "\\") {
+		return false
+	}
+	for _, part := range strings.Split(name, ".") {
+		if part == "" || part == "." || part == ".." {
+			return false
+		}
+	}
+	return true
+}
+
 func InitContainer(id, merged string) error {
 	if runtime.GOOS != "linux" {
 		return fmt.Errorf("container init only supported on Linux")
@@ -290,11 +305,17 @@ func InitContainer(id, merged string) error {
 		}
 	}
 
-	// Apply sysctls BEFORE making /proc/sys read-only
+	// Never write arbitrary host-visible kernel settings from a container
+	// specification. Only the explicitly namespaced network knobs are allowed;
+	// global settings such as kernel.core_pattern could otherwise affect the
+	// host even though this process is in a private mount/network namespace.
 	for k, v := range c.Sysctls {
+		if !allowedContainerSysctl(k) {
+			return fmt.Errorf("sysctl %q is not allowed in an unprivileged container", k)
+		}
 		path := "/proc/sys/" + strings.ReplaceAll(k, ".", "/")
 		if err := os.WriteFile(path, []byte(v), 0644); err != nil {
-			log.Warn("set sysctl %s: %v", k, err)
+			return fmt.Errorf("set sysctl %s: %w", k, err)
 		}
 	}
 

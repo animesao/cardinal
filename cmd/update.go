@@ -80,25 +80,28 @@ func Update(args []string) {
 	fmt.Println("Downloading update...")
 	expectedChecksum, err := fetchURL(checksumURL)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: could not fetch checksum (proceeding without verification): %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to fetch update checksum: %v\n", err)
+		os.Exit(1)
 	}
 
-	body, err := fetchURL(binaryURL)
+	body, err := fetchURLBytes(binaryURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to download binary: %v\n", err)
 		os.Exit(1)
 	}
 
-	if expectedChecksum != "" {
-		hash := sha256.Sum256([]byte(body))
-		actualHex := hex.EncodeToString(hash[:])
-		expectedHex := strings.TrimSpace(strings.Split(expectedChecksum, " ")[0])
-		if !strings.EqualFold(actualHex, expectedHex) {
-			fmt.Fprintf(os.Stderr, "Checksum mismatch! Expected %s, got %s. Aborting update.\n", expectedHex, actualHex)
-			os.Exit(1)
-		}
-		fmt.Println("Checksum verified.")
+	expectedHex, err := parseSHA256Checksum(expectedChecksum)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Invalid update checksum: %v\n", err)
+		os.Exit(1)
 	}
+	hash := sha256.Sum256(body)
+	actualHex := hex.EncodeToString(hash[:])
+	if !strings.EqualFold(actualHex, expectedHex) {
+		fmt.Fprintf(os.Stderr, "Checksum mismatch! Expected %s, got %s. Aborting update.\n", expectedHex, actualHex)
+		os.Exit(1)
+	}
+	fmt.Println("Checksum verified.")
 
 	// Get current binary path
 	selfPath, err := os.Executable()
@@ -114,7 +117,7 @@ func Update(args []string) {
 		os.Exit(1)
 	}
 	tmpPath := tmpFile.Name()
-	if _, err := tmpFile.WriteString(body); err != nil {
+	if _, err := tmpFile.Write(body); err != nil {
 		closeErr := tmpFile.Close()
 		removeErr := os.Remove(tmpPath)
 		fmt.Fprintf(os.Stderr, "Failed to write temp file: %v", err)
@@ -160,6 +163,37 @@ func Update(args []string) {
 	fmt.Println("Update complete!")
 }
 
+func parseSHA256Checksum(contents string) (string, error) {
+	fields := strings.Fields(contents)
+	if len(fields) == 0 {
+		return "", fmt.Errorf("checksum response is empty")
+	}
+	checksum := fields[0]
+	if len(checksum) != sha256.Size*2 {
+		return "", fmt.Errorf("expected %d hex characters, got %d", sha256.Size*2, len(checksum))
+	}
+	if _, err := hex.DecodeString(checksum); err != nil {
+		return "", fmt.Errorf("checksum is not valid hexadecimal: %w", err)
+	}
+	return strings.ToLower(checksum), nil
+}
+
+func fetchURLBytes(url string) ([]byte, error) {
+	body, err := fetchURLGoBytes(url)
+	if err == nil {
+		return body, nil
+	}
+	body, err = fetchURLWithCurlBytes(url)
+	if err == nil {
+		return body, nil
+	}
+	body, err = fetchURLWithWgetBytes(url)
+	if err == nil {
+		return body, nil
+	}
+	return nil, fmt.Errorf("all methods failed")
+}
+
 func fetchURL(url string) (string, error) {
 	body, err := fetchURLGo(url)
 	if err == nil {
@@ -176,7 +210,7 @@ func fetchURL(url string) (string, error) {
 	return "", fmt.Errorf("all methods failed")
 }
 
-func fetchURLGo(url string) (string, error) {
+func fetchURLGoBytes(url string) ([]byte, error) {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -188,16 +222,43 @@ func fetchURLGo(url string) (string, error) {
 	}
 	resp, err := client.Get(url)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("HTTP %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
+	return body, err
+}
+
+func fetchURLGo(url string) (string, error) {
+	body, err := fetchURLGoBytes(url)
 	return strings.TrimSpace(string(body)), err
+}
+
+func fetchURLWithCurlBytes(url string) ([]byte, error) {
+	var stderr bytes.Buffer
+	cmd := exec.Command("curl", "-fsSL", url)
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("curl failed: %v (stderr: %s)", err, strings.TrimSpace(stderr.String()))
+	}
+	return out, nil
+}
+
+func fetchURLWithWgetBytes(url string) ([]byte, error) {
+	var stderr bytes.Buffer
+	cmd := exec.Command("wget", "-qO-", url)
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("wget failed: %v (stderr: %s)", err, strings.TrimSpace(stderr.String()))
+	}
+	return out, nil
 }
 
 func fetchURLWithCurl(url string) (string, error) {

@@ -116,8 +116,17 @@ func (c *Container) startInternal() error {
 		EnsureContainerHosts(merged, c.Name, c.IP, c.DNS)
 	}
 
+	mountNS, pidNS, networkNS, ipcNS, utsNS, err := containerNamespaceIdentities(childPID)
+	if err != nil {
+		return fmt.Errorf("record container namespaces: %w", err)
+	}
 	c.dataMu.Lock()
 	c.PID = childPID
+	c.MountNamespace = mountNS
+	c.PIDNamespace = pidNS
+	c.NetworkNamespace = networkNS
+	c.IPCNamespace = ipcNS
+	c.UTSNamespace = utsNS
 	c.Status = Running
 	c.StoppedByUser = false
 	c.LastStartedAt = time.Now()
@@ -320,6 +329,11 @@ func (c *Container) runForeground(cmd *exec.Cmd) error {
 	}
 	c.dataMu.Lock()
 	c.PID = 0
+	c.MountNamespace = 0
+	c.PIDNamespace = 0
+	c.NetworkNamespace = 0
+	c.IPCNamespace = 0
+	c.UTSNamespace = 0
 	c.Status = Stopped
 	c.LastExitAt = time.Now()
 	c.dataMu.Unlock()
@@ -499,6 +513,11 @@ func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 		UnregisterDNSName(c.Name)
 		c.dataMu.Lock()
 		c.PID = 0
+		c.MountNamespace = 0
+		c.PIDNamespace = 0
+		c.NetworkNamespace = 0
+		c.IPCNamespace = 0
+		c.UTSNamespace = 0
 		c.Status = Stopped
 		c.dataMu.Unlock()
 		c.cleanupNetwork()
@@ -607,7 +626,10 @@ func (c *Container) runHealthcheck(ctx context.Context) {
 }
 
 func (c *Container) execHealthcheck(cmd string, timeout time.Duration) error {
-	args := []string{"-t", strconv.Itoa(c.PID), "-m", "-p", "-i", "-n", "--", "sh", "-c", cmd}
+	if err := c.validateNamespaceTarget(); err != nil {
+		return err
+	}
+	args := []string{"-t", strconv.Itoa(c.PID), "-m", "-p", "-i", "-n", "-r", "--", "sh", "-c", cmd}
 	ecmd := exec.Command("nsenter", args...)
 	done := make(chan error, 1)
 	go func() { done <- ecmd.Run() }()

@@ -18,13 +18,13 @@ func (c *Container) Top() error {
 }
 
 func (c *Container) TopString(psArgs string) (string, error) {
-	if c.Status != Running {
-		return "", fmt.Errorf("container %s is not running", c.ID)
+	if err := c.validateNamespaceTarget(); err != nil {
+		return "", err
 	}
 
 	args := []string{
 		"-t", strconv.Itoa(c.PID),
-		"-p",
+		"-m", "-p", "-r",
 		"--",
 		"ps", psArgs,
 	}

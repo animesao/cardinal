@@ -2,7 +2,8 @@
 
 ## Requirements
 
-- Go 1.25+
+- Go 1.26.5+ (use the latest patched Go release in CI and production builds)
+- Linux runtime checks: `dck doctor` and `dck security check`
 - Linux for container execution features
 - Optional: `git` for version injection and release metadata
 
@@ -51,9 +52,12 @@ gofmt -w $(git ls-files '*.go')
 go test ./... -count=1
 go vet ./...
 go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8 run ./...
+go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ./...
 CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./...
 git diff --check
+dck doctor
+dck security check --strict
 ```
 
 Go tests execute compiled test binaries. Do not run `GOARCH=arm64 go test` on a
@@ -76,18 +80,22 @@ root `VERSION` file; do not create another version file under `cmd/`.
 
 ## GitHub Actions
 
-The repository has three workflows:
+The repository has four workflows. CI also runs `govulncheck` against the Go dependency graph; this catches known vulnerabilities in reachable Go code but does not replace OS/kernel/container-image scanning. Keep the workflow toolchain on the latest patched Go release; Go 1.26.3 was observed by the audit to contain GO-2026-5856, GO-2026-5039, and GO-2026-5037, fixed in later patch releases.
+
+
 
 - **CI** (`.github/workflows/ci.yml`) runs golangci-lint and `go vet`, then builds
   Linux `amd64` and `arm64`. The full test suite runs on native amd64 only.
   The matrix has `fail-fast: false`, so an architecture failure does not cancel
   the other architecture job.
-- **Build & Release** (`.github/workflows/build.yml`) runs on pushes to `main`
-  and manual dispatch. It increments `VERSION`, creates a version tag, checks
+- **Build & Release** (`.github/workflows/build.yml`) runs validation before any
+  version bump or publish. It increments `VERSION`, creates a version tag, checks
   out that tag, builds Linux `amd64`, `arm64`, and `armv6`, creates checksums and
   an amd64 `.deb`, then publishes a GitHub release.
+- **Linux E2E** (`.github/workflows/e2e.yml`) is a manual privileged Ubuntu smoke test. It pulls Alpine, runs a namespace-isolated command, exercises restart recovery, and creates/verifies a backup. It is intentionally manual because it requires host kernel, mount, namespace, and networking capabilities.
 - **Release** (`.github/workflows/release.yml`) is a manual release workflow for
-  major/minor/patch/automatic version bumps. Build/release workflows use the
+  major/minor/patch/automatic version bumps and runs the same validation gates
+  before mutating `VERSION`, `main`, or tags. Build/release workflows use the
   same serialized concurrency group so simultaneous runs do not race on
   `VERSION`, `main`, or tags.
 

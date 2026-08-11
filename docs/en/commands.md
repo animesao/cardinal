@@ -461,9 +461,24 @@ dck down -a
 
 ## 8. API, cluster, services, and functions
 
-### `dck serve [-p PORT] [-H HOST] [-d] [--token TOKEN]`
+### `dck serve [-p PORT] [-H HOST] [-d] [--token TOKEN] [--tls-cert FILE --tls-key FILE]`
 
-Start the REST API. Defaults are `127.0.0.1:2375`; `DCK_HOST` can override host/port and `DCK_TOKEN` can provide the token. External binds require a token.
+Start the REST API. Defaults are `127.0.0.1:2375`; `DCK_HOST` can override host/port and `DCK_TOKEN` can provide the token. External binds require a token. Supply both TLS files to serve HTTPS; the API still requires a Bearer token for external binds.
+
+```bash
+dck serve
+dck serve -H 0.0.0.0 -p 2375 --token "$DCK_TOKEN" --tls-cert /etc/dck/server.crt --tls-key /etc/dck/server.key -d
+```
+
+### `dck doctor [--strict]` and `dck security check [--strict]`
+
+Run read-only host/runtime checks. The commands inspect permissions, required Linux helpers, namespaces, cgroups, OverlayFS, rootless prerequisites, and API exposure. They never install packages or start/stop containers. Exit status is non-zero for failures; `--strict` also treats warnings as failures.
+
+```bash
+dck doctor
+dck doctor --strict
+dck security check
+```
 
 ```bash
 dck serve

@@ -184,6 +184,17 @@ func TestSaveAndLoad(t *testing.T) {
 	}
 }
 
+func TestNormalizeLoadedStateRejectsLegacyRunningState(t *testing.T) {
+	c := &Container{Status: Running, PID: os.Getpid()}
+	normalizeLoadedState(c)
+	if c.Status != Stopped {
+		t.Fatalf("legacy running state status = %q, want %q", c.Status, Stopped)
+	}
+	if c.PID != 0 || c.MountNamespace != 0 {
+		t.Fatalf("legacy running state retained runtime identity: pid=%d namespace=%d", c.PID, c.MountNamespace)
+	}
+}
+
 func TestContainerState(t *testing.T) {
 	c := &Container{ID: "test-state", Status: Created}
 	if c.Status != Created {

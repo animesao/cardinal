@@ -93,9 +93,15 @@ func (c *Container) InjectSecrets(rootfs string) error {
 			continue
 		}
 
-		targetPath := filepath.Join(rootfs, sm.Target)
+		targetPath, err := safeContainerFilePath(rootfs, sm.Target)
+		if err != nil {
+			return fmt.Errorf("unsafe secret target %q: %w", sm.Target, err)
+		}
 		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
 			return fmt.Errorf("create secret dir %s: %w", filepath.Dir(targetPath), err)
+		}
+		if err := rejectSecretSymlinkAncestors(rootfs, targetPath); err != nil {
+			return fmt.Errorf("unsafe secret target %q: %w", sm.Target, err)
 		}
 
 		mode := os.FileMode(sm.Mode)
@@ -103,6 +109,9 @@ func (c *Container) InjectSecrets(rootfs string) error {
 			mode = 0444
 		}
 
+		if info, statErr := os.Lstat(targetPath); statErr == nil && info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("write secret %s: target is a symlink", sm.Target)
+		}
 		if err := os.WriteFile(targetPath, []byte(sm.Data), mode); err != nil {
 			return fmt.Errorf("write secret %s: %w", sm.Target, err)
 		}
@@ -129,6 +138,57 @@ func (c *Container) InjectSecrets(rootfs string) error {
 		}
 	}
 
+	return nil
+}
+
+func safeContainerFilePath(rootfs, target string) (string, error) {
+	if target == "" || strings.Contains(target, "\\") || !filepath.IsAbs(filepath.FromSlash(target)) {
+		return "", fmt.Errorf("target must be an absolute container path")
+	}
+	rel := strings.TrimPrefix(filepath.FromSlash(target), string(filepath.Separator))
+	if rel == "" || rel == "." {
+		return "", fmt.Errorf("target must name a file")
+	}
+	for _, part := range strings.FieldsFunc(target, func(r rune) bool { return r == '/' || r == '\\' }) {
+		if part == ".." {
+			return "", fmt.Errorf("parent traversal")
+		}
+	}
+	root, err := filepath.Abs(rootfs)
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(root, rel)
+	check, err := filepath.Rel(root, path)
+	if err != nil || check == ".." || strings.HasPrefix(check, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("path escapes container rootfs")
+	}
+	return path, nil
+}
+
+func rejectSecretSymlinkAncestors(root, target string) error {
+	rel, err := filepath.Rel(root, target)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("path escapes container rootfs")
+	}
+	current := root
+	parts := strings.Split(rel, string(filepath.Separator))
+	for i, part := range parts {
+		current = filepath.Join(current, part)
+		if i == len(parts)-1 {
+			break
+		}
+		info, statErr := os.Lstat(current)
+		if statErr != nil {
+			if os.IsNotExist(statErr) {
+				continue
+			}
+			return statErr
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("symlink ancestor %q", current)
+		}
+	}
 	return nil
 }
 

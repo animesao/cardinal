@@ -29,6 +29,31 @@ func TestIsExternalHost(t *testing.T) {
 	}
 }
 
+func TestAllowedCORSOrigin(t *testing.T) {
+	for _, origin := range []string{"http://localhost:3000", "https://127.0.0.1:5173", "http://[::1]:8080"} {
+		if !isAllowedCORSOrigin(origin) {
+			t.Errorf("isAllowedCORSOrigin(%q) = false, want true", origin)
+		}
+	}
+	for _, origin := range []string{"https://example.com", "http://localhost.evil", "http://user@localhost:3000", "http://localhost/path"} {
+		if isAllowedCORSOrigin(origin) {
+			t.Errorf("isAllowedCORSOrigin(%q) = true, want false", origin)
+		}
+	}
+}
+
+func TestStartServerWithTLSRequiresBothFiles(t *testing.T) {
+	oldToken := authToken
+	t.Cleanup(func() { authToken = oldToken })
+	SetAuthToken("")
+	if err := StartServerWithTLS(2375, "127.0.0.1", "cert.pem", ""); err == nil {
+		t.Fatal("StartServerWithTLS unexpectedly accepted only a certificate")
+	}
+	if err := StartServerWithTLS(2375, "127.0.0.1", "", "key.pem"); err == nil {
+		t.Fatal("StartServerWithTLS unexpectedly accepted only a key")
+	}
+}
+
 func TestAuthMiddlewareRequiresBearerHeader(t *testing.T) {
 	oldToken := authToken
 	t.Cleanup(func() { authToken = oldToken })

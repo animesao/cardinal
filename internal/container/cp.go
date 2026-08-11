@@ -12,13 +12,13 @@ import (
 )
 
 func (c *Container) CopyFromContainer(srcPath string, w io.Writer) error {
-	if c.Status != Running {
-		return fmt.Errorf("container %s is not running", c.ID)
+	if err := c.validateNamespaceTarget(); err != nil {
+		return err
 	}
 
 	args := []string{
 		"-t", strconv.Itoa(c.PID),
-		"-m", "-p", "-i",
+		"-m", "-p", "-i", "-r",
 		"--",
 		"tar", "-cf", "-", "-C", "/", strings.TrimPrefix(srcPath, "/"),
 	}
@@ -31,15 +31,15 @@ func (c *Container) CopyFromContainer(srcPath string, w io.Writer) error {
 }
 
 func (c *Container) CopyToContainer(dstPath string, r io.Reader) error {
-	if c.Status != Running {
-		return fmt.Errorf("container %s is not running", c.ID)
+	if err := c.validateNamespaceTarget(); err != nil {
+		return err
 	}
 
 	args := []string{
 		"-t", strconv.Itoa(c.PID),
-		"-m", "-p",
+		"-m", "-p", "-r",
 		"--",
-		"sh", "-c", fmt.Sprintf("mkdir -p %s && tar -x -C %s", escapePath(dstPath), escapePath(dstPath)),
+		"sh", "-c", fmt.Sprintf("mkdir -p -- %s && tar -x -C %s", escapePath(dstPath), escapePath(dstPath)),
 	}
 
 	cmd := exec.Command("nsenter", args...)

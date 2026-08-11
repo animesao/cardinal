@@ -461,9 +461,24 @@ dck down -a
 
 ## 8. API, cluster, services и functions
 
-### `dck serve [-p PORT] [-H HOST] [-d] [--token TOKEN]`
+### `dck serve [-p PORT] [-H HOST] [-d] [--token TOKEN] [--tls-cert FILE --tls-key FILE]`
 
-Запустить REST API. По умолчанию `127.0.0.1:2375`; `DCK_HOST` может переопределить host/port, `DCK_TOKEN` — передать token. Внешний bind требует token.
+Запустить REST API. По умолчанию `127.0.0.1:2375`; `DCK_HOST` может переопределить host/port, `DCK_TOKEN` — передать token. Внешний bind требует token. Для HTTPS передайте одновременно сертификат и приватный ключ; Bearer token всё равно обязателен для внешнего bind.
+
+```bash
+dck serve
+dck serve -H 0.0.0.0 -p 2375 --token "$DCK_TOKEN" --tls-cert /etc/dck/server.crt --tls-key /etc/dck/server.key -d
+```
+
+### `dck doctor [--strict]` и `dck security check [--strict]`
+
+Запустить read-only проверки хоста и runtime. Команды проверяют права каталогов, Linux helpers, namespaces, cgroups, OverlayFS, rootless prerequisites и настройки API. Они не устанавливают пакеты и не запускают/останавливают контейнеры. Код выхода ненулевой при ошибке; `--strict` также считает предупреждения ошибками.
+
+```bash
+dck doctor
+dck doctor --strict
+dck security check
+```
 
 ```bash
 dck serve

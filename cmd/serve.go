@@ -5,6 +5,7 @@ package cmd
 import (
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -24,6 +25,8 @@ func Serve(args []string) {
 	host := fs.String("H", "127.0.0.1", "API host (external addresses require --token or DCK_TOKEN)")
 	daemon := fs.Bool("d", false, "Run as daemon (background)")
 	token := fs.String("token", "", "Authentication token (or DCK_TOKEN env)")
+	certFile := fs.String("tls-cert", "", "TLS certificate file (requires --tls-key)")
+	keyFile := fs.String("tls-key", "", "TLS private key file (requires --tls-cert)")
 
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing serve options: %v\n", err)
@@ -49,6 +52,9 @@ func Serve(args []string) {
 
 	if *daemon {
 		childArgs := []string{"serve", "-H", *host, "-p", fmt.Sprintf("%d", *port)}
+		if *certFile != "" {
+			childArgs = append(childArgs, "--tls-cert", *certFile, "--tls-key", *keyFile)
+		}
 		cmd := exec.Command("/proc/self/exe", append(childArgs, flag.Args()...)...)
 		if apiToken != "" {
 			cmd.Env = append(os.Environ(), "DCK_TOKEN="+apiToken)
@@ -89,21 +95,30 @@ func Serve(args []string) {
 		os.Exit(0)
 	}()
 
-	if err := api.StartServer(*port, *host); err != nil {
+	if err := api.StartServerWithTLS(*port, *host, *certFile, *keyFile); err != nil {
 		log.Error("Server error: %v", err)
 		os.Exit(1)
 	}
 }
 
 func parseHost(s string) (string, int, error) {
-	s = strings.TrimPrefix(s, "tcp://")
-	parts := strings.Split(s, ":")
-	if len(parts) != 2 {
+	s = strings.TrimPrefix(strings.TrimSpace(s), "tcp://")
+	if host, portText, err := net.SplitHostPort(s); err == nil {
+		port, err := strconv.Atoi(portText)
+		if err != nil || port < 1 || port > 65535 {
+			return "", 0, fmt.Errorf("invalid port: %q", portText)
+		}
+		return host, port, nil
+	}
+	// Accept the common unbracketed IPv4/hostname form while requiring
+	// brackets for IPv6 addresses (e.g. [::1]:2375).
+	host, portText, ok := strings.Cut(s, ":")
+	if !ok || strings.Contains(host, ":") {
 		return "", 0, fmt.Errorf("invalid host format: %s (expected host:port)", s)
 	}
-	port, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return "", 0, fmt.Errorf("invalid port: %v", err)
+	port, err := strconv.Atoi(portText)
+	if err != nil || port < 1 || port > 65535 {
+		return "", 0, fmt.Errorf("invalid port: %q", portText)
 	}
-	return parts[0], port, nil
+	return host, port, nil
 }
