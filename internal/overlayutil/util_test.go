@@ -123,7 +123,11 @@ func makeSpecialTarGz(t *testing.T, headers ...*tar.Header) string {
 			t.Fatal(err)
 		}
 		if header.Typeflag == tar.TypeReg {
-			if _, err := tw.Write([]byte("content")); err != nil {
+			content := []byte("content")
+			if int64(len(content)) != header.Size {
+				content = make([]byte, header.Size)
+			}
+			if _, err := tw.Write(content); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -149,6 +153,57 @@ func TestExtractLayerRejectsTraversal(t *testing.T) {
 				t.Fatalf("expected traversal path %q to be rejected", name)
 			}
 		})
+	}
+}
+
+func TestExtractLayerAllowsRootDirectoryEntry(t *testing.T) {
+	root := t.TempDir()
+	tarFile := makeSpecialTarGz(t,
+		&tar.Header{Name: "./", Typeflag: tar.TypeDir, Mode: 0755},
+		&tar.Header{Name: "python", Typeflag: tar.TypeReg, Size: int64(len("python")), Mode: 0755},
+	)
+	if err := ExtractLayer(tarFile, root); err != nil {
+		t.Fatalf("expected root directory entry to be accepted: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "python")); err != nil {
+		t.Fatalf("root entry file was not extracted: %v", err)
+	}
+}
+
+func TestExtractLayerAllowsSafeSymlinkAncestor(t *testing.T) {
+	root := t.TempDir()
+	tarFile := makeSpecialTarGz(t,
+		&tar.Header{Name: "usr/lib64", Typeflag: tar.TypeDir, Mode: 0755},
+		&tar.Header{Name: "lib64", Typeflag: tar.TypeSymlink, Linkname: "usr/lib64", Mode: 0777},
+		&tar.Header{Name: "lib64/file.txt", Typeflag: tar.TypeReg, Size: int64(len("content")), Mode: 0644},
+	)
+	if err := ExtractLayer(tarFile, root); err != nil {
+		t.Fatalf("expected safe symlink ancestor to be accepted: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "usr", "lib64", "file.txt")); err != nil {
+		t.Fatalf("file was not extracted through safe symlink ancestor: %v", err)
+	}
+}
+
+func TestExtractLayerAllowsTemurinBuildIDSymlink(t *testing.T) {
+	root := t.TempDir()
+	tarFile := makeSpecialTarGz(t,
+		&tar.Header{Name: "usr/lib64", Typeflag: tar.TypeDir, Mode: 0755},
+		&tar.Header{Name: "usr/lib64/libgcc_s-14.so.1", Typeflag: tar.TypeReg, Size: int64(len("libgcc")), Mode: 0755},
+		&tar.Header{Name: "lib64", Typeflag: tar.TypeSymlink, Linkname: "usr/lib64", Mode: 0777},
+		&tar.Header{Name: "usr/lib/.build-id/96", Typeflag: tar.TypeDir, Mode: 0755},
+		&tar.Header{Name: "usr/lib/.build-id/96/db820fc92f7d60085943810403e791b6fd84a9", Typeflag: tar.TypeSymlink, Linkname: "../../../../lib64/libgcc_s-14.so.1", Mode: 0777},
+	)
+	if err := ExtractLayer(tarFile, root); err != nil {
+		t.Fatalf("expected Temurin build-id symlink to be accepted: %v", err)
+	}
+	link, err := os.Readlink(filepath.Join(root, "usr", "lib", ".build-id", "96", "db820fc92f7d60085943810403e791b6fd84a9"))
+	if err != nil {
+		t.Fatalf("read build-id symlink: %v", err)
+	}
+	want := filepath.FromSlash("../../../../lib64/libgcc_s-14.so.1")
+	if link != want {
+		t.Fatalf("symlink target = %q, want %q", link, want)
 	}
 }
 

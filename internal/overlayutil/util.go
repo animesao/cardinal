@@ -186,7 +186,10 @@ func safeTarPath(root, name string) (string, error) {
 		}
 	}
 	clean := filepath.Clean(converted)
-	if clean == "." || clean == string(filepath.Separator) {
+	if clean == "." {
+		return root, nil
+	}
+	if clean == string(filepath.Separator) {
 		return "", fmt.Errorf("invalid root entry")
 	}
 	path := filepath.Join(root, clean)
@@ -224,7 +227,14 @@ func ensureNoSymlinkAncestors(root, path string, includeTarget bool) error {
 			return err
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("component %q is a symlink", current)
+			evaluated, evalErr := filepath.EvalSymlinks(current)
+			if evalErr != nil {
+				return fmt.Errorf("evaluate symlink %q: %w", current, evalErr)
+			}
+			evaluatedRel, relErr := filepath.Rel(root, evaluated)
+			if relErr != nil || evaluatedRel == ".." || strings.HasPrefix(evaluatedRel, ".."+string(filepath.Separator)) {
+				return fmt.Errorf("component %q escapes rootfs", current)
+			}
 		}
 	}
 	return nil
