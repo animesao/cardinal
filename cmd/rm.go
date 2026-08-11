@@ -19,20 +19,24 @@ func Rm(args []string) {
 	}
 
 	if fs.NArg() < 1 {
-		fmt.Println("Usage: dck rm [-f] <container>")
+		fmt.Println("Usage: dck rm [-f] <container> [container...]")
 		os.Exit(1)
 	}
 
-	c, err := container.Load(fs.Arg(0))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+	exitCode := 0
+	for _, name := range fs.Args() {
+		c, err := container.Load(name)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			exitCode = 1
+			continue
+		}
+		if err := c.Remove(*force); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			exitCode = 1
+			continue
+		}
+		fmt.Println(shortID(c.ID))
 	}
-
-	if err := c.Remove(*force); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Println(shortID(c.ID))
+	os.Exit(exitCode)
 }

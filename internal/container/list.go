@@ -20,6 +20,16 @@ func pidAlive(pid int) bool {
 	return err == nil
 }
 
+// processCmdline returns the NUL-separated command line of a process joined
+// with spaces, or "" when the process is gone or unreadable.
+func processCmdline(pid int) string {
+	b, err := os.ReadFile("/proc/" + strconv.Itoa(pid) + "/cmdline")
+	if err != nil {
+		return ""
+	}
+	return strings.ReplaceAll(string(b), "\x00", " ")
+}
+
 func List(all bool) ([]*Container, error) {
 	entries, err := os.ReadDir(state.ContainersDir())
 	if err != nil {

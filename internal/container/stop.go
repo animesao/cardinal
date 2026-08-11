@@ -198,6 +198,14 @@ func (c *Container) killConsoleServe() {
 	}
 
 	pid := c.ConsoleServePID
+	// The stdout pipe EOFs when the container process exits, so console-serve
+	// usually drains its read buffer and exits by itself. Give it a moment to
+	// flush the final container output to the log before force-killing it;
+	// otherwise the last lines (e.g. Minecraft's "Saving worlds") can be lost.
+	if waitForExit(pid, time.Second) {
+		c.ConsoleServePID = 0
+		return
+	}
 	if err := syscall.Kill(pid, syscall.SIGKILL); err != nil && err != syscall.ESRCH {
 		log.Warn("kill console-serve PID %d: %v", pid, err)
 	}

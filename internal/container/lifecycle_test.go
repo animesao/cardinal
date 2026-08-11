@@ -72,6 +72,49 @@ func TestFindChildPIDResolvesDirectChild(t *testing.T) {
 	}
 }
 
+// TestContainerProcessAlive verifies the supervisor's exit-detection heuristic,
+// including the PID-reuse guard for the unshare PID.
+func TestContainerProcessAlive(t *testing.T) {
+	if ContainerProcessAlive(&Container{ID: "none"}) {
+		t.Fatal("container with no recorded processes reported alive")
+	}
+
+	// Legacy state: live init PID means alive.
+	cmd := exec.Command("sh", "-c", "sleep 30")
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start helper: %v", err)
+	}
+	defer func() { _ = cmd.Process.Kill() }()
+	defer func() { _ = cmd.Wait() }()
+	c := &Container{ID: "legacy-live", PID: cmd.Process.Pid}
+	if !ContainerProcessAlive(c) {
+		t.Fatal("live init PID not detected")
+	}
+
+	// Dead PID (reaped helper) means not alive.
+	gone := exec.Command("sh", "-c", "exit 0")
+	if err := gone.Run(); err != nil {
+		t.Fatalf("helper: %v", err)
+	}
+	dead := &Container{ID: "legacy-dead", PID: gone.Process.Pid}
+	if ContainerProcessAlive(dead) {
+		t.Fatal("dead PID reported alive")
+	}
+
+	// A live unshare PID whose command line does not contain this container ID
+	// (e.g. the PID was recycled by an unrelated process) must not count.
+	other := exec.Command("sh", "-c", "sleep 30")
+	if err := other.Start(); err != nil {
+		t.Fatalf("start other helper: %v", err)
+	}
+	defer func() { _ = other.Process.Kill() }()
+	defer func() { _ = other.Wait() }()
+	mismatch := &Container{ID: "totally-different-id", UnsharePID: other.Process.Pid}
+	if ContainerProcessAlive(mismatch) {
+		t.Fatal("unrelated live process reported as container process")
+	}
+}
+
 // TestHasLiveProcesses verifies the live-process detection used by Remove() so
 // stale "stopped" state can never leak a running process tree.
 func TestHasLiveProcesses(t *testing.T) {

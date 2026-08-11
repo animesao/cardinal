@@ -45,7 +45,8 @@ func Supervisor(args []string) {
 	}
 	network.EnsureNetBase()
 	managed := make(map[string]time.Time)
-	adoptEligibleContainers(managed)
+	finalized := make(map[string]bool)
+	adoptEligibleContainers(managed, finalized)
 
 	ticker := time.NewTicker(supervisorPollInterval)
 	defer ticker.Stop()
@@ -55,8 +56,67 @@ func Supervisor(args []string) {
 			return
 		case <-ticker.C:
 			reapExitedContainers()
-			adoptEligibleContainers(managed)
+			finalizeExitedContainers(finalized)
+			adoptEligibleContainers(managed, finalized)
 			runAutomaticBackups()
+		}
+	}
+}
+
+// finalizeExitedContainers detects containers whose recorded process tree has
+// exited and finalizes their state and resources. This is the primary exit
+// detection: container processes started by `dck run -d` are not descendants of
+// the supervisor (they orphan to init once the CLI exits), so wait4-based
+// reaping alone cannot observe them. Polling the recorded PIDs works regardless
+// of the process parentage.
+//
+// The status must NOT be used to decide whether to finalize: List->Load runs
+// normalizeLoadedState, which already flips a dead container to "stopped" and
+// zeroes its PIDs before this loop sees it. Finalizing exactly once per
+// observed exit (tracked in `finalized`) keeps the call idempotent and releases
+// network, console-serve, cgroup and DNS resources in every case.
+func finalizeExitedContainers(finalized map[string]bool) {
+	all, err := container.List(true)
+	if err != nil {
+		return
+	}
+	for _, c := range all {
+		if c == nil || !c.Detach {
+			continue
+		}
+		// Gate purely on process liveness, never on the loaded status: List->Load
+		// runs normalizeLoadedState, which already flips dead containers to
+		// "stopped" and zeroes their PIDs before this loop sees them. Checking
+		// status here would skip finalization entirely. Conversely, a process
+		// that is still alive must never be finalized (legacy states may say
+		// "stopped" while the tree is actually running).
+		if container.ContainerProcessAlive(c) {
+			// Healthy; forget an earlier finalization so a later exit (after a
+			// restart or an explicit `dck start`) is handled again.
+			delete(finalized, c.ID)
+			continue
+		}
+		if finalized[c.ID] {
+			continue
+		}
+		// Mark only when finalization actually ran (HandleMainProcessExit
+		// returns false if the state file vanished mid-tick); otherwise the
+		// next poll retries.
+		if container.HandleMainProcessExit(c.ID) {
+			finalized[c.ID] = true
+		}
+	}
+	// Prune entries for containers that were removed, so the map cannot grow
+	// without bound.
+	live := make(map[string]bool, len(all))
+	for _, c := range all {
+		if c != nil {
+			live[c.ID] = true
+		}
+	}
+	for id := range finalized {
+		if !live[id] {
+			delete(finalized, id)
 		}
 	}
 }
@@ -90,7 +150,7 @@ func handleExitedContainerProcess(pid int) {
 	// they are cleaned up when their owning container is stopped or removed.
 }
 
-func adoptEligibleContainers(managed map[string]time.Time) {
+func adoptEligibleContainers(managed map[string]time.Time, finalized map[string]bool) {
 	all, err := container.List(true)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "dck supervisor: list containers: %v\n", err)
@@ -144,6 +204,10 @@ func adoptEligibleContainers(managed map[string]time.Time) {
 			managed[c.ID] = time.Now().Add(supervisorRestartDelay(c))
 			fmt.Fprintf(os.Stderr, "dck supervisor: start %s: %v\n", c.Name, err)
 		}
+		// A successful (re)start means this container is alive again; forget any
+		// earlier finalization so that if it crashes again within the same poll
+		// interval (crash-looping), its next exit is finalized and cleaned up.
+		delete(finalized, c.ID)
 	}
 }
 

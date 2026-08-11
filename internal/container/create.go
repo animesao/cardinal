@@ -146,7 +146,7 @@ func normalizeLoadedState(c *Container) {
 	// The persisted init PID can be stale (exec races, PID reuse, states written
 	// before unshare PID tracking), so never downgrade a live container to
 	// "stopped" based on a dead single PID while the real tree is still alive.
-	changed := c.Status == Running && !containerHasLiveProcess(c)
+	changed := c.Status == Running && !c.processAlive()
 	if changed {
 		// State files created before namespace identities were persisted cannot
 		// be used safely by exec/cp/top. Persist the stopped state so the
@@ -168,14 +168,27 @@ func normalizeLoadedState(c *Container) {
 	}
 }
 
-func containerHasLiveProcess(c *Container) bool {
-	if pidAlive(c.PID) {
+// processAlive reports whether the container's recorded process tree is still
+// alive. The unshare PID is verified against its command line (it always
+// contains the container ID) so a recycled PID cannot be mistaken for a live
+// container; the init PID is used as a fallback for legacy states.
+func (c *Container) processAlive() bool {
+	if c == nil {
+		return false
+	}
+	if c.UnsharePID > 0 && pidAlive(c.UnsharePID) && strings.Contains(processCmdline(c.UnsharePID), c.ID) {
 		return true
 	}
-	if c.UnsharePID > 0 && pidAlive(c.UnsharePID) {
+	if c.PID > 0 && pidAlive(c.PID) {
 		return true
 	}
 	return false
+}
+
+// ContainerProcessAlive reports whether the container's recorded process tree
+// is still alive. It is used by the supervisor's exit detection loop.
+func ContainerProcessAlive(c *Container) bool {
+	return c.processAlive()
 }
 
 func generateID() string {

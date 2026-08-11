@@ -567,21 +567,23 @@ func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 // HandleMainProcessExit is invoked by the supervisor when an orphaned container
 // main process (unshare) exits after the original `dck run -d` process is gone.
 // It finalizes state and resources exactly like the in-process monitor would.
-func HandleMainProcessExit(id string) {
+// It reports whether finalization actually ran, so callers can avoid repeating
+// the work (e.g. when the state file vanished between Load and finalize).
+func HandleMainProcessExit(id string) bool {
 	c, err := Load(id)
 	if err != nil {
-		return
+		return false
 	}
-	c.handleMainProcessExit()
+	return c.handleMainProcessExit()
 }
 
-func (c *Container) handleMainProcessExit() {
+func (c *Container) handleMainProcessExit() bool {
 	// A concurrent Load() may have already normalized the status to "stopped";
 	// finalizeStopped is idempotent and still releases network, console-serve,
 	// cgroup and DNS resources, which is exactly what the supervisor must do.
 	finalized, restart := c.finalizeStopped(0)
 	if !finalized {
-		return
+		return false
 	}
 	// Restart scheduling for detached containers is owned by the supervisor
 	// (adoptEligibleContainers), which honors restart delays and the crash-loop
@@ -590,6 +592,7 @@ func (c *Container) handleMainProcessExit() {
 	if !restart && c.RemoveOnExit {
 		cleanupContainer(c)
 	}
+	return true
 }
 
 func (c *Container) canRestartAfterDelay() bool {

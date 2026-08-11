@@ -14,14 +14,21 @@ import (
 
 func (c *Container) Remove(force bool) error {
 	// Never trust the persisted status alone: stale state can say "stopped"
-	// while the process tree is still alive (recorded-PID races, pre-1.23
-	// states). Detect live processes directly before deleting anything.
+	// while the process tree is still alive (recorded-PID races, states written
+	// before unshare PID tracking). Detect live processes directly before
+	// deleting anything.
 	if c.hasLiveProcesses() {
 		if !force {
 			return fmt.Errorf("cannot remove running container %s (use -f)", c.ID)
 		}
-		if err := c.Stop(); err != nil {
-			log.Warn("stop container %s during remove: %v", c.ID, err)
+		if c.Status == Running {
+			if err := c.Stop(); err != nil {
+				log.Warn("stop container %s during remove: %v", c.ID, err)
+			}
+		} else {
+			// Stale state: the status says "stopped" but processes are alive.
+			// Stop them directly without Stop()'s status checks.
+			c.killRecordedProcesses(c.PID, c.UnsharePID)
 		}
 	}
 
@@ -50,7 +57,7 @@ func (c *Container) Remove(force bool) error {
 // hasLiveProcesses reports whether any recorded process (init, unshare,
 // console-serve) or anything accounted to the container cgroup is still alive.
 func (c *Container) hasLiveProcesses() bool {
-	if pidAlive(c.PID) || (c.UnsharePID > 0 && pidAlive(c.UnsharePID)) || pidAlive(c.ConsoleServePID) {
+	if c.processAlive() || pidAlive(c.ConsoleServePID) {
 		return true
 	}
 	if c.CgroupPath != "" {
