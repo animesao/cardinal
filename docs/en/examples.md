@@ -304,6 +304,12 @@ dck backup restore backup-test /data/backups/backup-test/manual.tar.gz
 dck start backup-test
 ```
 
+Verify an archive against its checksum sidecar (without one, dck reports the archive as unverified):
+
+```bash
+dck backup verify /data/backups/backup-test/manual.tar.gz
+```
+
 Clean up:
 
 ```bash
@@ -380,6 +386,7 @@ dck build -t registry.example.com/team/app:1.0 .
 dck push registry.example.com/team/app:1.0
 dck export registry.example.com/team/app:1.0 -o /data/app-1.0.tar.gz
 dck import /data/app-1.0.tar.gz
+dck verify registry.example.com/team/app:1.0
 dck logout registry.example.com
 ```
 
