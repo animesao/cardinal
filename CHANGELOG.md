@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.22.19 (2026-08-11)
+
+### Documentation
+
+- Added complete English and Russian running guides covering installation, image/tag syntax, protected bind mounts, `.env` files, Python bots, Java/Minecraft servers, logs, restart policies, updates, and troubleshooting.
+- Updated the README, documentation index, command reference, storage notes, and version references.
+
+### Runtime fixes documented
+
+- Container dck stdout/stderr logs start fresh on every new container run instead of accumulating across restarts.
+- OCI extraction accepts forward symlink targets and standard root entries while preserving traversal protection.
+- Bind mounts reject protected host paths and require absolute container targets.
+
 ## 1.22.7 (2026-08-06)
 
 - Isolated tests with `DCK_DATA_DIR` and made JSON state writes atomic.

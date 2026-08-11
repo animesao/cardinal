@@ -9,7 +9,14 @@ dck up                        dck cluster init
 dck serve                     dck fn deploy --name hello myfunc
 ```
 
-Version: `1.22.7` — [GitHub](https://github.com/animesao/dck)
+Version: `1.22.19` — [GitHub](https://github.com/animesao/dck)
+
+## Start here
+
+- [Running guide (English)](en/running.md)
+- [Руководство по запуску (русский)](ru/running.md)
+
+The running guides cover installation, image/tag syntax, bind mounts, `.env`, Python bots, Java/Minecraft servers, logs, restart policies, updates, and troubleshooting.
 
 ## CLI Command Reference
 
@@ -183,6 +190,7 @@ Version: `1.22.7` — [GitHub](https://github.com/animesao/dck)
 
 | English | Русский |
 |---------|---------|
+| [Running Guide](en/running.md) | [Руководство по запуску](ru/running.md) |
 | [Usage & Commands](en/usage.md) | [Команды и использование](ru/usage.md) |
 | [Deploying Websites](en/websites.md) | [Развёртывание сайтов](ru/websites.md) |
 | [Bots (Telegram, Discord)](en/bots.md) | [Боты (Telegram, Discord)](ru/bots.md) |
@@ -200,9 +208,10 @@ Storage: `$DCK_DATA_DIR` (default: `/root/.dck/`)
 images/        OCI rootfs per tag
 containers/    State JSON files
 overlay/       upper/work/merged per container
-logs/          Container stdout/stderr
+logs/          Container stdout/stderr (fresh on each new start)
+volumes/       Named volumes
+cache/         Cached image layers
 consoles/      Unix sockets for attach
-networks/      IP allocation pool
 
 dck run -d
   ├─ unshare --fork --pid --mount --net --uts --ipc dck init <id>

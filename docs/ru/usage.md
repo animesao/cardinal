@@ -7,6 +7,7 @@ dck — лёгкий container runtime. Нет демона, нет Docker. Пр
 
 ## Содержание
 
+- [Руководство по запуску](running.md)
 - [Развёртывание сайтов](websites.md)
 - [Управление образами](#управление-образами)
   - [dck pull](#dck-pull---platform-osarch-образтег)
@@ -390,14 +391,18 @@ dck console myproject
 
 ### `dck logs [-f] [--tail <n>] <контейнер>`
 
-Показать логи контейнера.
+Показать stdout/stderr контейнера.
 
 ```bash
-dck logs web            # последние логи
-dck logs -f web         # следить (tail -f)
+dck logs web            # вывод текущего запуска
+dck logs -f web         # следить за новыми строками
 dck logs --tail 20 web  # последние 20 строк
 dck logs -f --tail 10 web  # последние 10 + следить
 ```
+
+При каждом новом запуске контейнера dck создаёт свежий лог, поэтому вывод прошлых циклов `stop`/`start` или `restart` не дописывается бесконечно. Логи, которые создаёт само приложение (например, Minecraft `/data/logs/latest.log`), остаются в подключённом хранилище приложения.
+
+Для root логи dck находятся в `/root/.dck/logs/<container-id>.log`; изменить каталог состояния можно через `DCK_DATA_DIR`. Практические примеры находятся в [руководстве по запуску](running.md).
 
 ### `dck stats [контейнер]`
 
@@ -540,9 +545,10 @@ images/        OCI rootfs для каждого тега (только чтен�
 containers/    JSON-файлы состояния
 overlay/       upper/work/merged для каждого контейнера (слой записи)
 volumes/       Именованные тома
-logs/          stdout/stderr контейнера
+logs/          stdout/stderr контейнера (новый файл при каждом запуске)
+volumes/       Именованные тома
+cache/         Кэш слоёв образов
 consoles/      Unix сокеты для attach
-networks/      Пул IP-адресов
 ```
 
 **Overlay:** Каждый контейнер получает слой поверх read-only образа.

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.22.7-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-1.22.19-blue?style=flat-square">
   <img src="https://img.shields.io/badge/go-1.25%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square">
   <img src="https://img.shields.io/badge/no%20daemon-%E2%9C%93-brightgreen?style=flat-square">
@@ -112,10 +112,12 @@ dck commit web my-image:v1                  # Create image from container
 
 ### Logs & Attach
 
+A new container start creates a fresh dck stdout/stderr log. Application-owned logs in bind mounts or named volumes are preserved.
+
 ```bash
 dck logs web                                # Last output
 dck logs -f web                             # Follow
-dck attach web                              # Full history + live stdin/stdout
+dck attach web                              # Recent output + live stdin/stdout
 dck fs ls web /etc/nginx                    # List files in container
 dck fs cat web /etc/nginx/conf.d/default.conf  # Show file
 dck fs find web --name "*.conf"             # Search files
@@ -173,7 +175,7 @@ Use `-v` (bind mount) for live file sharing — changes on host are instantly vi
 
 `dck attach` is **Ctrl+C safe** — container keeps running.
 
-> **exec vs attach:** `attach` connects to the main process stdin/stdout. `exec` runs a new command inside the container. `console` is a shortcut for `exec -it` with auto-detected shell.
+> **exec vs attach:** `attach` connects to the main process stdin/stdout. `exec` runs a new command inside the container. `console` is a shortcut for `exec -i -t` with auto-detected shell.
 
 ### Options
 
@@ -732,7 +734,7 @@ dck run -d
 
 ## Changelog
 
-**v1.22.7** — Current release. Cluster orchestration, FaaS, blueprints, services, compose secrets & configs. Container FS browser, healthchecks, startup scripts, dynamic ports, events, stats, Docker-compatible REST API.
+**v1.22.19** — Current release. OCI image extraction, forward symlink targets, protected bind-source validation, fresh dck logs on every new container start, cluster orchestration, FaaS, blueprints, services, Compose, healthchecks, startup scripts, dynamic ports, events, stats, and Docker-compatible REST API.
 
 **v1.20.0** — Dynamic port management (`dck port add/rm`). Russian (ru) docs.
 
@@ -768,6 +770,7 @@ Downloads the latest binary and replaces `/usr/local/bin/dck`.
 
 | English | Русский |
 |---|---|
+| [Running Guide](docs/en/running.md) | [Руководство по запуску](docs/ru/running.md) |
 | [Usage & Commands](docs/en/usage.md) | [Команды и использование](docs/ru/usage.md) |
 | [Deploying Websites](docs/en/websites.md) | [Развёртывание сайтов](docs/ru/websites.md) |
 | [Bots (Telegram, Discord)](docs/en/bots.md) | [Боты (Telegram, Discord)](docs/ru/bots.md) |

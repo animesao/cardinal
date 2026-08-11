@@ -7,6 +7,7 @@ dck is a lightweight container runtime — no daemon, no Docker. Just containers
 
 ## Table of Contents
 
+- [Running Guide](running.md)
 - [Deploying Websites](websites.md)
 - [Image Management](#image-management)
   - [dck pull](#dck-pull---platform-osarch-imagetag)
@@ -380,14 +381,18 @@ dck console myproject
 
 ### `dck logs [-f] [--tail <n>] <container>`
 
-Show container logs.
+Show container stdout/stderr logs.
 
 ```bash
-dck logs web            # last output
-dck logs -f web         # follow (tail -f style)
+dck logs web            # current-run output
+dck logs -f web         # follow new output
 dck logs --tail 20 web  # last 20 lines
 dck logs -f --tail 10 web  # last 10 lines + follow
 ```
+
+A fresh dck log is created at every new container start, so output from previous `stop`/`start` or `restart` cycles is not appended indefinitely. Logs written by the application itself (for example Minecraft's `/data/logs/latest.log`) remain in the mounted application storage.
+
+For root, dck logs are stored under `/root/.dck/logs/<container-id>.log`; set `DCK_DATA_DIR` to change the dck state location. See the [running guide](running.md) for operational examples.
 
 ### `dck stats [container]`
 
@@ -513,9 +518,10 @@ images/        OCI rootfs per tag (read-only)
 containers/    State JSON files
 overlay/       upper/work/merged per container (writable layer)
 volumes/       Named volumes
-logs/          Container stdout/stderr
+logs/          Container stdout/stderr (fresh on each new start)
+volumes/       Named volumes
+cache/         Cached image layers
 consoles/      Unix sockets for attach
-networks/      IP allocation pool
 ```
 
 **Overlay:** Each container gets a writable overlay layer on top of the read-only image.
