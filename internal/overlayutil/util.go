@@ -234,11 +234,28 @@ func validateSymlinkTarget(root, linkPath, target string) error {
 	if target == "" || strings.IndexByte(target, 0) >= 0 {
 		return fmt.Errorf("invalid target")
 	}
-	converted := filepath.FromSlash(target)
-	if filepath.IsAbs(converted) || strings.HasPrefix(target, "/") || strings.HasPrefix(target, "\\") {
+	if strings.HasPrefix(target, "\\") {
 		return fmt.Errorf("absolute target")
 	}
-	resolved := filepath.Join(filepath.Dir(linkPath), converted)
+	converted := filepath.FromSlash(target)
+	absolute := strings.HasPrefix(target, "/")
+	if !absolute && filepath.IsAbs(converted) {
+		return fmt.Errorf("absolute target")
+	}
+	if absolute {
+		// OCI image symlinks are resolved inside the container rootfs. Keep
+		// the leading slash in the extracted link, but validate its target
+		// against rootfs rather than the host filesystem.
+		converted = filepath.FromSlash(strings.TrimLeft(target, "/"))
+	}
+	base := filepath.Dir(linkPath)
+	if absolute {
+		base = root
+	}
+	resolved := filepath.Join(base, converted)
+	if err := ensureNoSymlinkAncestors(root, resolved, false); err != nil {
+		return fmt.Errorf("target ancestor: %w", err)
+	}
 	rel, err := filepath.Rel(root, resolved)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return fmt.Errorf("target escapes rootfs")

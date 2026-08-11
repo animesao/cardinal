@@ -152,6 +152,26 @@ func TestExtractLayerRejectsTraversal(t *testing.T) {
 	}
 }
 
+func TestExtractLayerAllowsAbsoluteSymlinkWithinRoot(t *testing.T) {
+	root := t.TempDir()
+	tarFile := makeSpecialTarGz(t,
+		&tar.Header{Name: "bin", Typeflag: tar.TypeDir, Mode: 0755},
+		&tar.Header{Name: "bin/busybox", Typeflag: tar.TypeReg, Size: int64(len("busybox")), Mode: 0755},
+		&tar.Header{Name: "bin/arch", Typeflag: tar.TypeSymlink, Linkname: "/bin/busybox", Mode: 0777},
+	)
+	if err := ExtractLayer(tarFile, root); err != nil {
+		t.Fatalf("expected absolute in-root symlink to be accepted: %v", err)
+	}
+	link, err := os.Readlink(filepath.Join(root, "bin", "arch"))
+	if err != nil {
+		t.Fatalf("read extracted symlink: %v", err)
+	}
+	want := filepath.FromSlash("/bin/busybox")
+	if link != want {
+		t.Fatalf("symlink target = %q, want %q", link, want)
+	}
+}
+
 func TestExtractLayerRejectsUnsafeLinks(t *testing.T) {
 	root := t.TempDir()
 	tarFile := makeSpecialTarGz(t,

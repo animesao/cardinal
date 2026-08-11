@@ -402,9 +402,27 @@ func RemovePortForwarding(containerIP string, hostPort, containerPort int, proto
 
 func RemoveVeth(containerID string) {
 	hostIf := fmt.Sprintf("ve%s", networkShortID(containerID))
+	if out, err := exec.Command("ip", "link", "show", hostIf).CombinedOutput(); err != nil {
+		if !isMissingNetworkInterface(out) {
+			fmt.Fprintf(os.Stderr, "Warning: ip link show %s: %v\n", hostIf, err)
+		}
+		return
+	}
 	if err := exec.Command("ip", "link", "delete", hostIf).Run(); err != nil {
+		// The interface can disappear between the existence check and delete
+		// when the container network namespace exits concurrently.
+		if out, showErr := exec.Command("ip", "link", "show", hostIf).CombinedOutput(); showErr != nil && isMissingNetworkInterface(out) {
+			return
+		}
 		fmt.Fprintf(os.Stderr, "Warning: ip link delete %s: %v\n", hostIf, err)
 	}
+}
+
+func isMissingNetworkInterface(output []byte) bool {
+	message := strings.ToLower(string(output))
+	return strings.Contains(message, "cannot find device") ||
+		strings.Contains(message, "does not exist") ||
+		strings.Contains(message, "no such device")
 }
 
 func CleanupContainerNetwork(containerID, containerIP string, ports []PortRule) {
