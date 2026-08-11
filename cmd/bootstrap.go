@@ -48,7 +48,7 @@ func Bootstrap(args []string) {
 
 	count := 0
 	for _, c := range all {
-		if c.Restart != "always" {
+		if !shouldBootstrap(c.Restart, c.StoppedByUser) {
 			continue
 		}
 		fmt.Printf("  Starting %s (%s)... ", shortID(c.ID), c.Name)
@@ -63,6 +63,17 @@ func Bootstrap(args []string) {
 	}
 
 	fmt.Printf("Bootstrap complete: %d containers started\n", count)
+}
+
+func shouldBootstrap(policy string, stoppedByUser bool) bool {
+	switch policy {
+	case "always":
+		return true
+	case "unless-stopped":
+		return !stoppedByUser
+	default:
+		return false
+	}
 }
 
 func ensureBootstrap() {

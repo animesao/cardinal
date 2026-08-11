@@ -349,7 +349,253 @@ dck logs --tail 100 alfheimguide
 
 Если добавили зависимость, обновите `requirements.txt` и перезапустите контейнер, если startup-команда устанавливает зависимости. Для production лучше собрать образ, чем устанавливать пакеты при каждом запуске.
 
-## 14. Решение проблем
+## 14. Практические рецепты: боты, базы данных и игровые серверы
+
+Все примеры используют одну и ту же форму команды:
+
+```bash
+dck run -d \
+  -n ИМЯ \
+  -p ПОРТ_ХОСТА:ПОРТ_КОНТЕЙНЕРА \
+  --restart ПОЛИТИКА \
+  --env-file "$PWD/.env" \
+  --vol "$PWD:/app" \
+  --workdir /app \
+  ОБРАЗ[:ТЕГ] КОМАНДА
+```
+
+Все флаги dck размещайте до имени образа. Всё после образа и команды передаётся процессу внутри контейнера. Например, `-p 23323:23332` должен находиться до `python:3.12`, а не после `sh -c`.
+
+### Политики перезапуска
+
+| Политика | Процесс неожиданно завершился | `dck stop` | Перезагрузка хоста |
+|---|---|---|---|
+| `no` | Останется остановленным | Останется остановленным | Не запускается |
+| `on-failure` | Перезапуск только при ненулевом коде выхода | Останется остановленным | Не запускается автоматически |
+| `always` | Перезапуск | Явно остановленный контейнер не запускается этим действием | Запускается автоматически |
+| `unless-stopped` | Перезапуск | Останется остановленным до явного `dck start` | Запускается автоматически, если не был остановлен вручную |
+
+`dck run --restart always` и `dck run --restart unless-stopped`, запущенные от root, автоматически устанавливают systemd-службу bootstrap. Установить её вручную можно так:
+
+```bash
+dck bootstrap --install
+systemctl status dck-bootstrap
+```
+
+Служба bootstrap запускает подходящие контейнеры после загрузки хоста. Политика `on-failure` не означает автозапуск после reboot.
+
+### Python-бот с `.env`, volume, портом и автоматическим восстановлением
+
+```bash
+mkdir -p /data/bot
+cd /data/bot
+cp .env.example .env
+chmod 600 .env
+# Откройте .env и задайте BOT_TOKEN и другие секреты.
+
+# Перезапуск после сбоя и запуск после перезагрузки.
+dck pull python:3.12
+dck run -d \
+  -n bot \
+  -p 23323:23332 \
+  --restart unless-stopped \
+  --env-file "$PWD/.env" \
+  --vol "$PWD:/bot" \
+  --workdir /bot \
+  python:3.12 \
+  sh -c "python -m pip install --no-cache-dir -r requirements.txt && exec python main.py"
+```
+
+Вариант без автоматического перезапуска и автозапуска после reboot — просто не указывайте `--restart`:
+
+```bash
+dck run -d \
+  -n bot-manual \
+  --env-file "$PWD/.env" \
+  --vol "$PWD:/bot" \
+  --workdir /bot \
+  python:3.12 \
+  sh -c "python -m pip install --no-cache-dir -r requirements.txt && exec python main.py"
+```
+
+### PostgreSQL
+
+Для данных базы используйте именованный том, а не overlay контейнера:
+
+```bash
+dck volume create postgres-data
+dck run -d \
+  -n postgres \
+  -p 5432:5432 \
+  --restart unless-stopped \
+  --vol postgres-data:/var/lib/postgresql/data \
+  -e POSTGRES_DB=app \
+  -e POSTGRES_USER=app \
+  -e POSTGRES_PASSWORD=change_me \
+  postgres:16
+```
+
+Вариант без перезапуска и автозапуска:
+
+```bash
+dck run -d \
+  -n postgres-manual \
+  -p 5433:5432 \
+  --vol postgres-data:/var/lib/postgresql/data \
+  -e POSTGRES_DB=app \
+  -e POSTGRES_USER=app \
+  -e POSTGRES_PASSWORD=change_me \
+  postgres:16
+```
+
+### MySQL
+
+```bash
+dck volume create mysql-data
+dck run -d \
+  -n mysql \
+  -p 3306:3306 \
+  --restart always \
+  --vol mysql-data:/var/lib/mysql \
+  -e MYSQL_ROOT_PASSWORD=change_me \
+  -e MYSQL_DATABASE=app \
+  -e MYSQL_USER=app \
+  -e MYSQL_PASSWORD=change_me \
+  mysql:8
+```
+
+### Redis
+
+```bash
+dck volume create redis-data
+dck run -d \
+  -n redis \
+  -p 6379:6379 \
+  --restart unless-stopped \
+  --vol redis-data:/data \
+  redis:7 \
+  redis-server --appendonly yes
+```
+
+### MongoDB
+
+```bash
+dck volume create mongo-data
+dck run -d \
+  -n mongodb \
+  -p 27017:27017 \
+  --restart unless-stopped \
+  --vol mongo-data:/data/db \
+  mongo:8
+```
+
+### Minecraft Java-сервер
+
+Собственный JAR и все сохранения можно хранить в bind mount:
+
+```bash
+mkdir -p /data/minecraft
+# Скопируйте server.jar, eula.txt, server.properties и миры в /data/minecraft.
+
+dck run -d \
+  -n minecraft \
+  -p 25565:25565 \
+  --restart unless-stopped \
+  --vol /data/minecraft:/data \
+  --workdir /data \
+  eclipse-temurin:21 \
+  java -Xms1G -Xmx4G -jar server.jar nogui
+```
+
+Вариант Minecraft без автоперезапуска:
+
+```bash
+dck run -d \
+  -n minecraft-manual \
+  -p 25566:25565 \
+  --vol /data/minecraft:/data \
+  --workdir /data \
+  eclipse-temurin:21 \
+  java -Xms1G -Xmx4G -jar server.jar nogui
+```
+
+Minecraft должен слушать `0.0.0.0:25565`. Его собственные логи и миры сохраняются в `/data/minecraft`, а stdout/stderr dck очищается при каждом новом запуске контейнера.
+
+### Terraria
+
+У разных образов Terraria отличаются переменные окружения и пути данных. Перед production-пуском проверьте документацию выбранного образа:
+
+```bash
+dck volume create terraria-data
+dck run -d \
+  -n terraria \
+  -p 7777:7777 \
+  --restart unless-stopped \
+  --vol terraria-data:/config \
+  terraria-server-image:latest
+```
+
+Без автоматического перезапуска:
+
+```bash
+dck run -d \
+  -n terraria-manual \
+  -p 7778:7777 \
+  --vol terraria-data:/config \
+  terraria-server-image:latest
+```
+
+Замените `terraria-server-image:latest` на выбранный образ и настройте его EULA/переменные.
+
+### Factorio
+
+```bash
+dck volume create factorio-data
+dck run -d \
+  -n factorio \
+  -p 34197:34197/udp \
+  --restart unless-stopped \
+  --vol factorio-data:/factorio \
+  factoriotools/factorio:stable
+```
+
+### Source- или другой dedicated game server
+
+Используйте внутренний порт и каталог данных из документации конкретного образа:
+
+```bash
+dck volume create game-data
+dck run -d \
+  -n dedicated-game \
+  -p 27015:27015/udp \
+  --restart always \
+  --vol game-data:/server \
+  game-server-image:latest \
+  ./start-server.sh
+```
+
+Для ручного запуска удалите `--restart always`. Всегда проверьте EULA, порты, команду запуска, каталог сохранений и необходимые переменные окружения выбранного образа.
+
+### Проверка, остановка и восстановление
+
+```bash
+dck ps -a
+dck logs --tail 100 minecraft
+dck stats minecraft --no-stream
+dck stop minecraft
+dck start minecraft
+dck restart minecraft
+```
+
+Сбой процесса обрабатывается настроенной политикой перезапуска. Ручной `dck stop` считается намеренной остановкой и не даёт `unless-stopped` запуститься снова до `dck start`. Чтобы полностью отключить автоматическое восстановление:
+
+```bash
+dck stop bot
+dck set bot --restart no
+dck start bot
+```
+
+## 15. Решение проблем
 
 ### `flag provided but not defined: -images`
 
@@ -415,7 +661,7 @@ ss -ltnp
 dck logs ИМЯ
 ```
 
-## 15. Где хранятся данные
+## 16. Где хранятся данные
 
 Для root стандартный каталог данных dck — `/root/.dck`:
 

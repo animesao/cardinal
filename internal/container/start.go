@@ -96,6 +96,7 @@ func (c *Container) startInternal() error {
 	c.dataMu.Lock()
 	c.PID = childPID
 	c.Status = Running
+	c.StoppedByUser = false
 	c.dataMu.Unlock()
 	if err := c.Save(); err != nil {
 		return err

@@ -349,7 +349,253 @@ dck logs --tail 100 alfheimguide
 
 For a new dependency, update `requirements.txt` and restart if your startup command installs dependencies. For production, prefer a built image instead of installing packages on every boot.
 
-## 14. Troubleshooting
+## 14. Application recipes: bots, databases, and game servers
+
+All examples use the same command shape:
+
+```bash
+dck run -d \
+  -n NAME \
+  -p HOST_PORT:CONTAINER_PORT \
+  --restart POLICY \
+  --env-file "$PWD/.env" \
+  --vol "$PWD:/app" \
+  --workdir /app \
+  IMAGE[:TAG] COMMAND
+```
+
+Put all dck flags before the image name. Anything after the image and command is passed to the container process. In particular, write `-p 23323:23332` before `python:3.12`, not after `sh -c`.
+
+### Restart behavior
+
+| Policy | Process exits unexpectedly | `dck stop` | Host reboot |
+|---|---|---|---|
+| `no` | Stay stopped | Stay stopped | Stay stopped |
+| `on-failure` | Restart only for a non-zero exit | Stay stopped | Not bootstrapped |
+| `always` | Restart | Stay stopped when stopped explicitly | Start automatically |
+| `unless-stopped` | Restart | Stay stopped until an explicit `dck start` | Start automatically unless it was manually stopped |
+
+`dck run --restart always` and `dck run --restart unless-stopped` install the systemd bootstrap service when run as root. To install it manually:
+
+```bash
+dck bootstrap --install
+systemctl status dck-bootstrap
+```
+
+The bootstrap service starts eligible containers after the host boots. It does not make `on-failure` a boot-autostart policy.
+
+### Python bot with `.env`, mount, port, and automatic recovery
+
+```bash
+mkdir -p /data/bot
+cd /data/bot
+cp .env.example .env
+chmod 600 .env
+# Edit .env and set BOT_TOKEN and other secrets.
+
+# Automatically restart after a crash and start after reboot.
+dck pull python:3.12
+dck run -d \
+  -n bot \
+  -p 23323:23332 \
+  --restart unless-stopped \
+  --env-file "$PWD/.env" \
+  --vol "$PWD:/bot" \
+  --workdir /bot \
+  python:3.12 \
+  sh -c "python -m pip install --no-cache-dir -r requirements.txt && exec python main.py"
+```
+
+For a bot that should stop permanently when its process exits, omit `--restart`:
+
+```bash
+dck run -d \
+  -n bot-manual \
+  --env-file "$PWD/.env" \
+  --vol "$PWD:/bot" \
+  --workdir /bot \
+  python:3.12 \
+  sh -c "python -m pip install --no-cache-dir -r requirements.txt && exec python main.py"
+```
+
+### PostgreSQL
+
+Persistent database data belongs in a named volume, not in the container overlay:
+
+```bash
+dck volume create postgres-data
+dck run -d \
+  -n postgres \
+  -p 5432:5432 \
+  --restart unless-stopped \
+  --vol postgres-data:/var/lib/postgresql/data \
+  -e POSTGRES_DB=app \
+  -e POSTGRES_USER=app \
+  -e POSTGRES_PASSWORD=change_me \
+  postgres:16
+```
+
+Manual-only variant (no restart or boot autostart):
+
+```bash
+dck run -d \
+  -n postgres-manual \
+  -p 5433:5432 \
+  --vol postgres-data:/var/lib/postgresql/data \
+  -e POSTGRES_DB=app \
+  -e POSTGRES_USER=app \
+  -e POSTGRES_PASSWORD=change_me \
+  postgres:16
+```
+
+### MySQL
+
+```bash
+dck volume create mysql-data
+dck run -d \
+  -n mysql \
+  -p 3306:3306 \
+  --restart always \
+  --vol mysql-data:/var/lib/mysql \
+  -e MYSQL_ROOT_PASSWORD=change_me \
+  -e MYSQL_DATABASE=app \
+  -e MYSQL_USER=app \
+  -e MYSQL_PASSWORD=change_me \
+  mysql:8
+```
+
+### Redis
+
+```bash
+dck volume create redis-data
+dck run -d \
+  -n redis \
+  -p 6379:6379 \
+  --restart unless-stopped \
+  --vol redis-data:/data \
+  redis:7 \
+  redis-server --appendonly yes
+```
+
+### MongoDB
+
+```bash
+dck volume create mongo-data
+dck run -d \
+  -n mongodb \
+  -p 27017:27017 \
+  --restart unless-stopped \
+  --vol mongo-data:/data/db \
+  mongo:8
+```
+
+### Minecraft Java server
+
+A custom JAR can be kept in a host bind mount:
+
+```bash
+mkdir -p /data/minecraft
+# Copy server.jar, eula.txt, server.properties, and worlds into /data/minecraft.
+
+dck run -d \
+  -n minecraft \
+  -p 25565:25565 \
+  --restart unless-stopped \
+  --vol /data/minecraft:/data \
+  --workdir /data \
+  eclipse-temurin:21 \
+  java -Xms1G -Xmx4G -jar server.jar nogui
+```
+
+Manual-only Minecraft:
+
+```bash
+dck run -d \
+  -n minecraft-manual \
+  -p 25566:25565 \
+  --vol /data/minecraft:/data \
+  --workdir /data \
+  eclipse-temurin:21 \
+  java -Xms1G -Xmx4G -jar server.jar nogui
+```
+
+The Minecraft server must listen on `0.0.0.0:25565`. Its own logs and worlds are preserved in `/data/minecraft`; dck stdout/stderr logs are reset at each new container start.
+
+### Terraria
+
+Image configuration differs between Terraria images. Verify the image's documented environment variables before production use:
+
+```bash
+dck volume create terraria-data
+dck run -d \
+  -n terraria \
+  -p 7777:7777 \
+  --restart unless-stopped \
+  --vol terraria-data:/config \
+  terraria-server-image:latest
+```
+
+Without automatic restart:
+
+```bash
+dck run -d \
+  -n terraria-manual \
+  -p 7778:7777 \
+  --vol terraria-data:/config \
+  terraria-server-image:latest
+```
+
+Replace `terraria-server-image:latest` with the image you selected and follow its required EULA/configuration variables.
+
+### Factorio
+
+```bash
+dck volume create factorio-data
+dck run -d \
+  -n factorio \
+  -p 34197:34197/udp \
+  --restart unless-stopped \
+  --vol factorio-data:/factorio \
+  factoriotools/factorio:stable
+```
+
+### Source-engine or other dedicated game server
+
+Use the image's documented internal port and persistent data directory. The dck policy is independent of the game:
+
+```bash
+dck volume create game-data
+dck run -d \
+  -n dedicated-game \
+  -p 27015:27015/udp \
+  --restart always \
+  --vol game-data:/server \
+  game-server-image:latest \
+  ./start-server.sh
+```
+
+For a one-time/manual server, remove `--restart always`. Always check the image documentation for EULA acceptance, ports, startup command, save location, and required environment variables.
+
+### Inspect, stop, and recover
+
+```bash
+dck ps -a
+dck logs --tail 100 minecraft
+dck stats minecraft --no-stream
+dck stop minecraft
+dck start minecraft
+dck restart minecraft
+```
+
+A process crash triggers the configured restart policy. A manual `dck stop` is intentional and prevents `unless-stopped` from starting again until `dck start` is run. To disable automatic recovery permanently, update the container:
+
+```bash
+dck stop bot
+dck set bot --restart no
+dck start bot
+```
+
+## 15. Troubleshooting
 
 ### `flag provided but not defined: -images`
 
@@ -415,7 +661,7 @@ ss -ltnp
 dck logs NAME
 ```
 
-## 15. Data locations
+## 16. Data locations
 
 For root, the default dck data directory is `/root/.dck`:
 
