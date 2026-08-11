@@ -33,7 +33,6 @@ Python, Node.js, PHP, Java и полноценные приложения с б�
   - [PostgreSQL](#postgresql)
   - [MySQL](#mysql)
   - [phpMyAdmin](#phpmyadmin)
-- [Продажа контейнеров (Multi-Tenant)](#продажа-контейнеров-multi-tenant)
 - [Чеклист для продакшена](#чеклист-для-продакшена)
 
 ---
@@ -241,6 +240,47 @@ dck run -d --restart always \
 curl http://localhost:5000
 ```
 
+### Flask с nginx reverse proxy
+
+```bash
+# Конфиг nginx
+mkdir -p /data/flask-nginx
+cat > /data/flask-nginx/default.conf << 'EOF'
+server {
+    listen 80;
+    server_name example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /static/ {
+        alias /data/www/flask-app/static/;
+    }
+}
+EOF
+
+# Flask-приложение (порт не нужен — доступ через nginx)
+dck run -d --restart always \
+  -n flask-backend \
+  -v /data/flask-app:/app \
+  --workdir /app \
+  --startup "pip install -r /app/requirements.txt && gunicorn -w 4 -b 0.0.0.0:5000 app:app" \
+  python:3.11-slim
+
+# nginx, указывающий на контейнер Flask по IP
+dck run -d --restart always \
+  -n flask-web -p 80:80 \
+  -v /data/flask-nginx:/etc/nginx/conf.d \
+  nginx:alpine
+
+# Узнать IP Flask
+dck inspect flask-backend | grep IP
+# Затем подставить IP Flask (10.0.2.x) в конфиг nginx
+```
+
 ---
 
 ## Python FastAPI
@@ -365,6 +405,60 @@ curl http://localhost:3000
 
 ---
 
+## Node.js Next.js
+
+```bash
+mkdir -p /data/next-app
+cd /data/next-app
+
+# Создать Next.js проект
+cat > package.json << 'EOF'
+{
+  "name": "next-app",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start -p 3000"
+  },
+  "dependencies": {
+    "next": "^14.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}
+EOF
+
+mkdir -p pages
+cat > pages/index.js << 'EOF'
+export default function Home() {
+  return <h1>Hello from Next.js on dck!</h1>;
+}
+EOF
+
+# Режим разработки (с hot reload)
+dck run -d --restart always \
+  -n next-dev -p 3000:3000 \
+  -v /data/next-app:/app \
+  --workdir /app \
+  --startup "npm install && npm run dev" \
+  node:20
+
+# Production-сборка
+dck run --rm \
+  -v /data/next-app:/app \
+  --workdir /app \
+  node:20 sh -c "npm install && npm run build"
+
+dck run -d --restart always \
+  -n next-prod -p 3000:3000 \
+  -v /data/next-app:/app \
+  --workdir /app \
+  --startup "npm start" \
+  node:20
+```
+
+---
+
 ## PHP + Nginx
 
 ```bash
@@ -409,6 +503,116 @@ dck run -d --restart always \
   -v /data/php-app:/var/www/html \
   -v /data/php-nginx:/etc/nginx/conf.d \
   nginx:alpine
+```
+
+---
+
+## Java Spring Boot
+
+```bash
+mkdir -p /data/spring-app
+cd /data/spring-app
+
+# Создайте простое Spring Boot приложение (или используйте свой JAR)
+# Для теста можно создать простой JAR или взять существующий
+
+cat > Dockerfile << 'EOF'
+FROM eclipse-temurin:21-jdk AS build
+WORKDIR /app
+COPY . .
+RUN apt-get update && apt-get install -y maven && mvn package -DskipTests
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
+EOF
+
+# Собрать и запустить
+dck build -t spring-app:v1 .
+dck run -d --restart always \
+  -n spring-app -p 8080:8080 \
+  spring-app:v1
+
+curl http://localhost:8080
+```
+
+### Быстрый Java-тест (без сборки)
+
+```bash
+cat > /data/spring-app/HttpServer.java << 'EOF'
+import com.sun.net.httpserver.*;
+
+public class HttpServer {
+    public static void main(String[] args) throws Exception {
+        com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer.create(
+            new InetSocketAddress(8080), 0);
+        server.createContext("/", exchange -> {
+            String resp = "<h1>Hello from Java on dck!</h1>";
+            exchange.sendResponseHeaders(200, resp.length());
+            exchange.getResponseBody().write(resp.getBytes());
+            exchange.close();
+        });
+        server.setExecutor(null);
+        server.start();
+        System.out.println("Server started on port 8080");
+        Thread.currentThread().join();
+    }
+}
+EOF
+
+dck run -d --restart always \
+  -n java-app -p 8080:8080 \
+  -v /data/spring-app:/app \
+  --workdir /app \
+  --startup "javac HttpServer.java && java HttpServer" \
+  eclipse-temurin:21-jdk
+```
+
+---
+
+## Go HTTP сервер
+
+```bash
+mkdir -p /data/go-app
+cd /data/go-app
+
+cat > main.go << 'EOF'
+package main
+
+import (
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        fmt.Fprintf(w, "<h1>Hello from Go on dck!</h1>")
+    })
+    http.ListenAndServe(":8080", nil)
+}
+EOF
+
+# Многоступенчатая сборка через dck
+cat > Dockerfile << 'EOF'
+FROM golang:1.22 AS build
+WORKDIR /app
+COPY main.go .
+RUN CGO_ENABLED=0 go build -o server .
+
+FROM alpine:latest
+COPY --from=build /app/server /
+EXPOSE 8080
+CMD ["/server"]
+EOF
+
+dck build -t go-app:v1 .
+dck run -d --restart always \
+  -n go-app -p 8080:8080 \
+  go-app:v1
+
+curl http://localhost:8080
 ```
 
 ---
@@ -517,6 +721,80 @@ dck run -d --restart always \
   node:20
 ```
 
+### FastAPI + PostgreSQL + Redis
+
+```bash
+# 1. PostgreSQL
+dck run -d --restart always \
+  -n pg -p 5432:5432 \
+  -v pgdata:/var/lib/postgresql/data \
+  -e POSTGRES_DB=myapp \
+  -e POSTGRES_USER=myapp \
+  -e POSTGRES_PASSWORD=secret \
+  postgres:16
+
+# 2. Redis
+dck run -d --restart always \
+  -n redis -p 6379:6379 \
+  redis:7
+
+# 3. FastAPI приложение
+mkdir -p /data/fastapi-stack
+cd /data/fastapi-stack
+
+cat > main.py << 'EOF'
+from fastapi import FastAPI, HTTPException
+import asyncpg, redis.asyncio as redis_, os
+
+app = FastAPI()
+
+@app.on_event("startup")
+async def startup():
+    app.db = await asyncpg.connect(
+        host=os.environ.get('DB_HOST', '10.0.2.1'),
+        database=os.environ.get('DB_NAME', 'myapp'),
+        user=os.environ.get('DB_USER', 'myapp'),
+        password=os.environ.get('DB_PASS', 'secret')
+    )
+    app.redis = redis_.Redis(host=os.environ.get('REDIS_HOST', '10.0.2.1'), port=6379, db=0)
+    await app.db.execute('CREATE TABLE IF NOT EXISTS items (id SERIAL, name TEXT)')
+
+@app.get('/')
+async def root():
+    return {'message': 'FastAPI + PostgreSQL + Redis on dck!'}
+
+@app.get('/db')
+async def db_check():
+    ver = await app.db.fetchval('SELECT version()')
+    return {'database': ver}
+
+@app.get('/redis')
+async def redis_check():
+    await app.redis.set('test', 'ok')
+    val = await app.redis.get('test')
+    return {'redis': val.decode()}
+EOF
+
+cat > requirements.txt << 'EOF'
+fastapi==0.109.0
+uvicorn==0.27.0
+asyncpg==0.29.0
+redis==5.0.0
+EOF
+
+dck run -d --restart always \
+  -n fastapi-app -p 8000:8000 \
+  -v /data/fastapi-stack:/app \
+  --workdir /app \
+  -e DB_HOST=10.0.2.1 \
+  -e DB_NAME=myapp \
+  -e DB_USER=myapp \
+  -e DB_PASS=secret \
+  -e REDIS_HOST=10.0.2.1 \
+  --startup "pip install -r /app/requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8000" \
+  python:3.11-slim
+```
+
 ---
 
 ## Multi-Container с Compose
@@ -552,6 +830,58 @@ services:
 
 volumes:
   wp_data:
+```
+
+```bash
+dck up
+```
+
+### Python API + PostgreSQL + Nginx
+
+```yaml
+services:
+  db:
+    image: postgres:16
+    restart: always
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: myapp
+      POSTGRES_USER: myapp
+      POSTGRES_PASSWORD: secret
+    healthcheck:
+      test: pg_isready -U myapp
+      interval: 5s
+      retries: 10
+
+  api:
+    build: ./api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: db
+      DB_NAME: myapp
+      DB_USER: myapp
+      DB_PASS: secret
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./static:/usr/share/nginx/html
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
 ```
 
 ```bash
@@ -946,6 +1276,28 @@ dck run -d --restart always \
 
 
 
+## Динамическое управление портами
+
+Добавление и удаление портов на работающем контейнере без перезапуска:
+
+```bash
+# Добавить порт
+dck port add player1 25566:25566
+
+# Добавить UDP порт
+dck port add player1 27015:27015/udp
+
+# Удалить порт
+dck port remove player1 25566
+dck port rm player1 25566       # алиас
+```
+
+- Правила iptables DNAT применяются мгновенно — перезапуск не нужен
+- Порты сохраняются в состоянии контейнера между перезапусками
+- Полезно для донатных привилегий, временных сервисов или экстренного доступа
+
+---
+
 ## Чеклист для продакшена
 
 ### Безопасность
@@ -992,25 +1344,3 @@ tar -czf volume-backup.tar.gz /root/.dck/volumes/<name>/
 # Экспорт образа
 dck export myapp:v1 -o myapp-backup.tar.gz
 ```
-
----
-
-## Динамическое управление портами
-
-Добавление и удаление портов на работающем контейнере без перезапуска:
-
-```bash
-# Добавить порт
-dck port add player1 25566:25566
-
-# Добавить UDP порт
-dck port add player1 27015:27015/udp
-
-# Удалить порт
-dck port remove player1 25566
-dck port rm player1 25566       # алиас
-```
-
-- Правила iptables DNAT применяются мгновенно — перезапуск не нужен
-- Порты сохраняются в состоянии контейнера между перезапусками
-- Полезно для донатных привилегий, временных сервисов или экстренного доступа
