@@ -189,7 +189,7 @@ func Up(args []string) {
 						if err := c.Rename(name); err != nil {
 							fmt.Fprintf(os.Stderr, "  %s: rename error: %v\n", name, err)
 						} else {
-							fmt.Printf("  %s: renamed from %s\n", name, oldID[:12])
+							fmt.Printf("  %s: renamed from %s\n", name, shortID(oldID))
 						}
 					}
 					existing = c
@@ -358,7 +358,7 @@ func Up(args []string) {
 			fmt.Fprintf(os.Stderr, "  %s: error starting: %v\n", name, err)
 			continue
 		}
-		fmt.Printf("  %s: created and started (%s)\n", name, c.ID[:12])
+		fmt.Printf("  %s: created and started (%s)\n", name, shortID(c.ID))
 		composeState[name] = c.ID
 		started++
 

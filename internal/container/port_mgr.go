@@ -10,6 +10,8 @@ import (
 )
 
 func (c *Container) AddPort(hostPort, containerPort int, protocol string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if protocol == "" {
 		protocol = "tcp"
 	}
@@ -44,6 +46,8 @@ func (c *Container) AddPort(hostPort, containerPort int, protocol string) error 
 }
 
 func (c *Container) RemovePort(hostPort int, protocol string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if protocol == "" {
 		protocol = "tcp"
 	}
@@ -72,6 +76,8 @@ func (c *Container) RemovePort(hostPort int, protocol string) error {
 }
 
 func (c *Container) FindPort(hostPort int, protocol string) *PortMap {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	for _, p := range c.Ports {
 		if p.HostPort == hostPort && p.Protocol == protocol {
 			return &p

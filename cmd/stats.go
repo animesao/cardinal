@@ -40,7 +40,7 @@ func Stats(args []string) {
 		all, err := container.List(true)
 		if err == nil {
 			for _, ct := range all {
-				if ct.ID == name || ct.ID[:12] == name {
+				if ct.ID == name || shortID(ct.ID) == name {
 					c = ct
 					break
 				}

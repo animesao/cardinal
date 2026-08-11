@@ -1,3 +1,5 @@
+//go:build linux
+
 package orchestrator
 
 import (
@@ -112,7 +114,7 @@ func startLocalReplica(ctx context.Context, serviceName string, svc *Service) er
 	replicaID := generateID()
 
 	opts := container.CreateOpts{
-		Name:    serviceName + "." + replicaID[:8],
+		Name:    serviceName + "." + shortID(replicaID, 8),
 		Ports:   ports,
 		Volumes: volumes,
 		Env:     env,
@@ -135,7 +137,7 @@ func startLocalReplica(ctx context.Context, serviceName string, svc *Service) er
 
 	saveReplica(serviceName, replicaID, c.ID, clusterConf.NodeID)
 
-	log.Info("[scheduler] local replica %s running (container %s)", replicaID[:8], c.ID[:12])
+	log.Info("[scheduler] local replica %s running (container %s)", shortID(replicaID, 8), shortID(c.ID, 12))
 	return nil
 }
 
@@ -182,7 +184,7 @@ func startRemoteReplica(ctx context.Context, serviceName string, svc *Service, n
 	saveReplica(serviceName, replicaID, result.ContainerID, node.ID)
 
 	log.Info("[scheduler] remote replica %s on %s (container %s)",
-		replicaID[:8], node.Name, result.ContainerID[:12])
+		shortID(replicaID, 8), node.Name, shortID(result.ContainerID, 12))
 	return nil
 }
 
@@ -203,7 +205,7 @@ func RemoveRemoteReplica(ctx context.Context, nodeID, containerID string) error 
 		if err := c.Remove(true); err != nil {
 			return fmt.Errorf("remove local container %s: %w", containerID, err)
 		}
-		log.Info("[scheduler] stopped local container %s", containerID[:12])
+		log.Info("[scheduler] stopped local container %s", shortID(containerID, 12))
 		return nil
 	}
 
@@ -227,7 +229,7 @@ func RemoveRemoteReplica(ctx context.Context, nodeID, containerID string) error 
 		return fmt.Errorf("remove on %s: status %d", node.Name, resp.StatusCode)
 	}
 
-	log.Info("[scheduler] removed remote container %s on %s", containerID[:12], node.Name)
+	log.Info("[scheduler] removed remote container %s on %s", shortID(containerID, 12), node.Name)
 	return nil
 }
 
@@ -344,14 +346,24 @@ func RollingUpdateService(ctx context.Context, name, newImage string, opts Servi
 				log.Info("[rolling] starting new replica of %s (image: %s)", name, newImage)
 				oldSvc := *svc
 				oldSvc.Image = newImage
-				ScheduleReplica(ctx, name, &oldSvc)
-				RemoveRemoteReplica(ctx, r.NodeID, r.ContainerID)
+				if err := ScheduleReplica(ctx, name, &oldSvc); err != nil {
+					return fmt.Errorf("start replacement for replica %s: %w", r.ID, err)
+				}
+				if err := RemoveRemoteReplica(ctx, r.NodeID, r.ContainerID); err != nil {
+					return fmt.Errorf("remove old replica %s: %w", r.ID, err)
+				}
+				removeReplicaState(name, r.ID)
 			} else {
 				log.Info("[rolling] stopping replica %s", r.ID)
-				RemoveRemoteReplica(ctx, r.NodeID, r.ContainerID)
+				if err := RemoveRemoteReplica(ctx, r.NodeID, r.ContainerID); err != nil {
+					return fmt.Errorf("remove old replica %s: %w", r.ID, err)
+				}
 				oldSvc := *svc
 				oldSvc.Image = newImage
-				ScheduleReplica(ctx, name, &oldSvc)
+				if err := ScheduleReplica(ctx, name, &oldSvc); err != nil {
+					return fmt.Errorf("start replacement for replica %s: %w", r.ID, err)
+				}
+				removeReplicaState(name, r.ID)
 			}
 		}
 
@@ -370,7 +382,10 @@ func RollingUpdateService(ctx context.Context, name, newImage string, opts Servi
 
 	serviceLock.Lock()
 	clusterConf.Services[name] = svc
-	saveServices()
+	if err := saveServices(); err != nil {
+		serviceLock.Unlock()
+		return fmt.Errorf("save updated service: %w", err)
+	}
 	serviceLock.Unlock()
 
 	log.Info("[rolling] update complete: %s now using %s", name, newImage)
@@ -378,6 +393,13 @@ func RollingUpdateService(ctx context.Context, name, newImage string, opts Servi
 }
 
 // --- replica persistence ---
+
+func removeReplicaState(serviceName, replicaID string) {
+	path := filepath.Join(state.DataDir(), ServiceStateDir, serviceName, replicaID+".json")
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		log.Warn("[scheduler] remove replica state %s: %v", replicaID, err)
+	}
+}
 
 func saveReplica(serviceName, replicaID, containerID, nodeID string) {
 	dir := filepath.Join(state.DataDir(), ServiceStateDir, serviceName)

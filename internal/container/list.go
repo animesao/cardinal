@@ -1,3 +1,5 @@
+//go:build linux
+
 package container
 
 import (
@@ -49,7 +51,7 @@ func PrintContainers(containers []*Container) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 	fmt.Fprintln(w, "ID\tIMAGE\tSTATUS\tNAME\tCMD")
 	for _, c := range containers {
-		shortID := c.ID[:12]
+		shortID := shortID(c.ID, 12)
 		image := fmt.Sprintf("%s:%s", c.ImageName, c.ImageTag)
 		cmd := strings.Join(c.Cmd, " ")
 		if len(cmd) > 40 {

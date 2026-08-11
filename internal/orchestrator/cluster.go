@@ -1,3 +1,5 @@
+//go:build linux
+
 package orchestrator
 
 import (
@@ -232,8 +234,8 @@ func LeaveCluster() error {
 
 // ListNodes returns all cluster nodes
 func ListNodes() ([]*Node, error) {
-	clusterLock.RLock()
-	defer clusterLock.RUnlock()
+	clusterLock.Lock()
+	defer clusterLock.Unlock()
 
 	if err := loadClusterConfig(); err != nil {
 		return nil, err
@@ -253,8 +255,8 @@ func ListNodes() ([]*Node, error) {
 
 // GetNode returns the local node info
 func GetNode() (*Node, error) {
-	clusterLock.RLock()
-	defer clusterLock.RUnlock()
+	clusterLock.Lock()
+	defer clusterLock.Unlock()
 
 	if err := loadClusterConfig(); err != nil {
 		return nil, err
@@ -267,8 +269,8 @@ func GetNode() (*Node, error) {
 
 // GetClusterInfo returns current cluster info
 func GetClusterInfo() *ClusterConfig {
-	clusterLock.RLock()
-	defer clusterLock.RUnlock()
+	clusterLock.Lock()
+	defer clusterLock.Unlock()
 	loadClusterConfig()
 	return clusterConf
 }
@@ -474,11 +476,13 @@ func loadClusterConfig() error {
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return err
 	}
-	if cfg.Nodes != nil {
-		clusterConf.Nodes = cfg.Nodes
+	clusterConf.Nodes = cfg.Nodes
+	if clusterConf.Nodes == nil {
+		clusterConf.Nodes = make(map[string]*Node)
 	}
-	if cfg.Services != nil {
-		clusterConf.Services = cfg.Services
+	clusterConf.Services = cfg.Services
+	if clusterConf.Services == nil {
+		clusterConf.Services = make(map[string]*Service)
 	}
 	clusterConf.ClusterID = cfg.ClusterID
 	clusterConf.ClusterName = cfg.ClusterName

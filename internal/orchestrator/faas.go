@@ -1,3 +1,5 @@
+//go:build linux
+
 package orchestrator
 
 import (
@@ -67,7 +69,10 @@ func DeployFunction(ctx context.Context, name, imageName string, port int, opts 
 	}
 
 	allFunctions[name] = fn
-	saveFunctions()
+	if err := saveFunctions(); err != nil {
+		delete(allFunctions, name)
+		return nil, fmt.Errorf("save function: %w", err)
+	}
 
 	return fn, nil
 }
@@ -88,8 +93,8 @@ var allFunctions = make(map[string]*Function)
 
 // ListFunctions returns all deployed functions
 func ListFunctions() ([]*Function, error) {
-	fnLock.RLock()
-	defer fnLock.RUnlock()
+	fnLock.Lock()
+	defer fnLock.Unlock()
 
 	if err := loadFunctions(); err != nil {
 		return nil, err
@@ -109,8 +114,8 @@ func ListFunctions() ([]*Function, error) {
 
 // GetFunction returns a function by name
 func GetFunction(name string) (*Function, error) {
-	fnLock.RLock()
-	defer fnLock.RUnlock()
+	fnLock.Lock()
+	defer fnLock.Unlock()
 
 	if err := loadFunctions(); err != nil {
 		return nil, err
@@ -140,7 +145,9 @@ func RemoveFunction(ctx context.Context, name string) error {
 	scaleDownFunction(ctx, fn)
 
 	delete(allFunctions, name)
-	saveFunctions()
+	if err := saveFunctions(); err != nil {
+		return fmt.Errorf("save functions: %w", err)
+	}
 
 	return nil
 }
@@ -178,7 +185,10 @@ func InvokeFunction(ctx context.Context, name string, payload []byte) ([]byte, e
 
 	fnLock.Lock()
 	fn.InvokeCount++
-	saveFunctions()
+	if err := saveFunctions(); err != nil {
+		fnLock.Unlock()
+		return nil, fmt.Errorf("save function invocation state: %w", err)
+	}
 	fnLock.Unlock()
 
 	return result, nil
@@ -244,7 +254,7 @@ func scaleUpFunction(ctx context.Context, fn *Function, count int) error {
 			return ctx.Err()
 		}
 		replicaID := generateID()
-		cName := fmt.Sprintf("fn_%s_%s", fn.Name, replicaID[:8])
+		cName := fmt.Sprintf("fn_%s_%s", fn.Name, shortID(replicaID, 8))
 
 		port := fn.Port
 		if port == 0 {
@@ -310,7 +320,7 @@ func scaleDownFunction(ctx context.Context, fn *Function) {
 		c, err := container.Load(cid)
 		if err == nil {
 			if err := c.Remove(true); err != nil {
-				log.Error("[faas] error removing container %s: %v", cid[:12], err)
+				log.Error("[faas] error removing container %s: %v", shortID(cid, 12), err)
 			} else {
 				removed++
 			}
@@ -379,6 +389,7 @@ func loadFunctions() error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			allFunctions = make(map[string]*Function)
 			return nil
 		}
 		return err
@@ -389,8 +400,9 @@ func loadFunctions() error {
 		return err
 	}
 
-	for k, v := range fns {
-		allFunctions[k] = v
+	allFunctions = fns
+	if allFunctions == nil {
+		allFunctions = make(map[string]*Function)
 	}
 
 	return nil

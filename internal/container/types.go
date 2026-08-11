@@ -1,3 +1,5 @@
+//go:build linux
+
 package container
 
 import (
@@ -73,6 +75,7 @@ type Container struct {
 	// Runtime-only (not persisted)
 	cancelHealth   context.CancelFunc `json:"-"`
 	mu             sync.Mutex         `json:"-"`
+	lifecycleMu    sync.Mutex         `json:"-"`
 	dataMu         sync.RWMutex       `json:"-"`
 	cleanupStarted bool               `json:"-"`
 }
@@ -136,11 +139,22 @@ type CreateOpts struct {
 	Ulimits         []Ulimit
 }
 
+func shortID(id string, n int) string {
+	if n <= 0 || len(id) <= n {
+		return id
+	}
+	return id[:n]
+}
+
 func (c *Container) Save() error {
 	c.dataMu.RLock()
 	defer c.dataMu.RUnlock()
-	os.MkdirAll(state.ContainersDir(), 0700)
-	os.Chmod(state.ContainersDir(), 0700)
+	if err := os.MkdirAll(state.ContainersDir(), 0700); err != nil {
+		return err
+	}
+	if err := os.Chmod(state.ContainersDir(), 0700); err != nil {
+		return err
+	}
 	return state.WriteJSON(state.ContainerPath(c.ID), c)
 }
 

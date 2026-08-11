@@ -12,28 +12,28 @@ import (
 )
 
 type ContainerStats struct {
-	ContainerID    string  `json:"container_id"`
-	Name           string  `json:"name"`
-	Status         Status  `json:"status"`
-	PID            int     `json:"pid"`
+	ContainerID string `json:"container_id"`
+	Name        string `json:"name"`
+	Status      Status `json:"status"`
+	PID         int    `json:"pid"`
 
-	MemoryUsage    uint64  `json:"memory_usage_bytes"`
-	MemoryLimit    uint64  `json:"memory_limit_bytes"`
-	MemoryMax      uint64  `json:"memory_max_bytes"`
-	MemoryPercent  float64 `json:"memory_percent"`
+	MemoryUsage   uint64  `json:"memory_usage_bytes"`
+	MemoryLimit   uint64  `json:"memory_limit_bytes"`
+	MemoryMax     uint64  `json:"memory_max_bytes"`
+	MemoryPercent float64 `json:"memory_percent"`
 
-	CPUUsage       uint64  `json:"cpu_usage_usec"`
-	CPUUser        uint64  `json:"cpu_user_usec"`
-	CPUSystem      uint64  `json:"cpu_system_usec"`
-	CPUPercent     float64 `json:"cpu_percent"`
-	CPUCount       float64 `json:"cpu_count"`
+	CPUUsage   uint64  `json:"cpu_usage_usec"`
+	CPUUser    uint64  `json:"cpu_user_usec"`
+	CPUSystem  uint64  `json:"cpu_system_usec"`
+	CPUPercent float64 `json:"cpu_percent"`
+	CPUCount   float64 `json:"cpu_count"`
 
-	PIDsCurrent    uint64  `json:"pids_current"`
+	PIDsCurrent uint64 `json:"pids_current"`
 
-	IOReadBytes    uint64  `json:"io_read_bytes"`
-	IOWriteBytes   uint64  `json:"io_write_bytes"`
+	IOReadBytes  uint64 `json:"io_read_bytes"`
+	IOWriteBytes uint64 `json:"io_write_bytes"`
 
-	Timestamp      int64   `json:"timestamp"`
+	Timestamp int64 `json:"timestamp"`
 }
 
 func ReadContainerStats(c *Container) (*ContainerStats, error) {
@@ -43,7 +43,7 @@ func ReadContainerStats(c *Container) (*ContainerStats, error) {
 	}
 
 	s := &ContainerStats{
-		ContainerID: c.ID[:12],
+		ContainerID: shortID(c.ID, 12),
 		Name:        c.Name,
 		Status:      c.Status,
 		PID:         c.PID,

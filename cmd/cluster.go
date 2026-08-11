@@ -1,3 +1,5 @@
+//go:build linux
+
 package cmd
 
 import (
@@ -84,7 +86,7 @@ func clusterInit(args []string) {
 
 	node, err := orchestrator.GetNode()
 	if err == nil {
-		fmt.Printf("  Node ID:   %s\n", node.ID[:12])
+		fmt.Printf("  Node ID:   %s\n", shortID(node.ID))
 		fmt.Printf("  Address:   %s:%d\n", node.Address, node.APIPort)
 		fmt.Printf("  API Port:  %d (for remote replica requests)\n", *apiPort)
 	}
@@ -161,7 +163,7 @@ func clusterJoinToken(args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Cluster: %s (%s)\n", info.ClusterName, info.ClusterID[:12])
+	fmt.Printf("Cluster: %s (%s)\n", info.ClusterName, shortID(info.ClusterID))
 	fmt.Printf("Join token:\n")
 	fmt.Printf("  dck cluster join %s:%d\n", node.Address, node.APIPort)
 }
@@ -209,7 +211,7 @@ func clusterInfo(args []string) {
 
 	node, _ := orchestrator.GetNode()
 	if node != nil {
-		fmt.Printf("\n  Local node: %s (%s)\n", node.Name, node.ID[:12])
+		fmt.Printf("\n  Local node: %s (%s)\n", node.Name, shortID(node.ID))
 	}
 }
 

@@ -31,6 +31,17 @@ func commandContext30(name string, arg ...string) *exec.Cmd {
 }
 
 func (c *Container) Start() error {
+	c.lifecycleMu.Lock()
+	defer c.lifecycleMu.Unlock()
+	return c.startInternal()
+}
+
+func (c *Container) startInternal() error {
+	c.mu.Lock()
+	c.cleanupStarted = false
+	c.mu.Unlock()
+	stoppedContainers.Delete(c.ID)
+
 	c.dataMu.Lock()
 	if c.Status == Running {
 		c.dataMu.Unlock()
@@ -91,7 +102,7 @@ func (c *Container) Start() error {
 		ctx, cancel := context.WithCancel(context.Background())
 		c.cancelHealth = cancel
 		monitorContainer(c, cmd, ctx)
-		fmt.Println(c.ID[:12])
+		fmt.Println(shortID(c.ID, 12))
 		return nil
 	}
 
@@ -247,7 +258,19 @@ func (c *Container) setupContainerResources(childPID int) {
 }
 
 func (c *Container) runForeground(cmd *exec.Cmd) error {
+	var healthCancel context.CancelFunc
+	if c.Healthcheck != nil {
+		var healthCtx context.Context
+		healthCtx, healthCancel = context.WithCancel(context.Background())
+		c.cancelHealth = healthCancel
+		go c.runHealthcheck(healthCtx)
+	}
+
 	err := cmd.Wait()
+	if healthCancel != nil {
+		healthCancel()
+		c.cancelHealth = nil
+	}
 	c.dataMu.Lock()
 	c.PID = 0
 	c.Status = Stopped
@@ -343,8 +366,13 @@ func shouldRestart(policy string, exitCode int, stoppedByUser bool) bool {
 
 func (c *Container) restart() error {
 	time.Sleep(time.Second)
+	c.dataMu.Lock()
 	c.Status = Created
-	return c.Start()
+	c.dataMu.Unlock()
+	c.mu.Lock()
+	c.cleanupStarted = false
+	c.mu.Unlock()
+	return c.startInternal()
 }
 
 func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
@@ -386,7 +414,12 @@ func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 		if shouldRestart(c.Restart, exitCode, stoppedByUser) {
 			go func() {
 				time.Sleep(time.Second)
+				c.dataMu.Lock()
 				c.Status = Created
+				c.dataMu.Unlock()
+				c.mu.Lock()
+				c.cleanupStarted = false
+				c.mu.Unlock()
 				_ = c.Start()
 			}()
 		} else if c.RemoveOnExit {

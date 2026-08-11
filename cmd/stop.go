@@ -23,10 +23,10 @@ func Stop(args []string) {
 		}
 		for _, c := range containers {
 			if err := c.Stop(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error stopping %s: %v\n", c.ID[:12], err)
+				fmt.Fprintf(os.Stderr, "Error stopping %s: %v\n", shortID(c.ID), err)
 				continue
 			}
-			fmt.Println(c.ID[:12])
+			fmt.Println(shortID(c.ID))
 		}
 		return
 	}
@@ -48,5 +48,5 @@ func Stop(args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Println(c.ID[:12])
+	fmt.Println(shortID(c.ID))
 }

@@ -31,7 +31,7 @@ func Down(args []string) {
 		}
 		removed := 0
 		for _, c := range allContainers {
-			fmt.Printf("  Removing %s (%s)...\n", c.ID[:12], c.Name)
+			fmt.Printf("  Removing %s (%s)...\n", shortID(c.ID), c.Name)
 			if err := c.Remove(true); err != nil {
 				fmt.Fprintf(os.Stderr, "  Error: %v\n", err)
 				continue
@@ -66,7 +66,7 @@ func Down(args []string) {
 			fmt.Fprintf(os.Stderr, "  %s: error removing: %v\n", name, err)
 			continue
 		}
-		fmt.Printf("  %s: removed (%s)\n", name, c.ID[:12])
+		fmt.Printf("  %s: removed (%s)\n", name, shortID(c.ID))
 		removed++
 	}
 

@@ -74,7 +74,7 @@ func Serve(args []string) {
 		if err == nil {
 			for _, c := range containers {
 				if c.Status == container.Running {
-					log.Info("Stopping %s (%s)...", c.Name, c.ID[:12])
+					log.Info("Stopping %s (%s)...", c.Name, shortID(c.ID))
 					c.Stop()
 				}
 			}

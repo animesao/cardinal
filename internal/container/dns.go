@@ -1,3 +1,5 @@
+//go:build linux
+
 package container
 
 import (
@@ -74,8 +76,15 @@ func ListDNSNames() []dnsEntry {
 	return dnsRegistry.read()
 }
 
+func (r *DNSRegistry) filePath() string {
+	if r.path != "" {
+		return r.path
+	}
+	return filepath.Join(state.DataDir(), "dns-registry.json")
+}
+
 func (r *DNSRegistry) read() []dnsEntry {
-	path := filepath.Join(state.DataDir(), "dns-registry.json")
+	path := r.filePath()
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil
@@ -92,7 +101,7 @@ func (r *DNSRegistry) write(entries []dnsEntry) {
 	if err != nil {
 		return
 	}
-	path := filepath.Join(state.DataDir(), "dns-registry.json")
+	path := r.filePath()
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return
 	}

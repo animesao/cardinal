@@ -11,7 +11,10 @@ import (
 )
 
 func (c *Container) Remove(force bool) error {
-	if c.Status == Running {
+	c.dataMu.RLock()
+	isRunning := c.Status == Running
+	c.dataMu.RUnlock()
+	if isRunning {
 		if !force {
 			return fmt.Errorf("cannot remove running container %s (use -f)", c.ID)
 		}

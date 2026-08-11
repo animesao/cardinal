@@ -33,5 +33,5 @@ func Restart(args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Println(c.ID[:12])
+	fmt.Println(shortID(c.ID))
 }

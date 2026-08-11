@@ -231,9 +231,17 @@ func EnsureBridge() error {
 	return nil
 }
 
+func networkShortID(id string) string {
+	if len(id) <= 8 {
+		return id
+	}
+	return id[:8]
+}
+
 func SetupVeth(containerID string, pid int, containerIP string) error {
-	hostIf := fmt.Sprintf("ve%s", containerID[:8])
-	contIf := fmt.Sprintf("vc%s", containerID[:8])
+	short := networkShortID(containerID)
+	hostIf := fmt.Sprintf("ve%s", short)
+	contIf := fmt.Sprintf("vc%s", short)
 
 	if err := exec.Command("ip", "link", "add", hostIf, "type", "veth", "peer", "name", contIf).Run(); err != nil {
 		return fmt.Errorf("create veth pair: %w", err)
@@ -383,7 +391,7 @@ func RemovePortForwarding(containerIP string, hostPort, containerPort int, proto
 }
 
 func RemoveVeth(containerID string) {
-	hostIf := fmt.Sprintf("ve%s", containerID[:8])
+	hostIf := fmt.Sprintf("ve%s", networkShortID(containerID))
 	if err := exec.Command("ip", "link", "delete", hostIf).Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: ip link delete %s: %v\n", hostIf, err)
 	}

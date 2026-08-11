@@ -23,7 +23,7 @@ func SystemPrune() error {
 	for _, c := range containers {
 		if c.Status != Running {
 			if err := c.Remove(false); err != nil {
-				log.Error("Error removing container %s: %v", c.ID[:12], err)
+				log.Error("Error removing container %s: %v", shortID(c.ID, 12), err)
 				continue
 			}
 			removedContainers++

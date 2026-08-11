@@ -138,7 +138,7 @@ func handleReplicaCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if req.ReplicaID != "" {
-		name = name + "." + req.ReplicaID[:8]
+		name = name + "." + shortID(req.ReplicaID, 8)
 	}
 
 	opts := container.CreateOpts{
@@ -208,10 +208,10 @@ func handleListContainersOnNode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type containerInfo struct {
-		ID     string `json:"id"`
-		Name   string `json:"name"`
-		Image  string `json:"image"`
-		Status string `json:"status"`
+		ID     string            `json:"id"`
+		Name   string            `json:"name"`
+		Image  string            `json:"image"`
+		Status string            `json:"status"`
 		Labels map[string]string `json:"labels,omitempty"`
 	}
 

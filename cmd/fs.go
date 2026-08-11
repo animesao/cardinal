@@ -44,9 +44,9 @@ func Fs(args []string) {
 			if _, err := os.Stat(merged); err != nil {
 				continue
 			}
-			label := c.ID[:12]
+			label := shortID(c.ID)
 			if c.Name != "" {
-				label = c.ID[:12] + "  " + c.Name
+				label = shortID(c.ID) + "  " + c.Name
 			}
 			fsFind(merged, label, args[1:])
 		}
@@ -71,9 +71,9 @@ func Fs(args []string) {
 	case "tree":
 		fsTree(merged, args[2:])
 	case "find":
-		label := c.ID[:12]
+		label := shortID(c.ID)
 		if c.Name != "" {
-			label = c.ID[:12] + "  " + c.Name
+			label = shortID(c.ID) + "  " + c.Name
 		}
 		fsFind(merged, label, args[2:])
 	default:
@@ -261,5 +261,3 @@ func fsFind(merged, label string, args []string) {
 		os.Exit(1)
 	}
 }
-
-

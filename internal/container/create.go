@@ -1,3 +1,5 @@
+//go:build linux
+
 package container
 
 import (
@@ -55,39 +57,39 @@ func New(img *image.Image, opts CreateOpts) *Container {
 	}
 
 	return &Container{
-		ID:           id,
-		Name:         name,
-		ImageName:    img.Name,
-		ImageTag:     img.Tag,
-		Status:       Created,
-		Cmd:          cmd,
-		StartupScript: opts.StartupScript,
-		CreatedAt:    time.Now(),
-		Ports:        opts.Ports,
-		Volumes:      opts.Volumes,
-		Env:          opts.Env,
-		Hostname:     hostname,
-		Restart:      opts.Restart,
-		Detach:       opts.Detach,
-		Interactive:  opts.Interactive,
-		TTY:          opts.TTY,
-		RemoveOnExit: opts.RemoveOnExit,
-		MemoryLimit:  opts.MemoryLimit,
-		CPUCount:     opts.CPUCount,
-		DiskLimit:    opts.DiskLimit,
-		WorkingDir:   workdir,
-		Healthcheck:  opts.Healthcheck,
-		Labels:       opts.Labels,
-		CapAdd:       opts.CapAdd,
-		CapDrop:      opts.CapDrop,
-		User:         opts.User,
-		ReadonlyRootfs: opts.ReadonlyRootfs,
+		ID:              id,
+		Name:            name,
+		ImageName:       img.Name,
+		ImageTag:        img.Tag,
+		Status:          Created,
+		Cmd:             cmd,
+		StartupScript:   opts.StartupScript,
+		CreatedAt:       time.Now(),
+		Ports:           opts.Ports,
+		Volumes:         opts.Volumes,
+		Env:             opts.Env,
+		Hostname:        hostname,
+		Restart:         opts.Restart,
+		Detach:          opts.Detach,
+		Interactive:     opts.Interactive,
+		TTY:             opts.TTY,
+		RemoveOnExit:    opts.RemoveOnExit,
+		MemoryLimit:     opts.MemoryLimit,
+		CPUCount:        opts.CPUCount,
+		DiskLimit:       opts.DiskLimit,
+		WorkingDir:      workdir,
+		Healthcheck:     opts.Healthcheck,
+		Labels:          opts.Labels,
+		CapAdd:          opts.CapAdd,
+		CapDrop:         opts.CapDrop,
+		User:            opts.User,
+		ReadonlyRootfs:  opts.ReadonlyRootfs,
 		NoNewPrivileges: opts.NoNewPrivileges,
-		Sysctls:      opts.Sysctls,
-		DNS:          opts.DNS,
-		NetworkMode:  opts.NetworkMode,
-		Entrypoint:   opts.Entrypoint,
-		Ulimits:      opts.Ulimits,
+		Sysctls:         opts.Sysctls,
+		DNS:             opts.DNS,
+		NetworkMode:     opts.NetworkMode,
+		Entrypoint:      opts.Entrypoint,
+		Ulimits:         opts.Ulimits,
 	}
 }
 
@@ -173,5 +175,3 @@ func FindByName(name string) *Container {
 	}
 	return nil
 }
-
-

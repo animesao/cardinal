@@ -1,3 +1,5 @@
+//go:build linux
+
 package cmd
 
 import (
@@ -190,5 +192,3 @@ func fnCall(args []string) {
 		fmt.Print(string(result))
 	}
 }
-
-

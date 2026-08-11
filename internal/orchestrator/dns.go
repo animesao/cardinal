@@ -1,3 +1,5 @@
+//go:build linux
+
 package orchestrator
 
 import (
@@ -9,8 +11,8 @@ import (
 
 // DNSEntry maps a service name to container IPs
 type DNSEntry struct {
-	Name      string   `json:"name"`
-	Addresses []string `json:"addresses"`
+	Name      string    `json:"name"`
+	Addresses []string  `json:"addresses"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 

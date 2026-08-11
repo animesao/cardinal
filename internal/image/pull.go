@@ -248,6 +248,11 @@ func getToken(repo string) (string, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("token HTTP %d: %s", resp.StatusCode, string(body))
+	}
+
 	var ar authResponse
 	if err := json.NewDecoder(resp.Body).Decode(&ar); err != nil {
 		return "", err

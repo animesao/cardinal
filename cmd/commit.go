@@ -49,7 +49,7 @@ func Commit(args []string) {
 		}
 	}
 
-	fmt.Printf("Committing %s to %s:%s...\n", c.ID[:12], name, tag)
+	fmt.Printf("Committing %s to %s:%s...\n", shortID(c.ID), name, tag)
 
 	img, err := image.CommitContainer(rootfsDir, name, tag, "", "")
 	if err != nil {

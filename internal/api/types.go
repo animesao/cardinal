@@ -1,3 +1,5 @@
+//go:build linux
+
 package api
 
 import (
@@ -37,32 +39,32 @@ type Mount struct {
 }
 
 type NetworkSettings struct {
-	Networks map[string]NetworkEntry `json:"Networks,omitempty"`
-	IPAddress string                 `json:"IPAddress,omitempty"`
+	Networks  map[string]NetworkEntry `json:"Networks,omitempty"`
+	IPAddress string                  `json:"IPAddress,omitempty"`
 }
 
 type NetworkEntry struct {
-	IPAddress     string `json:"IPAddress"`
-	Gateway       string `json:"Gateway,omitempty"`
-	NetworkID     string `json:"NetworkID,omitempty"`
-	EndpointID    string `json:"EndpointID,omitempty"`
-	MacAddress    string `json:"MacAddress,omitempty"`
+	IPAddress  string `json:"IPAddress"`
+	Gateway    string `json:"Gateway,omitempty"`
+	NetworkID  string `json:"NetworkID,omitempty"`
+	EndpointID string `json:"EndpointID,omitempty"`
+	MacAddress string `json:"MacAddress,omitempty"`
 }
 
 type ContainerInspect struct {
-	ID              string            `json:"Id"`
-	Name            string            `json:"Name"`
-	Created         string            `json:"Created"`
-	Path            string            `json:"Path"`
-	Args            []string          `json:"Args"`
-	State           *ContainerState   `json:"State"`
-	Image           string            `json:"Image"`
-	ResolvConfPath  string            `json:"ResolvConfPath,omitempty"`
-	HostnamePath    string            `json:"HostnamePath,omitempty"`
-	Config          *ContainerConfig  `json:"Config"`
-	HostConfig      *HostConfig       `json:"HostConfig"`
-	NetworkSettings *InspectNetwork   `json:"NetworkSettings"`
-	Mounts          []Mount           `json:"Mounts,omitempty"`
+	ID              string           `json:"Id"`
+	Name            string           `json:"Name"`
+	Created         string           `json:"Created"`
+	Path            string           `json:"Path"`
+	Args            []string         `json:"Args"`
+	State           *ContainerState  `json:"State"`
+	Image           string           `json:"Image"`
+	ResolvConfPath  string           `json:"ResolvConfPath,omitempty"`
+	HostnamePath    string           `json:"HostnamePath,omitempty"`
+	Config          *ContainerConfig `json:"Config"`
+	HostConfig      *HostConfig      `json:"HostConfig"`
+	NetworkSettings *InspectNetwork  `json:"NetworkSettings"`
+	Mounts          []Mount          `json:"Mounts,omitempty"`
 }
 
 type ContainerState struct {
@@ -79,33 +81,33 @@ type ContainerState struct {
 }
 
 type ContainerConfig struct {
-	Hostname     string            `json:"Hostname"`
-	User         string            `json:"User,omitempty"`
+	Hostname     string              `json:"Hostname"`
+	User         string              `json:"User,omitempty"`
 	ExposedPorts map[string]struct{} `json:"ExposedPorts,omitempty"`
-	Env          []string          `json:"Env,omitempty"`
-	Cmd          []string          `json:"Cmd,omitempty"`
-	Image        string            `json:"Image"`
+	Env          []string            `json:"Env,omitempty"`
+	Cmd          []string            `json:"Cmd,omitempty"`
+	Image        string              `json:"Image"`
 	Volumes      map[string]struct{} `json:"Volumes,omitempty"`
-	WorkingDir   string            `json:"WorkingDir,omitempty"`
-	Entrypoint   []string          `json:"Entrypoint,omitempty"`
-	Labels       map[string]string `json:"Labels,omitempty"`
-	StopSignal   string            `json:"StopSignal,omitempty"`
-	Healthcheck  interface{}       `json:"Healthcheck,omitempty"`
+	WorkingDir   string              `json:"WorkingDir,omitempty"`
+	Entrypoint   []string            `json:"Entrypoint,omitempty"`
+	Labels       map[string]string   `json:"Labels,omitempty"`
+	StopSignal   string              `json:"StopSignal,omitempty"`
+	Healthcheck  interface{}         `json:"Healthcheck,omitempty"`
 }
 
 type HostConfig struct {
-	Binds           []string            `json:"Binds,omitempty"`
-	PortBindings    map[string][]PortBinding `json:"PortBindings,omitempty"`
-	RestartPolicy   *RestartPolicy      `json:"RestartPolicy,omitempty"`
-	NetworkMode     string              `json:"NetworkMode,omitempty"`
-	Privileged      bool                `json:"Privileged,omitempty"`
-	ReadonlyRootfs  bool                `json:"ReadonlyRootfs,omitempty"`
-	DNS             []string            `json:"Dns,omitempty"`
-	CapAdd          []string            `json:"CapAdd,omitempty"`
-	CapDrop         []string            `json:"CapDrop,omitempty"`
-	Memory          int64               `json:"Memory,omitempty"`
-	NanoCPUs        int64               `json:"NanoCpus,omitempty"`
-	Runtime         string              `json:"Runtime,omitempty"`
+	Binds          []string                 `json:"Binds,omitempty"`
+	PortBindings   map[string][]PortBinding `json:"PortBindings,omitempty"`
+	RestartPolicy  *RestartPolicy           `json:"RestartPolicy,omitempty"`
+	NetworkMode    string                   `json:"NetworkMode,omitempty"`
+	Privileged     bool                     `json:"Privileged,omitempty"`
+	ReadonlyRootfs bool                     `json:"ReadonlyRootfs,omitempty"`
+	DNS            []string                 `json:"Dns,omitempty"`
+	CapAdd         []string                 `json:"CapAdd,omitempty"`
+	CapDrop        []string                 `json:"CapDrop,omitempty"`
+	Memory         int64                    `json:"Memory,omitempty"`
+	NanoCPUs       int64                    `json:"NanoCpus,omitempty"`
+	Runtime        string                   `json:"Runtime,omitempty"`
 }
 
 type PortBinding struct {
@@ -119,17 +121,17 @@ type RestartPolicy struct {
 }
 
 type InspectNetwork struct {
-	IPAddress string                    `json:"IPAddress"`
-	Gateway   string                    `json:"Gateway,omitempty"`
+	IPAddress string                         `json:"IPAddress"`
+	Gateway   string                         `json:"Gateway,omitempty"`
 	Networks  map[string]InspectNetworkEntry `json:"Networks,omitempty"`
 }
 
 type InspectNetworkEntry struct {
-	IPAddress   string `json:"IPAddress"`
-	Gateway     string `json:"Gateway,omitempty"`
-	NetworkID   string `json:"NetworkID,omitempty"`
-	EndpointID  string `json:"EndpointID,omitempty"`
-	MacAddress  string `json:"MacAddress,omitempty"`
+	IPAddress  string `json:"IPAddress"`
+	Gateway    string `json:"Gateway,omitempty"`
+	NetworkID  string `json:"NetworkID,omitempty"`
+	EndpointID string `json:"EndpointID,omitempty"`
+	MacAddress string `json:"MacAddress,omitempty"`
 }
 
 type ImageSummary struct {
@@ -143,63 +145,63 @@ type ImageSummary struct {
 }
 
 type ImageInspect struct {
-	ID          string            `json:"Id"`
-	RepoTags    []string          `json:"RepoTags"`
-	Created     string            `json:"Created"`
-	Size        int64             `json:"Size"`
+	ID           string           `json:"Id"`
+	RepoTags     []string         `json:"RepoTags"`
+	Created      string           `json:"Created"`
+	Size         int64            `json:"Size"`
 	Architecture string           `json:"Architecture"`
-	OS          string            `json:"Os"`
-	Config      *ContainerConfig  `json:"Config,omitempty"`
-	RootFS      *ImageRootFS      `json:"RootFS,omitempty"`
+	OS           string           `json:"Os"`
+	Config       *ContainerConfig `json:"Config,omitempty"`
+	RootFS       *ImageRootFS     `json:"RootFS,omitempty"`
 }
 
 type ImageRootFS struct {
-	Type    string   `json:"Type"`
-	Layers  []string `json:"Layers"`
+	Type   string   `json:"Type"`
+	Layers []string `json:"Layers"`
 }
 
 type SystemInfo struct {
-	ID              string   `json:"ID"`
-	Containers      int      `json:"Containers"`
-	ContainersRunning int    `json:"ContainersRunning"`
-	ContainersPaused  int    `json:"ContainersPaused"`
-	ContainersStopped int    `json:"ContainersStopped"`
-	Images          int      `json:"Images"`
-	Driver          string   `json:"Driver"`
-	DriverStatus    [][2]string `json:"DriverStatus"`
-	SystemStatus    []string `json:"SystemStatus,omitempty"`
-	Plugins         struct {
+	ID                string      `json:"ID"`
+	Containers        int         `json:"Containers"`
+	ContainersRunning int         `json:"ContainersRunning"`
+	ContainersPaused  int         `json:"ContainersPaused"`
+	ContainersStopped int         `json:"ContainersStopped"`
+	Images            int         `json:"Images"`
+	Driver            string      `json:"Driver"`
+	DriverStatus      [][2]string `json:"DriverStatus"`
+	SystemStatus      []string    `json:"SystemStatus,omitempty"`
+	Plugins           struct {
 		Volume  []string `json:"Volume"`
 		Network []string `json:"Network"`
 	} `json:"Plugins"`
-	MemoryLimit     bool     `json:"MemoryLimit"`
-	SwapLimit       bool     `json:"SwapLimit"`
-	CPUCfsPeriod    bool     `json:"CpuCfsPeriod"`
-	CPUCfsQuota     bool     `json:"CpuCfsQuota"`
-	CPUShares       bool     `json:"CpuShares"`
-	CPUSet          bool     `json:"Cpuset"`
-	KernelVersion   string   `json:"KernelVersion"`
-	OperatingSystem string   `json:"OperatingSystem"`
-	OSType          string   `json:"OSType"`
-	Architecture    string   `json:"Architecture"`
-	NCPU           int       `json:"NCPU"`
-	MemTotal       int64     `json:"MemTotal"`
-	DockerRootDir  string    `json:"DockerRootDir"`
-	Name           string    `json:"Name"`
-	ServerVersion  string    `json:"ServerVersion"`
-	HTTPProxy      string    `json:"HttpProxy,omitempty"`
-	HTTPSProxy     string    `json:"HttpsProxy,omitempty"`
-	NoProxy        string    `json:"NoProxy,omitempty"`
-	ExperimentalBuild bool   `json:"ExperimentalBuild"`
-	DefaultRuntime  string   `json:"DefaultRuntime"`
-	LiveRestoreEnabled bool  `json:"LiveRestoreEnabled"`
-	IndexServerAddress string `json:"IndexServerAddress,omitempty"`
-	Runtimes       map[string]RuntimeInfo `json:"Runtimes,omitempty"`
-	InitBinary     string   `json:"InitBinary,omitempty"`
-	SecurityOptions []string `json:"SecurityOptions,omitempty"`
-	CgroupDriver   string   `json:"CgroupDriver"`
-	CgroupVersion  string   `json:"CgroupVersion"`
-	Warnings       []string `json:"Warnings,omitempty"`
+	MemoryLimit        bool                   `json:"MemoryLimit"`
+	SwapLimit          bool                   `json:"SwapLimit"`
+	CPUCfsPeriod       bool                   `json:"CpuCfsPeriod"`
+	CPUCfsQuota        bool                   `json:"CpuCfsQuota"`
+	CPUShares          bool                   `json:"CpuShares"`
+	CPUSet             bool                   `json:"Cpuset"`
+	KernelVersion      string                 `json:"KernelVersion"`
+	OperatingSystem    string                 `json:"OperatingSystem"`
+	OSType             string                 `json:"OSType"`
+	Architecture       string                 `json:"Architecture"`
+	NCPU               int                    `json:"NCPU"`
+	MemTotal           int64                  `json:"MemTotal"`
+	DockerRootDir      string                 `json:"DockerRootDir"`
+	Name               string                 `json:"Name"`
+	ServerVersion      string                 `json:"ServerVersion"`
+	HTTPProxy          string                 `json:"HttpProxy,omitempty"`
+	HTTPSProxy         string                 `json:"HttpsProxy,omitempty"`
+	NoProxy            string                 `json:"NoProxy,omitempty"`
+	ExperimentalBuild  bool                   `json:"ExperimentalBuild"`
+	DefaultRuntime     string                 `json:"DefaultRuntime"`
+	LiveRestoreEnabled bool                   `json:"LiveRestoreEnabled"`
+	IndexServerAddress string                 `json:"IndexServerAddress,omitempty"`
+	Runtimes           map[string]RuntimeInfo `json:"Runtimes,omitempty"`
+	InitBinary         string                 `json:"InitBinary,omitempty"`
+	SecurityOptions    []string               `json:"SecurityOptions,omitempty"`
+	CgroupDriver       string                 `json:"CgroupDriver"`
+	CgroupVersion      string                 `json:"CgroupVersion"`
+	Warnings           []string               `json:"Warnings,omitempty"`
 }
 
 type RuntimeInfo struct {
@@ -209,35 +211,35 @@ type RuntimeInfo struct {
 
 // CreateContainerRequest is the JSON body for POST /containers/create
 type CreateContainerRequest struct {
-	Hostname     string                 `json:"Hostname"`
-	User         string                 `json:"User,omitempty"`
-	ExposedPorts map[string]struct{}    `json:"ExposedPorts,omitempty"`
-	Tty          bool                   `json:"Tty"`
-	StdinOnce    bool                   `json:"StdinOnce"`
-	Env          []string               `json:"Env,omitempty"`
-	Cmd          []string               `json:"Cmd,omitempty"`
-	Image        string                 `json:"Image"`
-	Volumes      map[string]struct{}    `json:"Volumes,omitempty"`
-	WorkingDir   string                 `json:"WorkingDir,omitempty"`
-	Entrypoint   []string               `json:"Entrypoint,omitempty"`
-	Labels       map[string]string      `json:"Labels,omitempty"`
-	HostConfig   *CreateHostConfig      `json:"HostConfig,omitempty"`
-	Healthcheck  interface{}            `json:"Healthcheck,omitempty"`
+	Hostname     string              `json:"Hostname"`
+	User         string              `json:"User,omitempty"`
+	ExposedPorts map[string]struct{} `json:"ExposedPorts,omitempty"`
+	Tty          bool                `json:"Tty"`
+	StdinOnce    bool                `json:"StdinOnce"`
+	Env          []string            `json:"Env,omitempty"`
+	Cmd          []string            `json:"Cmd,omitempty"`
+	Image        string              `json:"Image"`
+	Volumes      map[string]struct{} `json:"Volumes,omitempty"`
+	WorkingDir   string              `json:"WorkingDir,omitempty"`
+	Entrypoint   []string            `json:"Entrypoint,omitempty"`
+	Labels       map[string]string   `json:"Labels,omitempty"`
+	HostConfig   *CreateHostConfig   `json:"HostConfig,omitempty"`
+	Healthcheck  interface{}         `json:"Healthcheck,omitempty"`
 }
 
 type CreateHostConfig struct {
-	Binds         []string            `json:"Binds,omitempty"`
-	PortBindings  map[string][]PortBinding `json:"PortBindings,omitempty"`
-	RestartPolicy *RestartPolicy      `json:"RestartPolicy,omitempty"`
-	NetworkMode   string              `json:"NetworkMode,omitempty"`
-	Privileged    bool                `json:"Privileged,omitempty"`
-	ReadonlyRootfs bool              `json:"ReadonlyRootfs,omitempty"`
-	DNS           []string            `json:"Dns,omitempty"`
-	CapAdd        []string            `json:"CapAdd,omitempty"`
-	CapDrop       []string            `json:"CapDrop,omitempty"`
-	Memory        int64               `json:"Memory,omitempty"`
-	NanoCPUs      int64               `json:"NanoCpus,omitempty"`
-	ExtraHosts    []string            `json:"ExtraHosts,omitempty"`
+	Binds          []string                 `json:"Binds,omitempty"`
+	PortBindings   map[string][]PortBinding `json:"PortBindings,omitempty"`
+	RestartPolicy  *RestartPolicy           `json:"RestartPolicy,omitempty"`
+	NetworkMode    string                   `json:"NetworkMode,omitempty"`
+	Privileged     bool                     `json:"Privileged,omitempty"`
+	ReadonlyRootfs bool                     `json:"ReadonlyRootfs,omitempty"`
+	DNS            []string                 `json:"Dns,omitempty"`
+	CapAdd         []string                 `json:"CapAdd,omitempty"`
+	CapDrop        []string                 `json:"CapDrop,omitempty"`
+	Memory         int64                    `json:"Memory,omitempty"`
+	NanoCPUs       int64                    `json:"NanoCpus,omitempty"`
+	ExtraHosts     []string                 `json:"ExtraHosts,omitempty"`
 }
 
 type CreateContainerResponse struct {
@@ -255,15 +257,15 @@ type OKResponse struct {
 
 // Version response
 type VersionResponse struct {
-	Version    string `json:"Version"`
-	APIVersion string `json:"ApiVersion"`
+	Version       string `json:"Version"`
+	APIVersion    string `json:"ApiVersion"`
 	MinAPIVersion string `json:"MinAPIVersion"`
-	GitCommit  string `json:"GitCommit"`
-	GoVersion  string `json:"GoVersion"`
-	Os         string `json:"Os"`
-	Arch       string `json:"Arch"`
+	GitCommit     string `json:"GitCommit"`
+	GoVersion     string `json:"GoVersion"`
+	Os            string `json:"Os"`
+	Arch          string `json:"Arch"`
 	KernelVersion string `json:"KernelVersion"`
-	BuildTime  string `json:"BuildTime"`
+	BuildTime     string `json:"BuildTime"`
 }
 
 // ContainerChange
@@ -274,12 +276,19 @@ type ContainerChange struct {
 
 // ImageHistory
 type ImageHistoryEntry struct {
-	ID        string `json:"Id"`
-	Created   int64  `json:"Created"`
-	CreatedBy string `json:"CreatedBy"`
-	Size      int64  `json:"Size"`
-	Comment   string `json:"Comment,omitempty"`
+	ID        string   `json:"Id"`
+	Created   int64    `json:"Created"`
+	CreatedBy string   `json:"CreatedBy"`
+	Size      int64    `json:"Size"`
+	Comment   string   `json:"Comment,omitempty"`
 	Tags      []string `json:"Tags,omitempty"`
+}
+
+func shortID(id string, n int) string {
+	if n <= 0 || len(id) <= n {
+		return id
+	}
+	return id[:n]
 }
 
 func newDate(t time.Time) string {

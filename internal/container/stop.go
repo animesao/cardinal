@@ -35,7 +35,14 @@ func findUnsharePID(childPID int) int {
 }
 
 func (c *Container) Stop() error {
-	if c.Status != Running {
+	c.lifecycleMu.Lock()
+	defer c.lifecycleMu.Unlock()
+
+	c.dataMu.RLock()
+	status := c.Status
+	pid := c.PID
+	c.dataMu.RUnlock()
+	if status != Running {
 		return fmt.Errorf("container %s is not running", c.ID)
 	}
 
@@ -51,8 +58,8 @@ func (c *Container) Stop() error {
 
 	c.Save()
 
-	unsharePID := findUnsharePID(c.PID)
-	targetPID := c.PID
+	unsharePID := findUnsharePID(pid)
+	targetPID := pid
 	if unsharePID != 0 {
 		targetPID = unsharePID
 	}
@@ -76,15 +83,15 @@ func (c *Container) Stop() error {
 
 cleanup:
 	// Kill the container init directly (survives if unshare was killed)
-	if unsharePID != 0 && c.PID > 0 {
-		syscall.Kill(c.PID, syscall.SIGTERM)
-		if waitForExit(c.PID, 3*time.Second) {
+	if unsharePID != 0 && pid > 0 {
+		syscall.Kill(pid, syscall.SIGTERM)
+		if waitForExit(pid, 3*time.Second) {
 			goto postcleanup
 		}
-		if err := syscall.Kill(c.PID, syscall.SIGKILL); err != nil {
-			log.Warn("kill container PID %d: %v", c.PID, err)
+		if err := syscall.Kill(pid, syscall.SIGKILL); err != nil {
+			log.Warn("kill container PID %d: %v", pid, err)
 		}
-		waitForExit(c.PID, 2*time.Second)
+		waitForExit(pid, 2*time.Second)
 	}
 postcleanup:
 
@@ -95,9 +102,13 @@ postcleanup:
 	cleanupContainerCgroup(c.ID, c.CgroupPath)
 	os.Remove(state.ConsolePath(c.ID))
 	UnregisterDNSName(c.Name)
+	c.dataMu.Lock()
 	c.PID = 0
 	c.Status = Stopped
-	c.Save()
+	c.dataMu.Unlock()
+	if err := c.Save(); err != nil {
+		return fmt.Errorf("save stopped container: %w", err)
+	}
 	EmitEvent(EventStop, c)
 	return nil
 }

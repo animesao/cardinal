@@ -159,7 +159,7 @@ func Set(args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("  %s: updated\n", c.ID[:12])
+	fmt.Printf("  %s: updated\n", shortID(c.ID))
 
 	if wasRunning {
 		c.Status = container.Created
@@ -167,6 +167,6 @@ func Set(args []string) {
 			fmt.Fprintf(os.Stderr, "Error starting container: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("  %s: restarted\n", c.ID[:12])
+		fmt.Printf("  %s: restarted\n", shortID(c.ID))
 	}
 }

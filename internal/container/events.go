@@ -1,3 +1,5 @@
+//go:build linux
+
 package container
 
 import (
@@ -34,11 +36,11 @@ type Event struct {
 
 var (
 	eventListeners []chan Event
-	eventMu       sync.RWMutex
-	eventHistory  []Event
-	eventHistMu   sync.RWMutex
-	eventFile     *os.File
-	eventFileMu   sync.Mutex
+	eventMu        sync.RWMutex
+	eventHistory   []Event
+	eventHistMu    sync.RWMutex
+	eventFile      *os.File
+	eventFileMu    sync.Mutex
 )
 
 // EmitEvent sends an event to all listeners and persists it
@@ -167,5 +169,3 @@ func getEventsSince(since time.Time) []Event {
 	}
 	return result
 }
-
-

@@ -1,3 +1,5 @@
+//go:build linux
+
 package orchestrator
 
 import (
@@ -155,5 +157,3 @@ func TestRemoveRemoteReplica_ContextCancelled(t *testing.T) {
 		t.Fatal("expected error for non-existent node")
 	}
 }
-
-

@@ -26,5 +26,5 @@ func Rename(args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("%s renamed to %s\n", c.ID[:12], args[1])
+	fmt.Printf("%s renamed to %s\n", shortID(c.ID), args[1])
 }

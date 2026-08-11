@@ -1,3 +1,5 @@
+//go:build linux
+
 package api
 
 import (
@@ -126,11 +128,11 @@ func handleImageInspect(w http.ResponseWriter, r *http.Request, ref string) {
 	cfg, err := image.ReadConfig(name, tag)
 	if err == nil && cfg != nil {
 		inspect.Config = &ContainerConfig{
-			Image:    fmt.Sprintf("%s:%s", shortName, tag),
-			Cmd:      cfg.Config.Cmd,
-			Env:      cfg.Config.Env,
+			Image:      fmt.Sprintf("%s:%s", shortName, tag),
+			Cmd:        cfg.Config.Cmd,
+			Env:        cfg.Config.Env,
 			WorkingDir: cfg.Config.WorkingDir,
-			User:     cfg.Config.User,
+			User:       cfg.Config.User,
 		}
 	}
 
@@ -176,11 +178,12 @@ func handleImagePush(w http.ResponseWriter, r *http.Request, ref string) {
 	username := authMap["username"]
 	password := authMap["password"]
 
-	go func() {
-		image.Push(ref, username, password)
-	}()
+	if err := image.Push(ref, username, password); err != nil {
+		writeError(w, http.StatusBadGateway, fmt.Sprintf("push %s: %v", ref, err))
+		return
+	}
 
-	writeJSON(w, 200, OKResponse{Message: "pushing " + ref})
+	writeJSON(w, http.StatusOK, OKResponse{Message: "pushed " + ref})
 }
 
 func handleImageTag(w http.ResponseWriter, r *http.Request, ref string) {

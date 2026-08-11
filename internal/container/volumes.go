@@ -295,7 +295,7 @@ func RemoveVolume(name string) error {
 		for _, v := range c.Volumes {
 			resolved := state.ResolveVolume(v.Source)
 			if resolved == volDir {
-				return fmt.Errorf("volume %q is in use by container %s", name, c.ID[:12])
+				return fmt.Errorf("volume %q is in use by container %s", name, shortID(c.ID, 12))
 			}
 		}
 	}

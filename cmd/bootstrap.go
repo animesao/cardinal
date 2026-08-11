@@ -45,7 +45,7 @@ func Bootstrap(args []string) {
 		if c.Restart != "always" {
 			continue
 		}
-		fmt.Printf("  Starting %s (%s)... ", c.ID[:12], c.Name)
+		fmt.Printf("  Starting %s (%s)... ", shortID(c.ID), c.Name)
 		c.Status = container.Created
 		if err := c.Start(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)

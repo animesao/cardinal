@@ -102,6 +102,10 @@ func getPushToken(repo, username, password string) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("token HTTP %d: %s", resp.StatusCode, string(body))
+	}
 
 	var ar authResponse
 	if err := json.NewDecoder(resp.Body).Decode(&ar); err != nil {
@@ -123,9 +127,9 @@ func blobExists(repo, digest, token string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	resp.Body.Close()
+	defer resp.Body.Close()
 
-	if resp.StatusCode == 200 {
+	if resp.StatusCode == http.StatusOK {
 		return true, nil
 	}
 	if resp.StatusCode == 404 {

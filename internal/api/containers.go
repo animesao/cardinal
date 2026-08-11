@@ -1,3 +1,5 @@
+//go:build linux
+
 package api
 
 import (
@@ -89,17 +91,17 @@ func containerToSummary(c *container.Container) Container {
 	}
 
 	return Container{
-		ID:      c.ID,
-		Names:   []string{"/" + c.Name},
-		Image:   imageName,
-		ImageID: "sha256:" + c.ImageTag,
-		Command: cmd,
-		Created: newTimestamp(c.CreatedAt),
-		State:   status,
-		Status:  humanStatus,
-		Ports:   ports,
-		Labels:  c.Labels,
-		Mounts:  mounts,
+		ID:              c.ID,
+		Names:           []string{"/" + c.Name},
+		Image:           imageName,
+		ImageID:         "sha256:" + c.ImageTag,
+		Command:         cmd,
+		Created:         newTimestamp(c.CreatedAt),
+		State:           status,
+		Status:          humanStatus,
+		Ports:           ports,
+		Labels:          c.Labels,
+		Mounts:          mounts,
 		NetworkSettings: netSettings,
 	}
 }
@@ -108,9 +110,9 @@ func containerToInspect(c *container.Container) *ContainerInspect {
 	created := newDate(c.CreatedAt)
 
 	stateObj := &ContainerState{
-		Pid:      c.PID,
-		Status:   "exited",
-		Running:  false,
+		Pid:       c.PID,
+		Status:    "exited",
+		Running:   false,
 		StartedAt: newDate(c.CreatedAt),
 	}
 	if c.Status == container.Running {
@@ -215,15 +217,15 @@ func containerToInspect(c *container.Container) *ContainerInspect {
 	}
 
 	return &ContainerInspect{
-		ID:      c.ID,
-		Name:    "/" + c.Name,
-		Created: created,
-		State:   stateObj,
-		Image:   imageName,
-		Config:  config,
-		HostConfig: hostConfig,
+		ID:              c.ID,
+		Name:            "/" + c.Name,
+		Created:         created,
+		State:           stateObj,
+		Image:           imageName,
+		Config:          config,
+		HostConfig:      hostConfig,
 		NetworkSettings: netSettings,
-		Mounts:  mounts,
+		Mounts:          mounts,
 	}
 }
 
@@ -715,7 +717,7 @@ func handleContainerExec(w http.ResponseWriter, r *http.Request, c *container.Co
 		writeError(w, 500, fmt.Sprintf("exec: %v", err))
 		return
 	}
-	writeJSON(w, 200, map[string]interface{}{"Id": c.ID[:12] + "_exec"})
+	writeJSON(w, 200, map[string]interface{}{"Id": shortID(c.ID, 12) + "_exec"})
 }
 
 func handleContainerWait(w http.ResponseWriter, r *http.Request, c *container.Container) {

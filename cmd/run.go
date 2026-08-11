@@ -237,7 +237,7 @@ func Run(args []string) {
 
 	if *name != "" {
 		if existing := container.FindByName(*name); existing != nil {
-			fmt.Fprintf(os.Stderr, "Error: container with name %q already exists (%s)\n", *name, existing.ID[:12])
+			fmt.Fprintf(os.Stderr, "Error: container with name %q already exists (%s)\n", *name, shortID(existing.ID))
 			os.Exit(1)
 		}
 	}
@@ -304,34 +304,34 @@ func Run(args []string) {
 	}
 
 	opts := container.CreateOpts{
-		Name:          *name,
-		Cmd:           cmd,
-		StartupScript: startupScriptVal,
-		Ports:       ports,
-		Volumes:     volumes,
-		Env:         env,
-		Hostname:    *hostname,
-		Restart:     *restart,
-		Detach:      *detach,
-		Interactive: *interactive || *tty,
-		TTY:         *tty,
-		RemoveOnExit: *rm,
-		MemoryLimit:  memoryLimit,
-		CPUCount:     *cpus,
-		DiskLimit:    diskLimit,
-		WorkingDir:   *workdir,
-		Healthcheck:  hc,
-		Labels:       labelMap,
-		CapAdd:       capAdd,
-		CapDrop:      capDrop,
-		User:         *user,
-		ReadonlyRootfs: *readonly,
+		Name:            *name,
+		Cmd:             cmd,
+		StartupScript:   startupScriptVal,
+		Ports:           ports,
+		Volumes:         volumes,
+		Env:             env,
+		Hostname:        *hostname,
+		Restart:         *restart,
+		Detach:          *detach,
+		Interactive:     *interactive || *tty,
+		TTY:             *tty,
+		RemoveOnExit:    *rm,
+		MemoryLimit:     memoryLimit,
+		CPUCount:        *cpus,
+		DiskLimit:       diskLimit,
+		WorkingDir:      *workdir,
+		Healthcheck:     hc,
+		Labels:          labelMap,
+		CapAdd:          capAdd,
+		CapDrop:         capDrop,
+		User:            *user,
+		ReadonlyRootfs:  *readonly,
 		NoNewPrivileges: *noNewPrivs,
-		Sysctls:      sysctlMap,
-		DNS:          dns,
-		NetworkMode:  *networkMode,
-		Entrypoint:   *entrypoint,
-		Ulimits:      parsedUlimits,
+		Sysctls:         sysctlMap,
+		DNS:             dns,
+		NetworkMode:     *networkMode,
+		Entrypoint:      *entrypoint,
+		Ulimits:         parsedUlimits,
 	}
 
 	c := container.New(img, opts)

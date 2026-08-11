@@ -444,7 +444,7 @@ func blueprintInstall(args []string) {
 
 	// Check if container name already exists
 	if existing := container.FindByName(containerName); existing != nil {
-		fmt.Fprintf(os.Stderr, "Error: container with name %q already exists (%s)\n", containerName, existing.ID[:12])
+		fmt.Fprintf(os.Stderr, "Error: container with name %q already exists (%s)\n", containerName, shortID(existing.ID))
 		os.Exit(1)
 	}
 
@@ -713,7 +713,7 @@ func blueprintInstall(args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("  Container created: %s (%s)\n", c.Name, c.ID[:12])
+	fmt.Printf("  Container created: %s (%s)\n", c.Name, shortID(c.ID))
 
 	// Auto-open ports in UFW/firewall
 	opened := 0

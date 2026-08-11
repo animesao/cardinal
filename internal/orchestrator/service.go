@@ -1,3 +1,5 @@
+//go:build linux
+
 package orchestrator
 
 import (
@@ -68,7 +70,10 @@ func CreateService(name, image string, replicas int, opts ServiceOpts) (*Service
 	}
 
 	clusterConf.Services[name] = svc
-	saveServices()
+	if err := saveServices(); err != nil {
+		delete(clusterConf.Services, name)
+		return nil, fmt.Errorf("save service: %w", err)
+	}
 
 	return svc, nil
 }
@@ -89,8 +94,8 @@ type ServiceOpts struct {
 
 // ListServices returns all services
 func ListServices() ([]*Service, error) {
-	serviceLock.RLock()
-	defer serviceLock.RUnlock()
+	serviceLock.Lock()
+	defer serviceLock.Unlock()
 
 	if err := loadServices(); err != nil {
 		return nil, err
@@ -110,8 +115,8 @@ func ListServices() ([]*Service, error) {
 
 // GetService returns a service by name
 func GetService(name string) (*Service, error) {
-	serviceLock.RLock()
-	defer serviceLock.RUnlock()
+	serviceLock.Lock()
+	defer serviceLock.Unlock()
 
 	if err := loadServices(); err != nil {
 		return nil, err
@@ -124,22 +129,41 @@ func GetService(name string) (*Service, error) {
 	return svc, nil
 }
 
-// RemoveService removes a service and all its replicas
+// RemoveService removes a service and all its replicas.
 func RemoveService(name string) error {
 	serviceLock.Lock()
-	defer serviceLock.Unlock()
+	if err := loadServices(); err != nil {
+		serviceLock.Unlock()
+		return err
+	}
+	if _, exists := clusterConf.Services[name]; !exists {
+		serviceLock.Unlock()
+		return fmt.Errorf("service %q not found", name)
+	}
+	serviceLock.Unlock()
 
+	replicas, err := GetServiceReplicas(name)
+	if err != nil {
+		return fmt.Errorf("list replicas for %s: %w", name, err)
+	}
+	for _, replica := range replicas {
+		if err := RemoveRemoteReplica(context.Background(), replica.NodeID, replica.ContainerID); err != nil && !strings.Contains(err.Error(), "not found") {
+			return fmt.Errorf("remove replica %s: %w", replica.ID, err)
+		}
+		if err := os.Remove(filepath.Join(state.DataDir(), ServiceStateDir, name, replica.ID+".json")); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove replica state %s: %w", replica.ID, err)
+		}
+	}
+
+	serviceLock.Lock()
+	defer serviceLock.Unlock()
 	if err := loadServices(); err != nil {
 		return err
 	}
-
-	if _, exists := clusterConf.Services[name]; !exists {
-		return fmt.Errorf("service %q not found", name)
-	}
-
 	delete(clusterConf.Services, name)
-	saveServices()
-
+	if err := saveServices(); err != nil {
+		return fmt.Errorf("save services: %w", err)
+	}
 	return nil
 }
 
@@ -163,29 +187,30 @@ func ScaleService(name string, replicas int) (*Service, error) {
 
 	svc.Replicas = replicas
 	svc.UpdatedAt = time.Now()
-	saveServices()
+	if err := saveServices(); err != nil {
+		return nil, fmt.Errorf("save service: %w", err)
+	}
 
 	return svc, nil
 }
 
-// UpdateService applies a rolling update to a service
+// UpdateService applies a rolling update to a service.
 func UpdateService(ctx context.Context, name, image string, opts ServiceOpts) (*Service, error) {
-	serviceLock.Lock()
-	defer serviceLock.Unlock()
-
-	if err := loadServices(); err != nil {
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
+	serviceLock.Lock()
+	if err := loadServices(); err != nil {
+		serviceLock.Unlock()
+		return nil, err
+	}
 	svc, ok := clusterConf.Services[name]
 	if !ok {
+		serviceLock.Unlock()
 		return nil, fmt.Errorf("service %q not found", name)
 	}
-
 	oldImage := svc.Image
-	svc.Image = image
-	svc.UpdatedAt = time.Now()
-
 	if opts.Ports != nil {
 		svc.Ports = opts.Ports
 	}
@@ -204,11 +229,25 @@ func UpdateService(ctx context.Context, name, image string, opts ServiceOpts) (*
 	if opts.UpdateConfig != nil {
 		svc.UpdateConfig = opts.UpdateConfig
 	}
+	svc.UpdatedAt = time.Now()
+	if err := saveServices(); err != nil {
+		serviceLock.Unlock()
+		return nil, fmt.Errorf("save service: %w", err)
+	}
+	serviceLock.Unlock()
 
-	saveServices()
+	if image != "" && image != oldImage {
+		if err := RollingUpdateService(ctx, name, image, ServiceOpts{}); err != nil {
+			return nil, err
+		}
+	}
 
-	log.Info("Updated service %s: %s -> %s", name, oldImage, image)
-	return svc, nil
+	updated, err := GetService(name)
+	if err != nil {
+		return nil, err
+	}
+	log.Info("Updated service %s: %s -> %s", name, oldImage, updated.Image)
+	return updated, nil
 }
 
 // GetServiceReplicas returns the current replicas for a service across the cluster
@@ -295,6 +334,11 @@ func reconcileScaleDown(ctx context.Context, name string, replicas []ServiceRepl
 		log.Info("[reconcile] removing replica %s of %s", replicas[i].ID, name)
 		if err := RemoveRemoteReplica(ctx, replicas[i].NodeID, replicas[i].ContainerID); err != nil {
 			log.Error("[reconcile] error removing replica %s: %v", replicas[i].ID, err)
+			continue
+		}
+		path := filepath.Join(state.DataDir(), ServiceStateDir, name, replicas[i].ID+".json")
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			log.Warn("[reconcile] remove replica state %s: %v", replicas[i].ID, err)
 		}
 	}
 }
@@ -314,6 +358,7 @@ func loadServices() error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			clusterConf.Services = make(map[string]*Service)
 			return nil
 		}
 		return err
@@ -324,11 +369,9 @@ func loadServices() error {
 		return err
 	}
 
+	clusterConf.Services = svcs
 	if clusterConf.Services == nil {
 		clusterConf.Services = make(map[string]*Service)
-	}
-	for k, v := range svcs {
-		clusterConf.Services[k] = v
 	}
 
 	return nil
