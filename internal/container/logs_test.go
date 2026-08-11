@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestOpenFreshLogFileTruncatesPreviousRun(t *testing.T) {
+func TestOpenFreshLogFileRotatesPreviousRun(t *testing.T) {
 	path := t.TempDir() + "/container.log"
 	if err := os.WriteFile(path, []byte("previous run\n"), 0600); err != nil {
 		t.Fatalf("seed log: %v", err)
@@ -31,5 +31,12 @@ func TestOpenFreshLogFileTruncatesPreviousRun(t *testing.T) {
 	}
 	if got, want := string(data), "current run\n"; got != want {
 		t.Fatalf("log contents = %q, want %q", got, want)
+	}
+	previous, err := os.ReadFile(path + ".1")
+	if err != nil {
+		t.Fatalf("read rotated log: %v", err)
+	}
+	if got, want := string(previous), "previous run\n"; got != want {
+		t.Fatalf("rotated log contents = %q, want %q", got, want)
 	}
 }

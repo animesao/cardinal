@@ -1,13 +1,14 @@
 [Unit]
-Description=dck container bootstrap — start all containers with restart=always
+Description=dck container supervisor — restart policy and boot recovery
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-Type=oneshot
-ExecStart=/usr/bin/dck bootstrap
-RemainAfterExit=yes
-ExecStop=/usr/bin/dck stop --all
+Type=simple
+ExecStart=/usr/bin/dck supervisor
+Restart=always
+RestartSec=5s
+KillMode=process
 StandardOutput=journal
 StandardError=journal
 

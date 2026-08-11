@@ -101,9 +101,6 @@ func Set(args []string) {
 	if *restart != "" {
 		c.Restart = *restart
 		changed = true
-		if *restart == "always" || *restart == "unless-stopped" {
-			ensureBootstrap()
-		}
 	}
 
 	if *restartDelay != "" {
@@ -184,5 +181,8 @@ func Set(args []string) {
 			os.Exit(1)
 		}
 		fmt.Printf("  %s: restarted\n", shortID(c.ID))
+	}
+	if c.Restart == "always" || c.Restart == "unless-stopped" {
+		ensureBootstrap()
 	}
 }

@@ -29,44 +29,51 @@ type Ulimit struct {
 }
 
 type Container struct {
-	ID              string             `json:"id"`
-	Name            string             `json:"name"`
-	ImageName       string             `json:"image_name"`
-	ImageTag        string             `json:"image_tag"`
-	PID             int                `json:"pid"`
-	Status          Status             `json:"status"`
-	Cmd             []string           `json:"cmd"`
-	StartupScript   string             `json:"startup_script,omitempty"`
-	CreatedAt       time.Time          `json:"created_at"`
-	Ports           []PortMap          `json:"ports,omitempty"`
-	Volumes         []VolumeMount      `json:"volumes,omitempty"`
-	Env             []string           `json:"env,omitempty"`
-	Hostname        string             `json:"hostname,omitempty"`
-	Restart         string             `json:"restart,omitempty"`
-	RestartDelay    string             `json:"restart_delay,omitempty"`
-	IP              string             `json:"ip,omitempty"`
-	Detach          bool               `json:"detach,omitempty"`
-	Interactive     bool               `json:"interactive,omitempty"`
-	TTY             bool               `json:"tty,omitempty"`
-	RemoveOnExit    bool               `json:"remove_on_exit,omitempty"`
-	StoppedByUser   bool               `json:"stopped_by_user,omitempty"`
-	MemoryLimit     int64              `json:"memory_limit,omitempty"`
-	CPUCount        float64            `json:"cpu_count,omitempty"`
-	DiskLimit       int64              `json:"disk_limit,omitempty"`
-	CgroupPath      string             `json:"cgroup_path,omitempty"`
-	WorkingDir      string             `json:"working_dir,omitempty"`
-	Healthcheck     *HealthcheckConfig `json:"healthcheck,omitempty"`
-	Labels          map[string]string  `json:"labels,omitempty"`
-	CapAdd          []string           `json:"cap_add,omitempty"`
-	CapDrop         []string           `json:"cap_drop,omitempty"`
-	User            string             `json:"user,omitempty"`
-	ReadonlyRootfs  bool               `json:"readonly_rootfs,omitempty"`
-	NoNewPrivileges bool               `json:"no_new_privileges,omitempty"`
-	Sysctls         map[string]string  `json:"sysctls,omitempty"`
-	DNS             []string           `json:"dns,omitempty"`
-	NetworkMode     string             `json:"network_mode,omitempty"`
-	Entrypoint      string             `json:"entrypoint,omitempty"`
-	Ulimits         []Ulimit           `json:"ulimits,omitempty"`
+	ID                  string             `json:"id"`
+	Name                string             `json:"name"`
+	ImageName           string             `json:"image_name"`
+	ImageTag            string             `json:"image_tag"`
+	PID                 int                `json:"pid"`
+	Status              Status             `json:"status"`
+	Cmd                 []string           `json:"cmd"`
+	StartupScript       string             `json:"startup_script,omitempty"`
+	CreatedAt           time.Time          `json:"created_at"`
+	Ports               []PortMap          `json:"ports,omitempty"`
+	Volumes             []VolumeMount      `json:"volumes,omitempty"`
+	Env                 []string           `json:"env,omitempty"`
+	Hostname            string             `json:"hostname,omitempty"`
+	Restart             string             `json:"restart,omitempty"`
+	RestartDelay        string             `json:"restart_delay,omitempty"`
+	AutoBackup          bool               `json:"auto_backup,omitempty"`
+	BackupInterval      string             `json:"backup_interval,omitempty"`
+	BackupRetention     int                `json:"backup_retention,omitempty"`
+	BackupDir           string             `json:"backup_dir,omitempty"`
+	LastBackupAt        time.Time          `json:"last_backup_at,omitempty"`
+	BackupNextAttemptAt time.Time          `json:"backup_next_attempt_at,omitempty"`
+	IP                  string             `json:"ip,omitempty"`
+	Detach              bool               `json:"detach,omitempty"`
+	Interactive         bool               `json:"interactive,omitempty"`
+	TTY                 bool               `json:"tty,omitempty"`
+	RemoveOnExit        bool               `json:"remove_on_exit,omitempty"`
+	StoppedByUser       bool               `json:"stopped_by_user,omitempty"`
+	LastExitAt          time.Time          `json:"last_exit_at,omitempty"`
+	MemoryLimit         int64              `json:"memory_limit,omitempty"`
+	CPUCount            float64            `json:"cpu_count,omitempty"`
+	DiskLimit           int64              `json:"disk_limit,omitempty"`
+	CgroupPath          string             `json:"cgroup_path,omitempty"`
+	WorkingDir          string             `json:"working_dir,omitempty"`
+	Healthcheck         *HealthcheckConfig `json:"healthcheck,omitempty"`
+	Labels              map[string]string  `json:"labels,omitempty"`
+	CapAdd              []string           `json:"cap_add,omitempty"`
+	CapDrop             []string           `json:"cap_drop,omitempty"`
+	User                string             `json:"user,omitempty"`
+	ReadonlyRootfs      bool               `json:"readonly_rootfs,omitempty"`
+	NoNewPrivileges     bool               `json:"no_new_privileges,omitempty"`
+	Sysctls             map[string]string  `json:"sysctls,omitempty"`
+	DNS                 []string           `json:"dns,omitempty"`
+	NetworkMode         string             `json:"network_mode,omitempty"`
+	Entrypoint          string             `json:"entrypoint,omitempty"`
+	Ulimits             []Ulimit           `json:"ulimits,omitempty"`
 
 	ConsoleServePID int           `json:"console_serve_pid,omitempty"`
 	PortForwardPIDs []int         `json:"port_forward_pids,omitempty"`
@@ -119,6 +126,10 @@ type CreateOpts struct {
 	Hostname        string
 	Restart         string
 	RestartDelay    string
+	AutoBackup      bool
+	BackupInterval  string
+	BackupRetention int
+	BackupDir       string
 	Detach          bool
 	Interactive     bool
 	TTY             bool

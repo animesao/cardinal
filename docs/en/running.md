@@ -307,7 +307,42 @@ dck attach NAME
 
 Starting a container creates a fresh dck stdout/stderr log, so previous dck log output is not accumulated across `stop`/`start` or `restart`. Application-specific logs are different: for example, Minecraft's `/data/logs/latest.log` is stored in the bind mount or named volume and is preserved by the application.
 
-## 11. Inspect and operate inside a container
+## 11. Automatic backups
+
+Enable a per-container schedule. The backup contains the writable overlay and named volumes, and dck briefly stops a running container so the archive is consistent before starting it again.
+
+```bash
+dck backup enable minecraft --interval 6h --retention 14
+dck backup status minecraft
+dck backup list
+dck backup disable minecraft
+```
+
+By default archives are written to `$DCK_DATA_DIR/backups/<container>/`. Set a dedicated directory if required:
+
+```bash
+dck backup enable minecraft \
+  --interval 24h \
+  --retention 7 \
+  --dir /data/backups/minecraft
+```
+
+Install the persistent supervisor once so the schedule continues after the terminal and after a reboot:
+
+```bash
+dck bootstrap --install
+systemctl status dck-bootstrap
+```
+
+A manual backup can still be created with `dck backup create NAME`. Restore only into a stopped container:
+
+```bash
+dck backup restore minecraft /data/backups/minecraft/minecraft-20260811-120000.tar.gz
+```
+
+Automatic backup settings are stored in the container state and survive `stop`, `start`, and dck upgrades. Retention removes the oldest scheduled archives after a successful backup; it does not delete manually placed files outside the container's scheduled archive naming pattern.
+
+## 12. Inspect and operate inside a container
 
 ```bash
 dck exec NAME command args...
@@ -324,7 +359,7 @@ dck cp NAME:/path/file ./local-file
 
 `attach` connects to the existing main process; `exec` starts a new process. Use `console` or `exec -i -t` for a shell.
 
-## 12. Resource limits and security
+## 13. Resource limits and security
 
 ```bash
 dck run -d --memory 512m --cpus 1 --disk 5G IMAGE[:TAG] COMMAND
@@ -340,7 +375,7 @@ Add only the capabilities that the application requires:
 
 Use `--network none` for a workload that does not need networking, or `--network host` only when sharing the host network is intentional.
 
-## 13. Update application code
+## 14. Update application code
 
 With a bind mount, edit the host files and restart the container:
 
@@ -352,7 +387,7 @@ dck logs --tail 100 alfheimguide
 
 For a new dependency, update `requirements.txt` and restart if your startup command installs dependencies. For production, prefer a built image instead of installing packages on every boot.
 
-## 14. Application recipes: bots, databases, and game servers
+## 15. Application recipes: bots, databases, and game servers
 
 All examples use the same command shape:
 
@@ -375,7 +410,7 @@ Put all dck flags before the image name. Anything after the image and command is
 | Policy | Process exits unexpectedly | `dck stop` | Host reboot |
 |---|---|---|---|
 | `no` | Stay stopped | Stay stopped | Stay stopped |
-| `on-failure` | Restart only for a non-zero exit | Stay stopped | Not bootstrapped |
+| `on-failure` | Restart only for a non-zero exit while its monitor is alive; not adopted after detached CLI exits | Stay stopped | Not bootstrapped |
 | `always` | Restart | Stay stopped when stopped explicitly | Start automatically |
 | `unless-stopped` | Restart | Stay stopped until an explicit `dck start` | Start automatically unless it was manually stopped |
 
@@ -386,7 +421,7 @@ dck bootstrap --install
 systemctl status dck-bootstrap
 ```
 
-The bootstrap service starts eligible containers after the host boots. It does not make `on-failure` a boot-autostart policy.
+The bootstrap service starts eligible containers after the host boots. It does not make `on-failure` a boot-autostart policy. For a persistent detached service, use `always` or `unless-stopped`; `on-failure` is only reliable while the process that owns its monitor remains alive.
 
 ### Python bot with `.env`, mount, port, and automatic recovery
 
@@ -601,7 +636,7 @@ dck set bot --restart no
 dck start bot
 ```
 
-## 15. Troubleshooting
+## 16. Troubleshooting
 
 ### `flag provided but not defined: -images`
 
@@ -667,7 +702,7 @@ ss -ltnp
 dck logs NAME
 ```
 
-## 16. Data locations
+## 17. Data locations
 
 For root, the default dck data directory is `/root/.dck`:
 
@@ -680,6 +715,7 @@ For root, the default dck data directory is `/root/.dck`:
 ├── volumes/      named volumes
 ├── cache/        cached image layers
 └── consoles/     attach sockets
+    backups/      scheduled container archives
 ```
 
 Set `DCK_DATA_DIR` before running dck to use another state location. Application bind mounts such as `/data/alfheimguide` are separate from this internal state.

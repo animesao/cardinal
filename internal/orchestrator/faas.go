@@ -39,7 +39,9 @@ func DeployFunction(ctx context.Context, name, imageName string, port int, opts 
 		return nil, err
 	}
 
-	_ = loadFunctions()
+	if err := loadFunctions(); err != nil {
+		return nil, fmt.Errorf("load functions: %w", err)
+	}
 
 	if _, exists := allFunctions[name]; exists {
 		return nil, fmt.Errorf("function %q already exists", name)
@@ -90,6 +92,8 @@ type FnOpts struct {
 }
 
 var allFunctions = make(map[string]*Function)
+var loadedFunctionsDir string
+var loadedFunctionsFile bool
 
 // ListFunctions returns all deployed functions
 func ListFunctions() ([]*Function, error) {
@@ -456,7 +460,14 @@ func loadFunctions() error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			allFunctions = make(map[string]*Function)
+			if loadedFunctionsDir != dir || loadedFunctionsFile {
+				allFunctions = make(map[string]*Function)
+			}
+			if allFunctions == nil {
+				allFunctions = make(map[string]*Function)
+			}
+			loadedFunctionsDir = dir
+			loadedFunctionsFile = false
 			return nil
 		}
 		return err
@@ -471,6 +482,8 @@ func loadFunctions() error {
 	if allFunctions == nil {
 		allFunctions = make(map[string]*Function)
 	}
+	loadedFunctionsDir = dir
+	loadedFunctionsFile = true
 
 	return nil
 }
@@ -489,7 +502,12 @@ func saveFunctions() error {
 		return err
 	}
 
-	return state.WriteFileAtomic(filepath.Join(dir, "functions.json"), data, 0600)
+	if err := state.WriteFileAtomic(filepath.Join(dir, "functions.json"), data, 0600); err != nil {
+		return err
+	}
+	loadedFunctionsDir = dir
+	loadedFunctionsFile = true
+	return nil
 }
 
 // CleanIdleFunctions stops functions that have been idle too long

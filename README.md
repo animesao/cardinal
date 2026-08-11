@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.22.19-blue?style=flat-square">
+  <img src="https://img.shields.io/github/v/tag/animesao/dck?label=version&style=flat-square">
   <img src="https://img.shields.io/badge/go-1.25%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square">
   <img src="https://img.shields.io/badge/no%20daemon-%E2%9C%93-brightgreen?style=flat-square">
@@ -112,18 +112,48 @@ dck rename web web-new                      # Rename container
 dck set web --memory 2g --cpus 4            # Change container params (preserves data)
 dck set web --restart always                # Enable auto-restart
 dck set web --restart-delay 1m             # Wait 1 minute before recovery
+dck backup enable web --interval 6h --retention 14  # Scheduled backups
+dck backup status web                       # Show backup settings
+dck backup disable web                      # Disable scheduled backups
 dck system prune                            # Remove unused containers and images
 dck info                                    # System information
 dck commit web my-image:v1                  # Create image from container
 ```
+
+### Automatic Backups
+
+Scheduled backups are managed by the persistent systemd supervisor. The archive includes the container writable overlay and named volumes. To keep the archive consistent, dck briefly stops a running container, creates the backup, then starts it again.
+
+```bash
+dck backup enable minecraft --interval 6h --retention 14
+dck backup status minecraft
+dck backup list
+dck backup disable minecraft
+```
+
+Backups are stored by default under `$DCK_DATA_DIR/backups/<container>/`. Use a dedicated directory when desired:
+
+```bash
+dck backup enable minecraft --interval 24h --retention 7 --dir /data/backups/minecraft
+```
+
+The supervisor must be installed for scheduled backups to run after the CLI exits:
+
+```bash
+dck bootstrap --install
+```
+
+Manual backups remain available with `dck backup create`; restore only into a stopped container.
 
 ### Logs & Attach
 
 A new container start creates a fresh dck stdout/stderr log. Application-owned logs in bind mounts or named volumes are preserved.
 
 ```bash
-dck logs web                                # Last output
-dck logs -f web                             # Follow
+dck logs web                                # Current run
+dck logs --previous web                     # Previous run
+dck logs --all web                          # Current + rotated runs
+dck logs -f web                             # Follow current run
 dck attach web                              # Recent output + live stdin/stdout
 dck fs ls web /etc/nginx                    # List files in container
 dck fs cat web /etc/nginx/conf.d/default.conf  # Show file
@@ -196,7 +226,7 @@ Use `-v` (bind mount) for live file sharing — changes on host are instantly vi
 | `-i` | Interactive (keep stdin) |
 | `-t` | Allocate TTY |
 | `--rm` | Auto-remove on exit |
-| `--restart` | Restart policy: `no`, `always`, `on-failure`, `unless-stopped` |
+| `--restart` | Restart policy: `no`, `always`, `on-failure`, `unless-stopped` (`always`/`unless-stopped` are supervised for detached containers) |
 | `--restart-delay` | Wait before automatic restart (e.g. `10s`, `1m`) |
 | `--memory` | RAM limit (e.g. `512m`, `2g`) |
 | `--cpus` | CPU limit (e.g. `1.5`, `4`) |
@@ -608,9 +638,15 @@ dck port rm <container> <host>[/proto]     # alias
 
 ---
 
-## Auto-Start on Boot
+## Auto-Start and Recovery on Boot
 
-Containers with `--restart always` start automatically after reboot — dck auto-installs the systemd service when you `dck run --restart always`, `dck set <c> --restart always`, or `dck up`.
+Containers with `--restart always` or `--restart unless-stopped` start automatically after reboot. dck installs a persistent systemd supervisor when you run a container with an automatic restart policy. The supervisor survives the short-lived `dck run -d` command and owns boot recovery; the container monitor applies `--restart-delay` after crashes.
+
+```bash
+dck bootstrap --install      # install and start the supervisor
+dck bootstrap --remove       # stop and remove it
+systemctl status dck-bootstrap
+```
 
 ```bash
 dck bootstrap --install      # manually install systemd service
@@ -618,11 +654,12 @@ dck bootstrap --remove       # remove it
 ```
 
 ```
-System boot → systemd → dck-bootstrap.service → dck bootstrap
-  └─ For each container with restart=always:
+System boot → systemd → dck-bootstrap.service → dck supervisor
+  └─ Adopt detached containers with an automatic restart policy
       1. Setup overlayfs
       2. Run unshare with namespaces
       3. Setup veth + iptables
+      4. Monitor crashes and apply restart-delay
 ```
 
 ---
@@ -731,7 +768,7 @@ dck run -d
 | Namespaces | PID, Mount, Net, UTS, IPC | All |
 | Bridge network | dck0 (10.0.2.0/24) | docker0 |
 | Port mapping | iptables DNAT | iptables DNAT |
-| Auto-start | systemd oneshot | systemd dockerd |
+| Auto-start | persistent systemd supervisor | systemd dockerd |
 | Image format | OCI/Docker V2 | OCI/Docker V2 |
 | Multi-stage build | ✅ | ✅ |
 | Compose depends_on | ✅ | ✅ |
@@ -742,7 +779,7 @@ dck run -d
 
 ## Changelog
 
-**v1.22.19** — Current release. OCI image extraction, forward symlink targets, protected bind-source validation, fresh dck logs on every new container start, cluster orchestration, FaaS, blueprints, services, Compose, healthchecks, startup scripts, dynamic ports, events, stats, and Docker-compatible REST API.
+**v1.22.26** — Current release. OCI image extraction, protected bind-source validation, persistent restart policies with delays and systemd recovery, rotated dck logs, inspect JSON, manual and scheduled safe container backups with retention, cluster orchestration, FaaS, blueprints, services, Compose, healthchecks, startup scripts, dynamic ports, events, stats, and Docker-compatible REST API.
 
 **v1.20.0** — Dynamic port management (`dck port add/rm`). Russian (ru) docs.
 

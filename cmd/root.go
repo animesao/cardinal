@@ -27,6 +27,10 @@ func Execute() {
 		Run(args)
 	case "ps":
 		Ps(args)
+	case "inspect":
+		Inspect(args)
+	case "backup":
+		Backup(args)
 	case "port":
 		Port(args)
 	case "stop":
@@ -67,6 +71,8 @@ func Execute() {
 		Down(args)
 	case "bootstrap":
 		Bootstrap(args)
+	case "supervisor":
+		Supervisor(args)
 	case "--help", "-h", "help":
 		printUsage()
 	case "cp":
@@ -143,7 +149,14 @@ Usage:
     dck rename <c> <new-name>              Rename container
     dck set <c> [opts]                     Change container params
     dck ps [-a]                            List containers
-    dck logs [-f] [--tail <n>] <c>         Show/follow/tail logs
+    dck inspect [--sensitive] <container> Show container state as JSON
+    dck backup create <container>          Create a container data backup
+    dck backup list                        List backups
+    dck backup restore <c> <file>          Restore a stopped container backup
+    dck backup enable <c> --interval 24h   Enable scheduled backups
+    dck backup disable <c>                 Disable scheduled backups
+    dck backup status <c>                  Show scheduled backup settings
+    dck logs [-f] [--tail <n>] [--previous|--all] <c> Show logs
     dck stats [container]                  CPU, RAM, IO stats
     dck top <container>                    Show running processes
     dck info                               System-wide info
@@ -212,10 +225,18 @@ Usage:
     dck blueprint repo list                List repositories
 
   System:
+    dck inspect [--sensitive] <container> Show container state as JSON
+    dck backup create <container>          Create a container data backup
+    dck backup list                        List backups
+    dck backup restore <c> <file>          Restore a stopped container backup
+    dck backup enable <c> --interval 24h   Enable scheduled backups
+    dck backup disable <c>                 Disable scheduled backups
+    dck backup status <c>                  Show scheduled backup settings
     dck serve [-p 2375]                    Start REST API server
     dck system prune                       Clean up unused resources
     dck update [--check]                   Check for updates and self-update
     dck bootstrap [--install|--remove]     Auto-start containers on boot
+    dck supervisor                         Run persistent restart supervisor
     dck version, --version, -v             Show version
     dck --help, -h, help                   Show this help
 

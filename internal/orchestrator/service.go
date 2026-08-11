@@ -18,13 +18,17 @@ import (
 )
 
 var serviceLock sync.RWMutex
+var loadedServicesDir string
+var loadedServicesFile bool
 
 // CreateService creates a new service definition
 func CreateService(name, image string, replicas int, opts ServiceOpts) (*Service, error) {
 	serviceLock.Lock()
 	defer serviceLock.Unlock()
 
-	_ = loadServices()
+	if err := loadServices(); err != nil {
+		return nil, fmt.Errorf("load services: %w", err)
+	}
 
 	if _, exists := clusterConf.Services[name]; exists {
 		return nil, fmt.Errorf("service %q already exists", name)
@@ -358,7 +362,14 @@ func loadServices() error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			clusterConf.Services = make(map[string]*Service)
+			if loadedServicesDir != dir || loadedServicesFile {
+				clusterConf.Services = make(map[string]*Service)
+			}
+			if clusterConf.Services == nil {
+				clusterConf.Services = make(map[string]*Service)
+			}
+			loadedServicesDir = dir
+			loadedServicesFile = false
 			return nil
 		}
 		return err
@@ -373,6 +384,8 @@ func loadServices() error {
 	if clusterConf.Services == nil {
 		clusterConf.Services = make(map[string]*Service)
 	}
+	loadedServicesDir = dir
+	loadedServicesFile = true
 
 	return nil
 }
@@ -391,5 +404,10 @@ func saveServices() error {
 		return err
 	}
 
-	return state.WriteFileAtomic(filepath.Join(dir, "services.json"), data, 0600)
+	if err := state.WriteFileAtomic(filepath.Join(dir, "services.json"), data, 0600); err != nil {
+		return err
+	}
+	loadedServicesDir = dir
+	loadedServicesFile = true
+	return nil
 }

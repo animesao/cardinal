@@ -216,7 +216,7 @@ dck run -d --name myapp --ports 8080:80 --volume /app:/app --restart always --im
 | `-i` | Интерактивный режим (держать stdin открытым) | `-i` |
 | `-t` | Выделить TTY (псевдотерминал) | `-t` |
 | `--rm` | Удалить контейнер при выходе | `--rm` |
-| `--restart <политика>` | `no`, `always`, `on-failure`, `unless-stopped` | `--restart always` |
+| `--restart <политика>` | `no`, `always`, `on-failure`, `unless-stopped`; для detached-контейнеров после reboot supervisor обслуживает `always`/`unless-stopped` | `--restart always` |
 | `--memory <лимит>` | Лимит памяти | `--memory 2g` |
 | `--ram <лимит>` | Лимит памяти (алиас `--memory`) | `--ram 1g` |
 | `--cpus <число>` | Лимит CPU | `--cpus 1.5` |
@@ -404,6 +404,28 @@ dck logs -f --tail 10 web  # последние 10 + следить
 
 Для root логи dck находятся в `/root/.dck/logs/<container-id>.log`; изменить каталог состояния можно через `DCK_DATA_DIR`. Практические примеры находятся в [руководстве по запуску](running.md).
 
+### `dck backup create|list|restore|enable|disable|status`
+
+Создавайте разовые архивы или включайте постоянное расписание для конкретного контейнера. Авто-бэкап включает writable overlay и именованные тома. Для согласованности dck ненадолго останавливает работающий контейнер, создаёт архив и запускает его снова.
+
+```bash
+dck backup enable minecraft --interval 6h --retention 14
+dck backup status minecraft
+dck backup list
+dck backup disable minecraft
+
+# Свой каталог (защищённые системные пути запрещены)
+dck backup enable minecraft --interval 24h --retention 7 --dir /data/backups/minecraft
+```
+
+Чтобы расписание продолжало работать после выхода из CLI, установите systemd supervisor:
+
+```bash
+dck bootstrap --install
+```
+
+`dck backup create ИМЯ -o file.tar.gz` остаётся разовым ручным бэкапом. Восстановление выполняется только в остановленный контейнер: `dck backup restore ИМЯ file.tar.gz`.
+
 ### `dck stats [контейнер]`
 
 Использование CPU, памяти, I/O и PIDs в реальном времени. Через cgroups v2.
@@ -549,6 +571,7 @@ logs/          stdout/stderr контейнера (новый файл при к
 volumes/       Именованные тома
 cache/         Кэш слоёв образов
 consoles/      Unix сокеты для attach
+backups/       Архивы автоматических бэкапов
 ```
 
 **Overlay:** Каждый контейнер получает слой поверх read-only образа.
@@ -851,7 +874,7 @@ dck serve -p 2375  # по умолчанию только localhost; для вн
 
 ## Автозапуск при загрузке
 
-Контейнеры с `--restart always` или `--restart unless-stopped` запускаются автоматически после перезагрузки.
+Detached-контейнеры с `--restart always` или `--restart unless-stopped` запускаются автоматически после перезагрузки. Persistent supervisor не подхватывает `on-failure` после завершения короткого detached-процесса CLI.
 
 dck сам устанавливает systemd-сервис когда:
 - `dck run --restart always <образ>`
@@ -868,8 +891,8 @@ dck bootstrap                # запустить все restart=always конт
 
 Схема:
 ```
-Загрузка → systemd → dck-bootstrap.service → dck bootstrap
-  └─ Для каждого контейнера с restart=always:
+Загрузка → systemd → dck-bootstrap.service → dck supervisor
+  └─ Для каждого detached-контейнера с restart=always или unless-stopped:
       1. Настройка overlayfs
       2. Запуск unshare с неймспейсами
       3. Настройка veth + iptables
@@ -1115,5 +1138,5 @@ Rootless контейнеры используют userspace networking.
 | Неймспейсы | PID, Mount, Net, UTS, IPC | Все |
 | Bridge сеть | dck0 (10.0.2.0/24) | docker0 |
 | Проброс портов | iptables DNAT | iptables DNAT |
-| Автозапуск | systemd oneshot | systemd dockerd |
+| Автозапуск | постоянный systemd supervisor | systemd dockerd |
 | Формат образов | OCI/Docker V2 | OCI/Docker V2 |

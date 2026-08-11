@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"dck/internal/container"
 	"dck/internal/network"
@@ -80,11 +81,28 @@ func ensureBootstrap() {
 	if os.Geteuid() != 0 {
 		return
 	}
-	if _, err := os.Stat("/etc/systemd/system/dck-bootstrap.service"); err == nil {
+	unitPath := "/etc/systemd/system/dck-bootstrap.service"
+	if data, err := os.ReadFile(unitPath); err == nil && !strings.Contains(string(data), " supervisor") {
+		if err := installSystemdService(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not migrate systemd service: %v\n", err)
+		}
+		return
+	}
+	if _, err := os.Stat(unitPath); err == nil {
+		if exec.Command("systemctl", "is-active", "--quiet", "dck-bootstrap").Run() == nil {
+			return
+		}
+		if err := exec.Command("systemctl", "daemon-reload").Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not reload systemd: %v\n", err)
+			return
+		}
+		if err := exec.Command("systemctl", "start", "dck-bootstrap").Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not start dck supervisor: %v\n", err)
+		}
 		return
 	}
 	if err := installSystemdService(); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: could not install bootstrap service: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Warning: could not install systemd service: %v\n", err)
 	}
 }
 
@@ -95,13 +113,18 @@ func installSystemdService() error {
 	}
 
 	unit := fmt.Sprintf(`[Unit]
-Description=dck containers bootstrap
-After=network.target
+Description=dck container supervisor
+After=network-online.target
+Wants=network-online.target
 
 [Service]
-Type=oneshot
+Type=simple
+ExecStart=%s supervisor
+Restart=always
+RestartSec=5s
 KillMode=process
-ExecStart=%s bootstrap
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
@@ -150,8 +173,11 @@ WantedBy=multi-user.target
 	if err := exec.Command("systemctl", "enable", "dck-bootstrap").Run(); err != nil {
 		return cleanupUnit(fmt.Errorf("enable dck-bootstrap: %w", err))
 	}
+	if err := exec.Command("systemctl", "restart", "dck-bootstrap").Run(); err != nil {
+		return cleanupUnit(fmt.Errorf("restart dck-bootstrap: %w", err))
+	}
 
-	fmt.Println("Systemd service installed. Enabled for next boot.")
+	fmt.Println("Systemd service installed and started. Enabled for next boot.")
 	return nil
 }
 

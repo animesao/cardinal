@@ -9,7 +9,7 @@ dck up                        dck cluster init
 dck serve                     dck fn deploy --name hello myfunc
 ```
 
-Version: `1.22.19` — [GitHub](https://github.com/animesao/dck)
+Version: `1.22.26` — [GitHub](https://github.com/animesao/dck)
 
 ## Start here
 
@@ -144,7 +144,7 @@ The running guides cover installation, image/tag syntax, bind mounts, `.env`, Py
 | `dck serve [-p 2375] [-H host] [-d] [--token <key>]` | Start REST API server (localhost by default; external bind requires Bearer token) |
 | `dck system prune` | Clean up unused resources |
 | `dck update [--check]` | Self-update |
-| `dck bootstrap [--install\|--remove]` | Auto-start on boot |
+| `dck bootstrap [--install\|--remove]` | Install/start or remove the systemd supervisor |
 | `dck version / --version / -v` | Show version |
 | `dck help / --help / -h` | Show help |
 
@@ -163,7 +163,7 @@ The running guides cover installation, image/tag syntax, bind mounts, `.env`, Py
 | `-i` | Interactive (keep stdin) |
 | `-t` | Allocate TTY |
 | `--rm` | Auto-remove on exit |
-| `--restart <policy>` | `no`, `always`, `on-failure`, `unless-stopped` |
+| `--restart <policy>` | `no`, `always`, `on-failure`, `unless-stopped`; detached boot supervision applies to `always`/`unless-stopped` |
 | `--restart-delay <duration>` | Wait before automatic restart, e.g. `10s`, `1m` |
 | `--memory / --ram <lim>` | Memory limit (e.g. `1g`, `512m`) |
 | `--cpus / --cpu <num>` | CPU limit (e.g. `1.5`, `4`) |

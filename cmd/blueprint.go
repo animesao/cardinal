@@ -927,7 +927,9 @@ func getPublicIP() string {
 			continue
 		}
 		body, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: close public IP response: %v\n", closeErr)
+		}
 		if err == nil {
 			ip := strings.TrimSpace(string(body))
 			if net.ParseIP(ip) != nil {

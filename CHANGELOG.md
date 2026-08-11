@@ -5,8 +5,10 @@
 ### Added
 
 - Added configurable automatic restart delays with `--restart-delay` / `dck set --restart-delay` (for example, `10s` or `1m`).
+- Added a persistent systemd supervisor for detached `always` and `unless-stopped` containers; `on-failure` remains a foreground-process policy and is not adopted after the detached CLI exits.
+- Added per-container scheduled backups with `dck backup enable/disable/status`, configurable intervals, retention, safe destinations, and supervisor-based recovery after reboot.
 
-## 1.22.19 (2026-08-11)
+## 1.22.26 (2026-08-11)
 
 ### Documentation
 

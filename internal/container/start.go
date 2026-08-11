@@ -278,9 +278,15 @@ func (c *Container) runForeground(cmd *exec.Cmd) error {
 	c.dataMu.Lock()
 	c.PID = 0
 	c.Status = Stopped
+	c.LastExitAt = time.Now()
 	c.dataMu.Unlock()
 	c.cleanupNetwork()
-	_ = c.Save()
+	if saveErr := c.Save(); saveErr != nil {
+		log.Warn("save stopped container %s: %v", c.Name, saveErr)
+		if err == nil {
+			err = saveErr
+		}
+	}
 
 	exitCode := 0
 	if exitErr, ok := err.(*exec.ExitError); ok {
@@ -420,9 +426,11 @@ func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 		c.dataMu.Unlock()
 		c.cleanupNetwork()
 		c.killConsoleServe()
-		_ = c.Save()
+		if saveErr := c.Save(); saveErr != nil {
+			log.Warn("save stopped container %s: %v", c.Name, saveErr)
+		}
 
-		if shouldRestart(c.Restart, exitCode, stoppedByUser) {
+		if shouldRestart(c.Restart, exitCode, stoppedByUser) && (!c.Detach || c.Restart == "on-failure") {
 			go func() {
 				time.Sleep(c.restartDelay())
 				if !c.canRestartAfterDelay() {
@@ -434,7 +442,9 @@ func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 				c.mu.Lock()
 				c.cleanupStarted = false
 				c.mu.Unlock()
-				_ = c.Start()
+				if err := c.Start(); err != nil {
+					log.Warn("restart container %s: %v", c.Name, err)
+				}
 			}()
 		} else if c.RemoveOnExit {
 			cleanupContainer(c)

@@ -354,12 +354,11 @@ func Run(args []string) {
 		os.Exit(1)
 	}
 
-	if *restart == "always" || *restart == "unless-stopped" {
-		ensureBootstrap()
-	}
-
 	if err := c.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting container: %v\n", err)
 		os.Exit(1)
+	}
+	if *restart == "always" || *restart == "unless-stopped" {
+		ensureBootstrap()
 	}
 }
