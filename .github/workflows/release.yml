@@ -17,6 +17,12 @@ on:
 permissions:
   contents: write
 
+# Manual releases also mutate VERSION, main, and tags; serialize them with
+# other release workflows to avoid version and tag races.
+concurrency:
+  group: build-release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest

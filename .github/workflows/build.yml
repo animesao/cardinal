@@ -3,6 +3,12 @@ name: Build & Release
 permissions:
   contents: write
 
+# Version bump, tag creation, and release publication must be serialized.
+# Otherwise two pushes can calculate the same VERSION and race on main/tags.
+concurrency:
+  group: build-release-${{ github.ref }}
+  cancel-in-progress: false
+
 on:
   push:
     branches: [main]
@@ -59,6 +65,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: v${{ needs.version.outputs.new_ver }}
 
       - uses: actions/setup-go@v5
         with:
