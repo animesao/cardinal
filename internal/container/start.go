@@ -94,18 +94,12 @@ func (c *Container) startInternal() error {
 	}
 
 	childPID := c.resolveChildPID(cmd.Process.Pid)
+	if childPID <= 0 {
+		c.abortStart(cmd)
+		return fmt.Errorf("could not determine the container init process")
+	}
 	if err := c.setupContainerResources(childPID); err != nil {
-		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
-		c.cleanupRootlessPorts()
-		c.killConsoleServe()
-		c.cleanupNetwork()
-		upper, _, mergedDir := c.OverlayDirs()
-		unmountOverlay(mergedDir)
-		TeardownDiskLimit(state.OverlayDir(), c.ID)
-		cleanupContainerCgroup(c.ID, c.CgroupPath)
-		_ = os.Remove(state.ConsolePath(c.ID))
-		_ = os.RemoveAll(filepath.Dir(upper))
+		c.abortStart(cmd)
 		return fmt.Errorf("configure container resources: %w", err)
 	}
 
@@ -122,6 +116,7 @@ func (c *Container) startInternal() error {
 	}
 	c.dataMu.Lock()
 	c.PID = childPID
+	c.UnsharePID = cmd.Process.Pid
 	c.MountNamespace = mountNS
 	c.PIDNamespace = pidNS
 	c.NetworkNamespace = networkNS
@@ -272,12 +267,24 @@ func (c *Container) setupIO(cmd *exec.Cmd) (func(), error) {
 	}
 }
 
+// abortStart tears down everything that was set up for a container whose start
+// failed after unshare was already spawned.
+func (c *Container) abortStart(cmd *exec.Cmd) {
+	_ = cmd.Process.Kill()
+	_ = cmd.Wait()
+	c.cleanupRootlessPorts()
+	c.killConsoleServe()
+	c.cleanupNetwork()
+	upper, _, mergedDir := c.OverlayDirs()
+	unmountOverlay(mergedDir)
+	TeardownDiskLimit(state.OverlayDir(), c.ID)
+	cleanupContainerCgroup(c.ID, c.CgroupPath)
+	_ = os.Remove(state.ConsolePath(c.ID))
+	_ = os.RemoveAll(filepath.Dir(upper))
+}
+
 func (c *Container) resolveChildPID(unsharePID int) int {
-	childPID := findChildPID(unsharePID)
-	if childPID == 0 {
-		childPID = unsharePID + 1
-	}
-	return childPID
+	return findChildPID(unsharePID)
 }
 
 func (c *Container) setupContainerResources(childPID int) error {
@@ -327,30 +334,17 @@ func (c *Container) runForeground(cmd *exec.Cmd) error {
 		healthCancel()
 		c.cancelHealth = nil
 	}
-	c.dataMu.Lock()
-	c.PID = 0
-	c.MountNamespace = 0
-	c.PIDNamespace = 0
-	c.NetworkNamespace = 0
-	c.IPCNamespace = 0
-	c.UTSNamespace = 0
-	c.Status = Stopped
-	c.LastExitAt = time.Now()
-	c.dataMu.Unlock()
-	c.cleanupNetwork()
-	if saveErr := c.Save(); saveErr != nil {
-		log.Warn("save stopped container %s: %v", c.Name, saveErr)
-		if err == nil {
-			err = saveErr
-		}
-	}
 
 	exitCode := 0
 	if exitErr, ok := err.(*exec.ExitError); ok {
 		exitCode = exitErr.ExitCode()
 	}
-	c.markStableIfNeeded(time.Now())
-	if shouldRestart(c.Restart, exitCode, c.stoppedByUser()) {
+
+	finalized, restart := c.finalizeStopped(exitCode)
+	if !finalized {
+		return err
+	}
+	if restart {
 		if !c.allowAutomaticRestart(time.Now()) {
 			log.Warn("container %s stopped restarting after crash-loop limit (%d attempts in %s)", c.Name, c.restartMaxAttempts(), c.restartWindowDuration())
 			return err
@@ -379,27 +373,28 @@ func (c *Container) NeedsNetwork() bool {
 }
 
 func findChildPID(ppid int) int {
-	for i := 0; i < 100; i++ {
-		out, err := exec.Command("pgrep", "-P", strconv.Itoa(ppid)).Output()
-		if err == nil {
+	// The kernel publishes the direct children of a process in
+	// /proc/<pid>/task/<pid>/children — no pgrep dependency and no guessing.
+	// unshare forks exactly one child (the container init), so the first entry
+	// is the process we are looking for.
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if data, err := os.ReadFile(fmt.Sprintf("/proc/%d/task/%d/children", ppid, ppid)); err == nil {
+			if fields := strings.Fields(string(data)); len(fields) > 0 {
+				if pid, err := strconv.Atoi(fields[0]); err == nil && pid > 0 {
+					return pid
+				}
+			}
+		}
+		// Fall back to pgrep on kernels that do not expose the children file.
+		if out, err := exec.Command("pgrep", "-P", strconv.Itoa(ppid)).Output(); err == nil {
 			for _, line := range strings.Split(string(out), "\n") {
-				pid, err := strconv.Atoi(strings.TrimSpace(line))
-				if err == nil && pid > 0 {
+				if pid, err := strconv.Atoi(strings.TrimSpace(line)); err == nil && pid > 0 {
 					return pid
 				}
 			}
 		}
 		time.Sleep(10 * time.Millisecond)
-	}
-
-	data, err := os.ReadFile("/proc/" + strconv.Itoa(ppid) + "/task/" + strconv.Itoa(ppid) + "/children")
-	if err == nil {
-		fields := strings.Fields(string(data))
-		if len(fields) > 0 {
-			if pid, err := strconv.Atoi(fields[0]); err == nil && pid > 0 {
-				return pid
-			}
-		}
 	}
 	return 0
 }
@@ -482,6 +477,48 @@ func (c *Container) restart() error {
 	return c.startInternal()
 }
 
+// finalizeStopped marks a container as stopped after its main process exited,
+// releases every container resource (network, console-serve, cgroup, DNS), and
+// persists the state. It returns whether the caller actually performed the
+// finalization (false when another path already owns the cleanup) and whether
+// the configured restart policy wants an automatic restart.
+func (c *Container) finalizeStopped(exitCode int) (finalized, restart bool) {
+	c.mu.Lock()
+	if c.cleanupStarted {
+		c.mu.Unlock()
+		return false, false
+	}
+	c.cleanupStarted = true
+	c.mu.Unlock()
+
+	stoppedByUser := c.stoppedByUser()
+	if !stoppedByUser {
+		if _, ok := stoppedContainers.Load(c.ID); ok {
+			stoppedByUser = true
+		}
+	}
+	UnregisterDNSName(c.Name)
+	c.dataMu.Lock()
+	c.PID = 0
+	c.UnsharePID = 0
+	c.MountNamespace = 0
+	c.PIDNamespace = 0
+	c.NetworkNamespace = 0
+	c.IPCNamespace = 0
+	c.UTSNamespace = 0
+	c.Status = Stopped
+	c.LastExitAt = time.Now()
+	c.dataMu.Unlock()
+	c.cleanupNetwork()
+	c.killConsoleServe()
+	cleanupContainerCgroup(c.ID, c.CgroupPath)
+	if saveErr := c.Save(); saveErr != nil {
+		log.Warn("save stopped container %s: %v", c.Name, saveErr)
+	}
+	c.markStableIfNeeded(time.Now())
+	return true, shouldRestart(c.Restart, exitCode, stoppedByUser)
+}
+
 func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 	if c.Healthcheck != nil {
 		go c.runHealthcheck(ctx)
@@ -496,38 +533,12 @@ func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 			c.cancelHealth()
 			c.cancelHealth = nil
 		}
-		c.mu.Lock()
-		if c.cleanupStarted {
-			c.mu.Unlock()
+
+		finalized, restart := c.finalizeStopped(exitCode)
+		if !finalized {
 			return
 		}
-		c.cleanupStarted = true
-		c.mu.Unlock()
-
-		stoppedByUser := c.stoppedByUser()
-		if !stoppedByUser {
-			if _, ok := stoppedContainers.Load(c.ID); ok {
-				stoppedByUser = true
-			}
-		}
-		UnregisterDNSName(c.Name)
-		c.dataMu.Lock()
-		c.PID = 0
-		c.MountNamespace = 0
-		c.PIDNamespace = 0
-		c.NetworkNamespace = 0
-		c.IPCNamespace = 0
-		c.UTSNamespace = 0
-		c.Status = Stopped
-		c.dataMu.Unlock()
-		c.cleanupNetwork()
-		c.killConsoleServe()
-		if saveErr := c.Save(); saveErr != nil {
-			log.Warn("save stopped container %s: %v", c.Name, saveErr)
-		}
-
-		c.markStableIfNeeded(time.Now())
-		if shouldRestart(c.Restart, exitCode, stoppedByUser) && (!c.Detach || c.Restart == "on-failure") {
+		if restart && (!c.Detach || c.Restart == "on-failure") {
 			if !c.allowAutomaticRestart(time.Now()) {
 				log.Warn("container %s stopped restarting after crash-loop limit (%d attempts in %s)", c.Name, c.restartMaxAttempts(), c.restartWindowDuration())
 				return
@@ -551,6 +562,34 @@ func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 			cleanupContainer(c)
 		}
 	}()
+}
+
+// HandleMainProcessExit is invoked by the supervisor when an orphaned container
+// main process (unshare) exits after the original `dck run -d` process is gone.
+// It finalizes state and resources exactly like the in-process monitor would.
+func HandleMainProcessExit(id string) {
+	c, err := Load(id)
+	if err != nil {
+		return
+	}
+	c.handleMainProcessExit()
+}
+
+func (c *Container) handleMainProcessExit() {
+	// A concurrent Load() may have already normalized the status to "stopped";
+	// finalizeStopped is idempotent and still releases network, console-serve,
+	// cgroup and DNS resources, which is exactly what the supervisor must do.
+	finalized, restart := c.finalizeStopped(0)
+	if !finalized {
+		return
+	}
+	// Restart scheduling for detached containers is owned by the supervisor
+	// (adoptEligibleContainers), which honors restart delays and the crash-loop
+	// budget. RemoveOnExit containers are dropped here unless a restart policy
+	// will bring them back (mirrors the in-process monitor behavior).
+	if !restart && c.RemoveOnExit {
+		cleanupContainer(c)
+	}
 }
 
 func (c *Container) canRestartAfterDelay() bool {

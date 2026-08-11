@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"dck/internal/container"
 	"dck/internal/network"
 )
@@ -35,6 +37,12 @@ func Supervisor(args []string) {
 	defer stop()
 	defer backupWorkers.Wait()
 
+	// Become a subreaper so orphaned container processes — whose `dck run -d`
+	// parent already exited — are reparented here instead of to init, and their
+	// exits can be observed and reaped below.
+	if err := unix.Prctl(unix.PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0); err != nil {
+		fmt.Fprintf(os.Stderr, "dck supervisor: set child subreaper: %v\n", err)
+	}
 	network.EnsureNetBase()
 	managed := make(map[string]time.Time)
 	adoptEligibleContainers(managed)
@@ -46,10 +54,40 @@ func Supervisor(args []string) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			reapExitedContainers()
 			adoptEligibleContainers(managed)
 			runAutomaticBackups()
 		}
 	}
+}
+
+// reapExitedContainers reaps orphaned child processes (detached container
+// unshare processes whose CLI parent already exited) and finalizes container
+// state and resources for each one.
+func reapExitedContainers() {
+	for {
+		var ws unix.WaitStatus
+		pid, err := unix.Wait4(-1, &ws, unix.WNOHANG, nil)
+		if err == unix.ECHILD || pid <= 0 {
+			return
+		}
+		handleExitedContainerProcess(pid)
+	}
+}
+
+func handleExitedContainerProcess(pid int) {
+	all, err := container.List(true)
+	if err != nil {
+		return
+	}
+	for _, c := range all {
+		if c.UnsharePID == pid {
+			container.HandleMainProcessExit(c.ID)
+			return
+		}
+	}
+	// Other orphaned helpers (console-serve, port forwarders) need no action;
+	// they are cleaned up when their owning container is stopped or removed.
 }
 
 func adoptEligibleContainers(managed map[string]time.Time) {
@@ -83,10 +121,22 @@ func adoptEligibleContainers(managed map[string]time.Time) {
 			}
 			managed[c.ID] = deadline
 		}
+		// A container that was running and then crashed has a zero deadline
+		// recorded while it was healthy; recompute it from LastExitAt so the
+		// configured --restart-delay is honored instead of restarting at once.
+		if deadline.IsZero() && !c.LastExitAt.IsZero() {
+			deadline = c.LastExitAt.Add(supervisorRestartDelay(c))
+			managed[c.ID] = deadline
+		}
 		if time.Now().Before(deadline) {
 			continue
 		}
 		if !eligibleForSupervisor(c) {
+			continue
+		}
+		// Honor the crash-loop budget: each automatic start consumes one attempt
+		// and the container is blocked once the window budget is exhausted.
+		if !container.AllowAutomaticRestart(c) {
 			continue
 		}
 		managed[c.ID] = time.Time{}

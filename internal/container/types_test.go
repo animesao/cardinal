@@ -4,6 +4,7 @@ package container
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -185,7 +186,17 @@ func TestSaveAndLoad(t *testing.T) {
 }
 
 func TestNormalizeLoadedStateRejectsLegacyRunningState(t *testing.T) {
-	c := &Container{Status: Running, PID: os.Getpid()}
+	origDataDir := os.Getenv("DCK_DATA_DIR")
+	defer os.Setenv("DCK_DATA_DIR", origDataDir)
+	os.Setenv("DCK_DATA_DIR", t.TempDir())
+
+	// A legacy state whose init process is gone (and no unshare PID is
+	// recorded) is truly dead and must be downgraded to stopped.
+	cmd := exec.Command("sh", "-c", "exit 0")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("helper: %v", err)
+	}
+	c := &Container{Status: Running, PID: cmd.Process.Pid}
 	normalizeLoadedState(c)
 	if c.Status != Stopped {
 		t.Fatalf("legacy running state status = %q, want %q", c.Status, Stopped)

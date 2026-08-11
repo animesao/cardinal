@@ -34,6 +34,11 @@ func findUnsharePID(childPID int) int {
 	return 0
 }
 
+// stopGracePeriod is how long the container init gets to shut down gracefully
+// after SIGTERM before dck escalates to SIGKILL. Long enough for servers such
+// as Minecraft/Paper to flush worlds and databases.
+const stopGracePeriod = 10 * time.Second
+
 func (c *Container) Stop() error {
 	c.lifecycleMu.Lock()
 	defer c.lifecycleMu.Unlock()
@@ -41,8 +46,19 @@ func (c *Container) Stop() error {
 	c.dataMu.RLock()
 	status := c.Status
 	pid := c.PID
+	unsharePID := c.UnsharePID
 	c.dataMu.RUnlock()
 	if status != Running {
+		// Stale state can claim "stopped" while the process tree is actually
+		// still alive (recorded-PID races, pre-1.23 states). Never leave those
+		// processes behind.
+		if pid > 0 || unsharePID > 0 || pidAlive(c.ConsoleServePID) {
+			c.killRecordedProcesses(pid, unsharePID)
+			c.cleanupRootlessPorts()
+			c.killConsoleServe()
+			c.cleanupNetwork()
+			cleanupContainerCgroup(c.ID, c.CgroupPath)
+		}
 		// A stopped container may still have a delayed automatic restart pending.
 		// Treat dck stop as an explicit cancellation instead of reporting an
 		// error, so the pending restart cannot bring it back unexpectedly.
@@ -75,47 +91,77 @@ func (c *Container) Stop() error {
 		return fmt.Errorf("save stopping container: %w", err)
 	}
 
-	unsharePID := findUnsharePID(pid)
-	targetPID := pid
-	if unsharePID != 0 {
-		targetPID = unsharePID
+	// Prefer the recorded unshare PID: killing it makes --kill-child tear down
+	// the whole process tree. Fall back to locating it from the init PID.
+	targetPID := unsharePID
+	if targetPID <= 0 {
+		targetPID = findUnsharePID(pid)
+	}
+	if targetPID <= 0 {
+		targetPID = pid
+	}
+	if targetPID <= 0 {
+		// No live process recorded; nothing left to signal. Finalize state only.
+		log.Warn("container %s has no recorded process; finalizing state", c.ID)
+		c.finalizeStopState()
+		return nil
 	}
 
-	// Graceful shutdown: SIGTERM first, then SIGKILL after timeout.
-	// If unshare was started by a previous dck run -d process,
-	// --kill-child won't fire on SIGTERM so we must also signal
-	// the container init directly.
-	//
-	// We can't use proc.Wait() — process was reparented to init, so
-	// Wait() would return ECHILD. Poll with kill(pid, 0) instead.
-	if err := syscall.Kill(targetPID, syscall.SIGTERM); err != nil {
+	c.killRecordedProcesses(pid, targetPID)
+	c.finalizeStopState()
+	return nil
+}
+
+// killRecordedProcesses performs graceful shutdown of the container process
+// tree. unshare forwards SIGTERM to the container init and exits immediately,
+// so the graceful window is measured against the init PID itself (Paper saves
+// the world, databases flush, etc.). We can't use proc.Wait() — the process was
+// reparented, so Wait() would return ECHILD. Poll with kill(pid, 0) instead.
+func (c *Container) killRecordedProcesses(pid, targetPID int) {
+	if targetPID <= 0 {
+		targetPID = pid
+	}
+	if targetPID <= 0 {
+		return
+	}
+	if err := syscall.Kill(targetPID, syscall.SIGTERM); err != nil && err != syscall.ESRCH {
 		log.Warn("terminate target PID %d: %v", targetPID, err)
 	}
-	if waitForExit(targetPID, 5*time.Second) {
-		goto cleanup
+	initPID := pid
+	if initPID == targetPID {
+		initPID = 0
+	}
+	if initPID > 0 {
+		if err := syscall.Kill(initPID, syscall.SIGTERM); err != nil && err != syscall.ESRCH {
+			log.Warn("terminate container PID %d: %v", initPID, err)
+		}
 	}
 
-	if err := syscall.Kill(targetPID, syscall.SIGKILL); err != nil {
-		log.Warn("kill target PID %d: %v", targetPID, err)
+	graceful := false
+	if initPID > 0 {
+		graceful = waitForExit(initPID, stopGracePeriod)
+	} else {
+		// No separate init recorded (legacy states): the target itself is the
+		// container process, so it gets the graceful window directly.
+		graceful = waitForExit(targetPID, stopGracePeriod)
 	}
-	waitForExit(targetPID, 2*time.Second)
-
-cleanup:
-	// Kill the container init directly (survives if unshare was killed)
-	if unsharePID != 0 && pid > 0 {
-		if err := syscall.Kill(pid, syscall.SIGTERM); err != nil {
-			log.Warn("terminate container PID %d: %v", pid, err)
+	if !graceful {
+		if err := syscall.Kill(targetPID, syscall.SIGKILL); err != nil && err != syscall.ESRCH {
+			log.Warn("kill target PID %d: %v", targetPID, err)
 		}
-		if waitForExit(pid, 3*time.Second) {
-			goto postcleanup
+		waitForExit(targetPID, 2*time.Second)
+		if initPID > 0 {
+			if err := syscall.Kill(initPID, syscall.SIGKILL); err != nil && err != syscall.ESRCH {
+				log.Warn("kill container PID %d: %v", initPID, err)
+			}
+			waitForExit(initPID, 3*time.Second)
 		}
-		if err := syscall.Kill(pid, syscall.SIGKILL); err != nil {
-			log.Warn("kill container PID %d: %v", pid, err)
-		}
-		waitForExit(pid, 2*time.Second)
 	}
-postcleanup:
+}
 
+// finalizeStopState releases container resources and persists the stopped
+// state after a successful stop.
+func (c *Container) finalizeStopState() {
 	c.cleanupRootlessPorts()
 	c.killConsoleServe()
 	c.cancelHealthcheck()
@@ -125,6 +171,7 @@ postcleanup:
 	UnregisterDNSName(c.Name)
 	c.dataMu.Lock()
 	c.PID = 0
+	c.UnsharePID = 0
 	c.MountNamespace = 0
 	c.PIDNamespace = 0
 	c.NetworkNamespace = 0
@@ -133,10 +180,9 @@ postcleanup:
 	c.Status = Stopped
 	c.dataMu.Unlock()
 	if err := c.Save(); err != nil {
-		return fmt.Errorf("save stopped container: %w", err)
+		log.Warn("save stopped container %s: %v", c.Name, err)
 	}
 	EmitEvent(EventStop, c)
-	return nil
 }
 
 func (c *Container) cleanupRootlessPorts() {

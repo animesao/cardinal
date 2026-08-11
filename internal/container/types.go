@@ -29,11 +29,14 @@ type Ulimit struct {
 }
 
 type Container struct {
-	ID                  string             `json:"id"`
-	Name                string             `json:"name"`
-	ImageName           string             `json:"image_name"`
-	ImageTag            string             `json:"image_tag"`
-	PID                 int                `json:"pid"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	ImageName string `json:"image_name"`
+	ImageTag  string `json:"image_tag"`
+	PID       int    `json:"pid"`
+	// UnsharePID is the host PID of the `unshare --kill-child` wrapper that
+	// owns the container process tree. Killing it tears down the whole tree.
+	UnsharePID          int                `json:"unshare_pid,omitempty"`
 	MountNamespace      uint64             `json:"mount_namespace,omitempty"`
 	PIDNamespace        uint64             `json:"pid_namespace,omitempty"`
 	NetworkNamespace    uint64             `json:"network_namespace,omitempty"`

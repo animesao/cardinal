@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
+	"time"
 
 	"dck/internal/log"
 )
@@ -104,7 +106,14 @@ func cleanupContainerCgroup(id, cgroupPath string) {
 	if cgroupPath == "" {
 		return
 	}
-	if b, err := os.ReadFile(filepath.Join(cgroupPath, "cgroup.procs")); err == nil && len(b) > 0 {
+	// Kill anything still accounted to the container cgroup. Stale state (a
+	// recorded PID that no longer matches the real process tree) can otherwise
+	// leave live processes behind after rm/stop, and a non-empty cgroup cannot
+	// be removed on cgroup v2.
+	killCgroupProcs(cgroupPath)
+	// Move any survivors back to the parent cgroup so their accounting is not
+	// lost if something unexpected still lives there.
+	if b, err := os.ReadFile(filepath.Join(cgroupPath, "cgroup.procs")); err == nil && len(strings.TrimSpace(string(b))) > 0 {
 		parentProcs := filepath.Join(filepath.Dir(cgroupPath), "cgroup.procs")
 		if err := os.WriteFile(parentProcs, b, 0644); err != nil {
 			log.Warn("restore cgroup processes: %v", err)
@@ -112,5 +121,30 @@ func cleanupContainerCgroup(id, cgroupPath string) {
 	}
 	if err := os.RemoveAll(cgroupPath); err != nil {
 		log.Warn("remove cgroup %s: %v", id, err)
+	}
+}
+
+// killCgroupProcs force-kills every process still accounted to a container
+// cgroup and waits until the cgroup drains (bounded).
+func killCgroupProcs(cgroupPath string) {
+	procsPath := filepath.Join(cgroupPath, "cgroup.procs")
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		b, err := os.ReadFile(procsPath)
+		if err != nil {
+			return
+		}
+		left := strings.Fields(string(b))
+		if len(left) == 0 {
+			return
+		}
+		for _, f := range left {
+			if pid, err := strconv.Atoi(f); err == nil && pid > 0 {
+				if err := syscall.Kill(pid, syscall.SIGKILL); err != nil && err != syscall.ESRCH {
+					log.Warn("kill cgroup process %d: %v", pid, err)
+				}
+			}
+		}
+		time.Sleep(50 * time.Millisecond)
 	}
 }

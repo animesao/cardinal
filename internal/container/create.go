@@ -142,13 +142,18 @@ func Load(id string) (*Container, error) {
 
 func normalizeLoadedState(c *Container) {
 	c.dataMu.Lock()
-	changed := c.Status == Running && (c.MountNamespace == 0 || c.PIDNamespace == 0 || c.NetworkNamespace == 0 || c.IPCNamespace == 0 || c.UTSNamespace == 0 || !pidAlive(c.PID))
+	// A container is only truly stopped when every recorded process is gone.
+	// The persisted init PID can be stale (exec races, PID reuse, states written
+	// before unshare PID tracking), so never downgrade a live container to
+	// "stopped" based on a dead single PID while the real tree is still alive.
+	changed := c.Status == Running && !containerHasLiveProcess(c)
 	if changed {
 		// State files created before namespace identities were persisted cannot
 		// be used safely by exec/cp/top. Persist the stopped state so the
 		// supervisor cannot make a decision from stale JSON on the next boot.
 		c.Status = Stopped
 		c.PID = 0
+		c.UnsharePID = 0
 		c.MountNamespace = 0
 		c.PIDNamespace = 0
 		c.NetworkNamespace = 0
@@ -161,6 +166,16 @@ func normalizeLoadedState(c *Container) {
 			log.Warn("persist normalized container state %s: %v", c.ID, err)
 		}
 	}
+}
+
+func containerHasLiveProcess(c *Container) bool {
+	if pidAlive(c.PID) {
+		return true
+	}
+	if c.UnsharePID > 0 && pidAlive(c.UnsharePID) {
+		return true
+	}
+	return false
 }
 
 func generateID() string {

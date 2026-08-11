@@ -76,6 +76,17 @@ func (c *Container) restartBlocked() bool {
 	return c.RestartBlocked
 }
 
+// AllowAutomaticRestart records one automatic restart attempt against the
+// container's crash-loop budget and reports whether another restart is allowed.
+// It is used by the supervisor when it schedules restarts for detached
+// containers, so crash-looping containers cannot restart forever.
+func AllowAutomaticRestart(c *Container) bool {
+	if c == nil {
+		return false
+	}
+	return c.allowAutomaticRestart(time.Now())
+}
+
 func (c *Container) markStableIfNeeded(now time.Time) {
 	c.dataMu.RLock()
 	started := c.LastStartedAt
