@@ -12,6 +12,12 @@
   ~5 MB static binary · zero daemon · OCI images · bridge networking · cluster · FaaS
 </p>
 
+<p align="center">
+  <a href="CONTRIBUTORS.md">👥 Contributors</a> ·
+  <a href="https://github.com/animesao/dck/graphs/contributors">GitHub contributor graph</a> ·
+  <a href="LICENSE">MIT License</a>
+</p>
+
 ```bash
 dck run --rm alpine echo "hello from dck!"
 dck run -d -n web -p 8080:80 nginx:alpine
