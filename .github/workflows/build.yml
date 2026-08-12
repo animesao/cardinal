@@ -151,6 +151,13 @@ jobs:
           rm -rf AppDir
           mkdir -p AppDir/usr/bin
           cp "dck-linux-$SUFFIX" AppDir/usr/bin/dck
+          cat > AppDir/dck.svg <<'EOF'
+          <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="dck">
+            <rect width="256" height="256" rx="48" fill="#111827"/>
+            <path d="M64 72h128v32H96v48h96v32H64z" fill="#22c55e"/>
+            <circle cx="176" cy="88" r="12" fill="#f8fafc"/>
+          </svg>
+          EOF
           cat > AppDir/AppRun <<'EOF'
           #!/bin/sh
           set -eu
@@ -164,13 +171,15 @@ jobs:
           Name=dck
           Comment=Lightweight container runtime for Linux
           Exec=dck
+          Icon=dck
           Type=Application
-          Categories=Utility;System;
+          Categories=Utility;
           Terminal=true
           EOF
 
           test -x AppDir/AppRun
           test -f AppDir/dck.desktop
+          test -f AppDir/dck.svg
           test -x AppDir/usr/bin/dck
           ARCH="$APPIMAGE_ARCH" ./appimagetool --appimage-extract-and-run \
             --runtime-file runtime \
