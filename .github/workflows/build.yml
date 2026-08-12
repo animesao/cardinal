@@ -126,9 +126,8 @@ jobs:
         run: |
           VERSION=${{ needs.version.outputs.new_ver }}
           
-          # Install nfpm
-          NFPM_VERSION="2.39.1"
-          curl -fsSL "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz" | tar xz -C /usr/local/bin nfpm
+          # Install nfpm via go install (Go is already available)
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
           
           # Export arch variable for nfpm.yaml
           export ARCH=amd64
