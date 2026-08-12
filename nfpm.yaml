@@ -11,7 +11,7 @@ homepage: https://github.com/animesao/dck
 license: MIT
 
 contents:
-  - src: ./dck-linux-${ARCH}
+  - src: ./dck-linux-amd64
     dst: /usr/bin/dck
 
 scripts:
