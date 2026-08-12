@@ -179,7 +179,10 @@ func updateInstallTarget(selfPath string) (string, bool) {
 }
 
 func installUpdateBinary(sourcePath, targetPath string, allowSudo bool) error {
-	args := []string{"-m", "0755", sourcePath, targetPath}
+	// -D creates the destination's parent directories. This matters on minimal
+	// hosts where /usr/local/bin may not exist yet, and keeps the installer
+	// behavior deterministic for custom target paths.
+	args := []string{"-D", "-m", "0755", sourcePath, targetPath}
 	cmd := exec.Command("install", args...)
 	output, err := cmd.CombinedOutput()
 	if err == nil {
