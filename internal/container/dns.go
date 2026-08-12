@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"dck/internal/log"
 	"dck/internal/state"
 )
 
@@ -139,7 +140,10 @@ func EnsureContainerHosts(mergedDir, containerName, containerIP string, dns []st
 
 	// Inject known container names into /etc/hosts
 	hostsPath := filepath.Join(mergedDir, "etc", "hosts")
-	hostsData, _ := os.ReadFile(hostsPath)
+	hostsData, hostsErr := os.ReadFile(hostsPath)
+	if hostsErr != nil && !os.IsNotExist(hostsErr) {
+		log.Warn("read hosts file: %v", hostsErr)
+	}
 	hostsContent := string(hostsData)
 
 	if !strings.Contains(hostsContent, "# dck-managed") {

@@ -256,7 +256,10 @@ func InitContainer(id, merged string) error {
 		return err
 	}
 
-	cfgData, _ := os.ReadFile(state.ImageDir(c.ImageName, c.ImageTag) + "/config.json")
+	cfgData, cfgErr := os.ReadFile(state.ImageDir(c.ImageName, c.ImageTag) + "/config.json")
+	if cfgErr != nil {
+		log.Warn("read image config: %v", cfgErr)
+	}
 
 	if err := syscall.Sethostname([]byte(c.Hostname)); err != nil {
 		return fmt.Errorf("sethostname: %w", err)

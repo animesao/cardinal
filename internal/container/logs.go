@@ -11,7 +11,10 @@ import (
 	"time"
 )
 
-const maxLogFiles = 5
+const (
+	maxLogFiles = 5
+	maxLogSize  = 100 << 20 // 100 MB per log file before rotation
+)
 
 // OpenFreshLogFile opens the current log for a new run and rotates old logs.
 func OpenFreshLogFile(path string, mode os.FileMode) (*os.File, error) {
@@ -19,6 +22,50 @@ func OpenFreshLogFile(path string, mode os.FileMode) (*os.File, error) {
 		return nil, err
 	}
 	return os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
+}
+
+// RotatingWriter wraps an os.File and triggers rotation when the file exceeds
+// maxLogSize. The parent container path is needed to compute sibling names.
+type RotatingWriter struct {
+	f    *os.File
+	path string
+	mode os.FileMode
+	size int64
+	max  int64
+}
+
+// Write implements io.Writer. When the file exceeds the size limit it is
+// rotated and a fresh file is opened.
+func (w *RotatingWriter) Write(p []byte) (int, error) {
+	n, err := w.f.Write(p)
+	w.size += int64(n)
+	if w.size >= w.max {
+		_ = w.f.Close()
+		if rErr := rotateLogFile(w.path, maxLogFiles); rErr != nil {
+			return n, rErr
+		}
+		f, oErr := os.OpenFile(w.path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, w.mode)
+		if oErr != nil {
+			return n, oErr
+		}
+		w.f = f
+		w.size = 0
+	}
+	return n, err
+}
+
+// Close closes the underlying file.
+func (w *RotatingWriter) Close() error {
+	return w.f.Close()
+}
+
+// NewRotatingWriter returns a writer that rotates the log file at maxLogSize.
+func NewRotatingWriter(path string, mode os.FileMode) (*RotatingWriter, error) {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
+	if err != nil {
+		return nil, err
+	}
+	return &RotatingWriter{f: f, path: path, mode: mode, max: maxLogSize}, nil
 }
 
 func rotateLogFile(path string, maxFiles int) error {

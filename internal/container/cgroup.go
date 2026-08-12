@@ -65,7 +65,11 @@ func setupContainerCgroup(id string, pid int, memoryLimit int64, cpuCount float6
 		// Also enable in dck's own subtree so children inherit controllers
 		dckSub := filepath.Join(basePath, "cgroup.subtree_control")
 		for _, ctrl := range []string{"memory", "cpu", "pids"} {
-			data, _ := os.ReadFile(dckSub)
+			data, readErr := os.ReadFile(dckSub)
+			if readErr != nil {
+				log.Warn("read subtree_control: %v", readErr)
+				continue
+			}
 			if !strings.Contains(string(data), ctrl) {
 				if err := os.WriteFile(dckSub, []byte("+"+ctrl+"\n"), 0644); err != nil {
 					log.Warn("enable cgroup controller %s: %v", ctrl, err)

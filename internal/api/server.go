@@ -174,6 +174,23 @@ func corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+var allowedCORSOrigins []string
+
+func init() {
+	// Default: localhost and loopback only.
+	allowedCORSOrigins = []string{"localhost", "127.0.0.1", "::1"}
+	// DCK_CORS_ORIGINS is a comma-separated list of additional hostnames or IPs
+	// allowed as CORS origins (e.g. "myapp.example.com,10.0.0.5").
+	if env := os.Getenv("DCK_CORS_ORIGINS"); env != "" {
+		for _, h := range strings.Split(env, ",") {
+			h = strings.TrimSpace(h)
+			if h != "" {
+				allowedCORSOrigins = append(allowedCORSOrigins, h)
+			}
+		}
+	}
+}
+
 func isAllowedCORSOrigin(origin string) bool {
 	parsed, err := url.Parse(origin)
 	if err != nil || parsed.User != nil || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
@@ -183,7 +200,12 @@ func isAllowedCORSOrigin(origin string) bool {
 		return false
 	}
 	host := parsed.Hostname()
-	return host == "localhost" || host == "127.0.0.1" || host == "::1"
+	for _, allowed := range allowedCORSOrigins {
+		if host == allowed {
+			return true
+		}
+	}
+	return false
 }
 
 func jsonContentType(next http.Handler) http.Handler {

@@ -265,13 +265,16 @@ func (c *Container) setupIO(cmd *exec.Cmd) (func(), error) {
 		cmd.Stderr = os.Stderr
 		return nil, nil
 	default:
-		logFile, err := OpenFreshLogFile(c.LogFile(), 0600)
+		if err := rotateLogFile(c.LogFile(), maxLogFiles); err != nil {
+			return nil, fmt.Errorf("rotate log: %w", err)
+		}
+		rotWriter, err := NewRotatingWriter(c.LogFile(), 0600)
 		if err != nil {
 			return nil, fmt.Errorf("log: %w", err)
 		}
-		cmd.Stdout = io.MultiWriter(logFile, os.Stdout)
-		cmd.Stderr = io.MultiWriter(logFile, os.Stderr)
-		return func() { _ = logFile.Close() }, nil
+		cmd.Stdout = io.MultiWriter(rotWriter, os.Stdout)
+		cmd.Stderr = io.MultiWriter(rotWriter, os.Stderr)
+		return func() { _ = rotWriter.Close() }, nil
 	}
 }
 
@@ -553,7 +556,11 @@ func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 				return
 			}
 			go func() {
-				time.Sleep(c.restartDelay())
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(c.restartDelay()):
+				}
 				if !c.canRestartAfterDelay() {
 					return
 				}
