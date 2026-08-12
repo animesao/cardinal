@@ -1,7 +1,9 @@
 name: dck
-arch: "${ARCH}"
+# The workflow replaces these literal tokens before invoking nfpm.
+# nfpm does not expand environment variables in YAML values.
+arch: "__ARCH__"
 platform: linux
-version: "${VERSION}"
+version: "__VERSION__"
 section: utils
 priority: optional
 maintainer: animesao <igorerantaev66@gmail.com>
@@ -11,11 +13,8 @@ homepage: https://github.com/animesao/dck
 license: MIT
 
 contents:
-  - src: ./dck-linux-${BIN_ARCH}
+  - src: ./dck-linux-__BIN_ARCH__
     dst: /usr/bin/dck
-
-scripts:
-  postinstall: packaging/deb/DEBIAN/postinst
 
 rpm:
   group: System Environment/Base
@@ -24,3 +23,8 @@ rpm:
 archlinux:
   pkgbase: dck
   packager: animesao
+
+overrides:
+  deb:
+    scripts:
+      postinstall: packaging/deb/DEBIAN/postinst

@@ -49,17 +49,20 @@ makepkg -si
 
 **Fedora / RHEL / CentOS:**
 
+Скачайте asset с именем `dck-<VERSION>-linux-amd64.rpm` из [последнего GitHub-релиза](https://github.com/animesao/dck/releases/latest), затем установите локальный файл:
+
 ```bash
-# Скачать .rpm из GitHub releases
-rpm -i https://github.com/animesao/dck/releases/latest/download/dck_*_x86_64.rpm
+sudo dnf install ./dck-<VERSION>-linux-amd64.rpm
+# Для старых систем:
+# sudo rpm -Uvh ./dck-<VERSION>-linux-amd64.rpm
 ```
 
 **Debian / Ubuntu (.deb):**
 
+Скачайте asset с именем `dck-<VERSION>-linux-amd64.deb` из [последнего GitHub-релиза](https://github.com/animesao/dck/releases/latest), затем установите локальный файл:
+
 ```bash
-# Скачать .deb из GitHub releases
-dpkg -i https://github.com/animesao/dck/releases/latest/download/dck_*_amd64.deb
-apt-get install -f
+sudo apt install ./dck-<VERSION>-linux-amd64.deb
 ```
 
 **Snap (любой дистрибутив с snapd):**
@@ -101,7 +104,7 @@ dck run --rm alpine:latest echo "DCK UPDATE OK"
 
 ```bash
 curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
-  https://github.com/animesao/dck/releases/download/v1.22.38/dck-linux-amd64
+  https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64
 sudo mv /tmp/dck-new /usr/local/bin/dck
 sudo chmod +x /usr/local/bin/dck
 sudo systemctl restart dck-bootstrap   # если установлен systemd supervisor
@@ -783,7 +786,7 @@ dck logs ИМЯ
 
 ```bash
 curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
-  https://github.com/animesao/dck/releases/download/v1.22.38/dck-linux-amd64
+  https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64
 sudo mv /tmp/dck-new /usr/local/bin/dck
 sudo chmod +x /usr/local/bin/dck
 sudo systemctl restart dck-bootstrap

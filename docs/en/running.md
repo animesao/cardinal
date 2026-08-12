@@ -49,17 +49,20 @@ makepkg -si
 
 **Fedora / RHEL / CentOS:**
 
+Download the release asset named `dck-<VERSION>-linux-amd64.rpm` from the [latest GitHub release](https://github.com/animesao/dck/releases/latest), then install the local file:
+
 ```bash
-# Download the .rpm from GitHub releases
-rpm -i https://github.com/animesao/dck/releases/latest/download/dck_*_x86_64.rpm
+sudo dnf install ./dck-<VERSION>-linux-amd64.rpm
+# On older systems:
+# sudo rpm -Uvh ./dck-<VERSION>-linux-amd64.rpm
 ```
 
 **Debian / Ubuntu (.deb):**
 
+Download the release asset named `dck-<VERSION>-linux-amd64.deb` from the [latest GitHub release](https://github.com/animesao/dck/releases/latest), then install the local file:
+
 ```bash
-# Download the .deb from GitHub releases
-dpkg -i https://github.com/animesao/dck/releases/latest/download/dck_*_amd64.deb
-apt-get install -f
+sudo apt install ./dck-<VERSION>-linux-amd64.deb
 ```
 
 **Snap (any distro with snapd):**
@@ -101,7 +104,7 @@ If `dck update` cannot download the binary (older releases failed with `Failed t
 
 ```bash
 curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
-  https://github.com/animesao/dck/releases/download/v1.22.38/dck-linux-amd64
+  https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64
 sudo mv /tmp/dck-new /usr/local/bin/dck
 sudo chmod +x /usr/local/bin/dck
 sudo systemctl restart dck-bootstrap   # if the systemd supervisor is installed
@@ -783,7 +786,7 @@ The updater used to time out after ten seconds, which was too short for multi-me
 
 ```bash
 curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
-  https://github.com/animesao/dck/releases/download/v1.22.38/dck-linux-amd64
+  https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64
 sudo mv /tmp/dck-new /usr/local/bin/dck
 sudo chmod +x /usr/local/bin/dck
 sudo systemctl restart dck-bootstrap

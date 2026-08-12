@@ -127,31 +127,44 @@ jobs:
           SUFFIX="${{ matrix.goarch }}"
           [ "$SUFFIX" = "arm" ] && SUFFIX="armv6"
 
-          # nfpm uses ARCH for package metadata and BIN_ARCH for the binary path.
-          export ARCH="${{ matrix.goarch }}"
-          export BIN_ARCH="$SUFFIX"
-          export VERSION="$VERSION"
+          # nfpm does not expand shell variables inside YAML. Generate a
+          # concrete config for this matrix entry before packaging.
+          # nfpm uses different architecture aliases than Go for some formats.
+          # Pass arm6 for GOARCH=arm/GOARM=6; nfpm maps it to armhf,
+          # armv6hl, armv6h, and armhf for deb, rpm, Arch, and APK.
+          NFPM_ARCH="${{ matrix.goarch }}"
+          [ "${{ matrix.goarch }}" = "arm" ] && NFPM_ARCH="arm6"
+
+          sed \
+            -e "s|__ARCH__|$NFPM_ARCH|g" \
+            -e "s|__BIN_ARCH__|$SUFFIX|g" \
+            -e "s|__VERSION__|$VERSION|g" \
+            nfpm.yaml > nfpm.generated.yaml
+
+          test -f "dck-linux-$SUFFIX"
+          grep -q "dck-linux-$SUFFIX" nfpm.generated.yaml
+          grep -q "version: \"$VERSION\"" nfpm.generated.yaml
+          cat nfpm.generated.yaml
 
           # Install nfpm via go install (Go is already available).
-          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0
 
           # Go installs binaries in GOBIN/GOPATH/bin; expose it explicitly.
           export PATH="$(go env GOPATH)/bin:$PATH"
 
-          nfpm package --packager deb --target "dck-$VERSION-linux-$SUFFIX.deb"
-          nfpm package --packager rpm --target "dck-$VERSION-linux-$SUFFIX.rpm"
-          nfpm package --packager archlinux --target "dck-$VERSION-linux-$SUFFIX.pkg.tar.zst"
-          nfpm package --packager apk --target "dck-$VERSION-linux-$SUFFIX.apk"
+          nfpm package --config nfpm.generated.yaml --packager deb --target "dck-$VERSION-linux-$SUFFIX.deb"
+          nfpm package --config nfpm.generated.yaml --packager rpm --target "dck-$VERSION-linux-$SUFFIX.rpm"
+          nfpm package --config nfpm.generated.yaml --packager archlinux --target "dck-$VERSION-linux-$SUFFIX.pkg.tar.zst"
+          nfpm package --config nfpm.generated.yaml --packager apk --target "dck-$VERSION-linux-$SUFFIX.apk"
 
           for f in \
             "dck-$VERSION-linux-$SUFFIX.deb" \
             "dck-$VERSION-linux-$SUFFIX.rpm" \
             "dck-$VERSION-linux-$SUFFIX.pkg.tar.zst" \
             "dck-$VERSION-linux-$SUFFIX.apk"; do
-            if [ -f "$f" ]; then
-              sha256sum "$f" > "${f}.sha256"
-              echo "Built: $f"
-            fi
+            test -s "$f"
+            sha256sum "$f" > "${f}.sha256"
+            echo "Built: $f"
           done
 
       - uses: actions/upload-artifact@v4
