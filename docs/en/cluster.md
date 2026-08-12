@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.23.19`
-**Project release:** `v1.23.19`
+**Documentation version:** `1.23.20`
+**Project release:** `v1.23.20`
 <!-- dck-version:end -->
 
 # Cluster Orchestration
