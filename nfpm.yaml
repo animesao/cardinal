@@ -24,10 +24,3 @@ rpm:
 archlinux:
   pkgbase: dck
   packager: animesao
-  compression: zstd
-  scripts:
-    post_install: packaging/arch/post-install.sh
-
-apk:
-  maintainers:
-    - animesao <igorerantaev66@gmail.com>
