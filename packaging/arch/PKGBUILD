@@ -1,0 +1,129 @@
+# Maintainer: animesao <animesao@users.noreply.github.com>
+pkgname=dck
+pkgver=1.23.2
+pkgrel=1
+pkgdesc='Lightweight container runtime for Linux'
+arch=('x86_64' 'aarch64')
+url='https://github.com/animesao/dck'
+license=('MIT')
+depends=('iptables' 'iproute2' 'util-linux' 'procps-ng' 'curl')
+optdepends=('ufw: firewall management')
+source=("${url}/releases/download/v${pkgver}/dck-linux-${CARCH}")
+sha256sums=('SKIP')
+
+package() {
+  install -Dm755 "dck-linux-${CARCH}" "${pkgdir}/usr/bin/dck"
+
+  # Install systemd service
+  install -Dm644 /dev/stdin "${pkgdir}/usr/lib/systemd/system/dck-bootstrap.service" <<'EOF'
+[Unit]
+Description=dck container runtime supervisor
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/dck supervisor
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  # Install bash completion
+  install -Dm644 /dev/stdin "${pkgdir}/usr/share/bash-completion/completions/dck" <<'COMPLETION'
+_dck() {
+  local cur prev commands
+  COMPREPLY=()
+  cur="${COMP_WORDS[COMP_CWORD]}"
+  prev="${COMP_WORDS[COMP_CWORD-1]}"
+  commands="run pull push ps inspect stop start restart rm logs exec stats top attach backup volume network images search update version info doctor set commit cp"
+
+  if [[ ${cur} == -* ]] ; then
+    COMPREPLY=( $(compgen -W "-d -n -i -t -p -v -e -h --rm --restart --restart-delay --restart-max-attempts --restart-window --memory --ram --cpu --disk --workdir --image --cmd --command --entrypoint --network --env-file --volume --vol --ports --cap-add --cap-drop --user --readonly --no-new-privs --sysctl --ulimit --dns --startup --healthcheck-cmd --healthcheck-interval --healthcheck-retries --healthcheck-timeout --no-stream --previous --all --strict --help" -- "${cur}") )
+    return 0
+  fi
+
+  COMPREPLY=( $(compgen -W "${commands}" -- "${cur}") )
+  return 0
+}
+complete -F _dck dck
+COMPLETION
+
+  # Install man page
+  install -Dm644 /dev/stdin "${pkgdir}/usr/share/man/man1/dck.1" <<'MAN'
+.TH DCK 1 "2026" "dck" "User Commands"
+.SH NAME
+dck \- lightweight container runtime for Linux
+.SH SYNOPSIS
+.B dck
+.IR COMMAND " [" OPTIONS "] [" ARGUMENTS ]
+.SH DESCRIPTION
+.B dck
+is a lightweight container runtime that provides container creation,
+management, monitoring, and orchestration capabilities using Linux
+namespaces, cgroups v2, and OverlayFS.
+.SH COMMANDS
+.TP
+.B run
+Create and start a container.
+.TP
+.B ps
+List containers.
+.TP
+.B stop
+Stop containers.
+.TP
+.B start
+Start stopped containers.
+.TP
+.B rm
+Remove containers.
+.TP
+.B logs
+Show container logs.
+.TP
+.B exec
+Execute commands in running containers.
+.TP
+.B backup
+Manage automatic and manual backups.
+.TP
+.B volume
+Manage named volumes.
+.TP
+.B network
+Manage user-defined networks.
+.TP
+.B images
+List local images.
+.TP
+.B pull
+Pull images from a registry.
+.TP
+.B push
+Push images to a registry.
+.TP
+.B search
+Search Docker Hub.
+.TP
+.B inspect
+Show container details.
+.TP
+.B stats
+Show container resource usage.
+.TP
+.B update
+Update dck to the latest version.
+.TP
+.B doctor
+Run system diagnostics.
+.SH SEE ALSO
+.UR https://github.com/animesao/dck
+dck documentation
+.UE
+.SH AUTHOR
+animesao
+MAN
+}

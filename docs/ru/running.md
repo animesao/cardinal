@@ -24,19 +24,59 @@ uname -a
 
 ## 2. Установка и обновление dck
 
-Установка через APT на Debian/Ubuntu:
+### Универсальный установщик (все дистрибутивы)
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/animesao/dck/main/scripts/install-apt.sh | sudo bash
-```
-
-Универсальная установка для Linux:
+Скрипт автоматически определяет дистрибутив и устанавливает dck + зависимости:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/animesao/dck/main/install.sh | sudo bash
 ```
 
-Проверка:
+Поддерживаемые дистрибутивы: **Ubuntu, Debian, Arch, Manjaro, Fedora, RHEL, CentOS, Rocky, Alma, openSUSE, Alpine, Void Linux** и другие.
+
+### Установка для конкретных дистрибутивов
+
+**Arch Linux / Manjaro (AUR):**
+
+```bash
+# Через AUR-хелпер (yay/paru)
+yay -S dck
+# Или из исходников
+git clone https://aur.archlinux.org/dck.git
+cd dck
+makepkg -si
+```
+
+**Fedora / RHEL / CentOS:**
+
+```bash
+# Скачать .rpm из GitHub releases
+rpm -i https://github.com/animesao/dck/releases/latest/download/dck_*_x86_64.rpm
+```
+
+**Debian / Ubuntu (.deb):**
+
+```bash
+# Скачать .deb из GitHub releases
+dpkg -i https://github.com/animesao/dck/releases/latest/download/dck_*_amd64.deb
+apt-get install -f
+```
+
+**Snap (любой дистрибутив с snapd):**
+
+```bash
+sudo snap install dck --classic
+```
+
+**Ручная установка бинарника:**
+
+```bash
+curl -fsSL https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64 -o /usr/local/bin/dck
+chmod +x /usr/local/bin/dck
+dck bootstrap --install
+```
+
+### Проверка
 
 ```bash
 dck version

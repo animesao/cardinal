@@ -12,10 +12,17 @@ builds:
 nfpms:
   - package_name: dck
     file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Arch }}"
-    formats: [deb]
+    formats: [deb, rpm, archlinux, apk]
     vendor: animesao
     homepage: https://github.com/animesao/dck
     description: Lightweight container runtime
+    maintainer: animesao <animesao@users.noreply.github.com>
+    license: MIT
+    contents:
+      - src: /usr/local/bin/dck
+        dst: /usr/bin/dck
+    scripts:
+      postinstall: packaging/deb/DEBIAN/postinst
 
 archives:
   - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
@@ -30,3 +37,8 @@ release:
   github:
     owner: animesao
     name: dck
+  extra_files:
+    - glob: dist/*.deb
+    - glob: dist/*.rpm
+    - glob: dist/*.pkg.tar.zst
+    - glob: dist/*.apk

@@ -24,19 +24,59 @@ uname -a
 
 ## 2. Install or update dck
 
-Debian/Ubuntu APT installation:
+### Universal installer (all distros)
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/animesao/dck/main/scripts/install-apt.sh | sudo bash
-```
-
-Generic Linux installation:
+The install script auto-detects your distro and installs dck + dependencies:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/animesao/dck/main/install.sh | sudo bash
 ```
 
-Verify the installation:
+Supported distros: **Ubuntu, Debian, Arch, Manjaro, Fedora, RHEL, CentOS, Rocky, Alma, openSUSE, Alpine, Void Linux**, and more.
+
+### Distribution-specific methods
+
+**Arch Linux / Manjaro (AUR):**
+
+```bash
+# Using an AUR helper (yay/paru)
+yay -S dck
+# Or from source
+git clone https://aur.archlinux.org/dck.git
+cd dck
+makepkg -si
+```
+
+**Fedora / RHEL / CentOS:**
+
+```bash
+# Download the .rpm from GitHub releases
+rpm -i https://github.com/animesao/dck/releases/latest/download/dck_*_x86_64.rpm
+```
+
+**Debian / Ubuntu (.deb):**
+
+```bash
+# Download the .deb from GitHub releases
+dpkg -i https://github.com/animesao/dck/releases/latest/download/dck_*_amd64.deb
+apt-get install -f
+```
+
+**Snap (any distro with snapd):**
+
+```bash
+sudo snap install dck --classic
+```
+
+**Manual binary install:**
+
+```bash
+curl -fsSL https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64 -o /usr/local/bin/dck
+chmod +x /usr/local/bin/dck
+dck bootstrap --install
+```
+
+### Verify the installation
 
 ```bash
 dck version

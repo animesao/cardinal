@@ -1,25 +1,106 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# dck Container Runtime Installer
+# dck Container Runtime Installer — Universal Linux
 # Usage: curl -sSL https://raw.githubusercontent.com/animesao/dck/main/install.sh | sudo bash
 
 REPO="animesao/dck"
 DCK_BIN="/usr/local/bin/dck"
 
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 log()  { echo -e "${GREEN}[+]${NC} $1"; }
 warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 err()  { echo -e "${RED}[x]${NC} $1"; exit 1; }
+info() { echo -e "${CYAN}[i]${NC} $1"; }
 
 if [[ $EUID -ne 0 ]]; then err "Must run as root: sudo bash install.sh"; fi
-if [[ ! -f /etc/os-release ]]; then err "Unsupported OS"; fi
+if [[ ! -f /etc/os-release ]]; then err "Cannot detect OS — /etc/os-release not found"; fi
 source /etc/os-release
-if [[ "$ID" != "ubuntu" && "$ID" != "debian" ]]; then err "Unsupported OS: $ID"; fi
-log "OS: $PRETTY_NAME"
 
+log "OS: ${PRETTY_NAME:-$ID $VERSION_ID}"
+
+# ---- Detect architecture ----
 ARCH="amd64"
-if [[ "$(uname -m)" == "aarch64" ]]; then ARCH="arm64"; fi
+case "$(uname -m)" in
+  x86_64)  ARCH="amd64" ;;
+  aarch64) ARCH="arm64" ;;
+  armv7l)  ARCH="armv6" ;;
+  *)       ARCH="amd64"; warn "Unknown arch $(uname -m), defaulting to amd64" ;;
+esac
+info "Architecture: $ARCH"
+
+# ---- Detect package manager and distro family ----
+PKG_MGR=""
+PKG_INSTALL=""
+PKG_DEPS=""
+SERVICE_RELOAD=""
+
+case "${ID:-}" in
+  ubuntu|debian|linuxmint|pop|elementary|zorin|kali|raspbian)
+    PKG_MGR="apt"
+    PKG_INSTALL="apt-get install -y -qq"
+    PKG_DEPS="curl tar gzip sudo ufw util-linux iproute2 iptables procps"
+    SERVICE_RELOAD="systemctl daemon-reload"
+    ;;
+  arch|manjaro|endeavouros|garuda|arco|athena)
+    PKG_MGR="pacman"
+    PKG_INSTALL="pacman -S --noconfirm --needed"
+    PKG_DEPS="curl tar gzip sudo iptables-nft procps-ng iproute2"
+    SERVICE_RELOAD="systemctl daemon-reload"
+    ;;
+  fedora|rhel|centos|rocky|alma|nobara|rawhide)
+    PKG_MGR="dnf"
+    PKG_INSTALL="dnf install -y -q"
+    PKG_DEPS="curl tar gzip sudo iptables procps-ng iproute"
+    SERVICE_RELOAD="systemctl daemon-reload"
+    # Fall back to yum on older RHEL
+    if command -v yum &>/dev/null && ! command -v dnf &>/dev/null; then
+      PKG_MGR="yum"
+      PKG_INSTALL="yum install -y -q"
+    fi
+    ;;
+  opensuse*|sles|opensuse-tumbleweed)
+    PKG_MGR="zypper"
+    PKG_INSTALL="zypper install -y -n"
+    PKG_DEPS="curl tar gzip sudo iptables procps iproute2"
+    SERVICE_RELOAD="systemctl daemon-reload"
+    ;;
+  alpine)
+    PKG_MGR="apk"
+    PKG_INSTALL="apk add --no-cache"
+    PKG_DEPS="curl tar gzip sudo iptables procps iproute2"
+    SERVICE_RELOAD=""
+    ;;
+  void)
+    PKG_MGR="xbps"
+    PKG_INSTALL="xbps-install -Sy"
+    PKG_DEPS="curl tar gzip sudo iptables procps iproute2"
+    SERVICE_RELOAD=""
+    ;;
+  *)
+    warn "Unknown distro: ${ID:-unknown}. Will try to install binary only."
+    PKG_MGR="manual"
+    PKG_INSTALL=""
+    PKG_DEPS=""
+    SERVICE_RELOAD=""
+    ;;
+esac
+
+if [[ "$PKG_MGR" == "manual" ]]; then
+  warn "Package manager not detected. Will download binary directly."
+else
+  info "Package manager: $PKG_MGR"
+fi
+
+# ---- Install dependencies ----
+if [[ -n "$PKG_DEPS" ]]; then
+  log "Installing dependencies..."
+  case "$PKG_MGR" in
+    apt)    apt-get update -qq ;;
+    pacman) pacman -Sy --noconfirm --needed 2>/dev/null || true ;;
+  esac
+  $PKG_INSTALL $PKG_DEPS 2>/dev/null || warn "Some dependencies may be missing"
+fi
 
 # ---- Detect latest version ----
 log "Fetching latest release..."
@@ -30,11 +111,6 @@ if [[ -z "$LATEST_TAG" ]]; then
   err "Could not detect latest release. Check https://github.com/$REPO/releases"
 fi
 log "Latest version: $LATEST_TAG"
-
-# ---- Dependencies ----
-log "Installing dependencies..."
-apt-get update -qq
-apt-get install -y -qq curl tar gzip sudo ufw
 
 # ---- Download binary ----
 log "Downloading dck ${LATEST_TAG} (${ARCH})..."
@@ -60,8 +136,9 @@ if ! "$DCK_BIN" --version &>/dev/null; then
     rm -rf "$TMPDIR"
     log "Built from source: $DCK_BIN"
   else
-    warn "Go not installed. Installing Go 1.21 to build from source..."
-    curl -fsSL "https://go.dev/dl/go1.21.13.linux-amd64.tar.gz" -o /tmp/go.tar.gz
+    warn "Go not installed. Installing Go to build from source..."
+    GO_VER="1.23.4"
+    curl -fsSL "https://go.dev/dl/go${GO_VER}.linux-${ARCH}.tar.gz" -o /tmp/go.tar.gz
     tar -C /usr/local -xzf /tmp/go.tar.gz
     export PATH=$PATH:/usr/local/go/bin
     TMPDIR=$(mktemp -d)
@@ -76,23 +153,35 @@ if ! "$DCK_BIN" --version &>/dev/null; then
   fi
 fi
 
-# ---- System deps for dck ----
-log "Installing dck system dependencies..."
-apt-get install -y -qq util-linux iproute2 iptables procps curl 2>/dev/null || true
-
-# ---- UFW ----
-if command -v ufw &>/dev/null; then
-  ufw allow 22/tcp 2>/dev/null || true
-  ufw --force enable 2>/dev/null || true
-  log "UFW configured (allow SSH)"
-fi
-
-# ---- IP forwarding ----
+# ---- Enable IP forwarding ----
 if [[ -f /proc/sys/net/ipv4/ip_forward ]]; then
   echo 1 > /proc/sys/net/ipv4/ip_forward
   grep -q "net.ipv4.ip_forward=1" /etc/sysctl.conf 2>/dev/null || \
     echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
   log "IP forwarding enabled"
+fi
+
+# ---- Firewall (if available) ----
+if command -v ufw &>/dev/null; then
+  ufw allow 22/tcp 2>/dev/null || true
+  ufw --force enable 2>/dev/null || true
+  log "UFW configured (allow SSH)"
+elif command -v firewall-cmd &>/dev/null; then
+  firewall-cmd --permanent --add-service=ssh 2>/dev/null || true
+  firewall-cmd --reload 2>/dev/null || true
+  log "firewalld configured (allow SSH)"
+elif command -v iptables &>/dev/null; then
+  iptables -A INPUT -p tcp --dport 22 -j ACCEPT 2>/dev/null || true
+  log "iptables configured (allow SSH)"
+fi
+
+# ---- Bootstrap systemd service ----
+if [[ -d /run/systemd/system ]]; then
+  log "Installing systemd service..."
+  "$DCK_BIN" bootstrap --install 2>/dev/null || true
+  if [[ -n "$SERVICE_RELOAD" ]]; then
+    $SERVICE_RELOAD 2>/dev/null || true
+  fi
 fi
 
 # ---- Verify ----
@@ -105,9 +194,9 @@ fi
 
 # ---- Done ----
 echo ""
-log "════════════════════════════════════════"
+log "═══════════════════════════════════════════════"
 log "  dck installed successfully!"
-log "════════════════════════════════════════"
+log "═══════════════════════════════════════════════"
 log ""
 log "  Quick start:"
 log "    dck pull alpine"
