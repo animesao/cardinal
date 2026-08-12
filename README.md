@@ -5,7 +5,7 @@
 
 <p align="center">
   <!-- dck-version-badge:start -->
-  <img src="https://img.shields.io/badge/version-v1.23.18-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-v1.23.19-blue?style=flat-square">
   <!-- dck-version-badge:end -->
   <img src="https://img.shields.io/badge/go-1.25%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square">
