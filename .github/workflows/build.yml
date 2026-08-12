@@ -149,8 +149,10 @@ jobs:
           echo "$RUNTIME_SHA256  runtime" | sha256sum -c -
 
           rm -rf AppDir
-          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/bin AppDir/usr/libexec
           cp "dck-linux-$SUFFIX" AppDir/usr/bin/dck
+          cp install-appimage.sh AppDir/usr/libexec/dck-install-appimage
+          chmod +x AppDir/usr/libexec/dck-install-appimage
           cat > AppDir/dck.svg <<'EOF'
           <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="dck">
             <rect width="256" height="256" rx="48" fill="#111827"/>
@@ -162,6 +164,23 @@ jobs:
           #!/bin/sh
           set -eu
           HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+          # A double-clicked AppImage has no terminal. Open one for the
+          # installer; normal CLI invocations with arguments stay unchanged.
+          if [ "$#" -eq 0 ] || [ "${1:-}" = "--install" ]; then
+            if [ "$#" -eq 0 ] && [ ! -t 1 ] && [ -n "${APPIMAGE:-}" ]; then
+              for terminal in x-terminal-emulator gnome-terminal konsole xfce4-terminal mate-terminal; do
+                if command -v "$terminal" >/dev/null 2>&1; then
+                  case "$terminal" in
+                    gnome-terminal) exec "$terminal" -- "$APPIMAGE" --install ;;
+                    *) exec "$terminal" -e "$APPIMAGE" --install ;;
+                  esac
+                fi
+              done
+            fi
+            exec "$HERE/usr/libexec/dck-install-appimage" "${APPIMAGE:-}" "$HERE/usr/bin/dck"
+          fi
+
           exec "$HERE/usr/bin/dck" "$@"
           EOF
           chmod +x AppDir/AppRun
@@ -178,6 +197,7 @@ jobs:
           EOF
 
           test -x AppDir/AppRun
+          test -x AppDir/usr/libexec/dck-install-appimage
           test -f AppDir/dck.desktop
           test -f AppDir/dck.svg
           test -x AppDir/usr/bin/dck

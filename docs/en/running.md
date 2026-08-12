@@ -92,8 +92,8 @@ curl -fL -o dck-linux-amd64.AppImage \
 chmod +x dck-linux-amd64.AppImage
 ./dck-linux-amd64.AppImage version
 
-# Optional: make it available as dck
-sudo install -m 0755 dck-linux-amd64.AppImage /usr/local/bin/dck
+# Install the embedded binary and enable the supervisor
+./dck-linux-amd64.AppImage --install
 ```
 
 For ARM64, use `dck-<VERSION>-linux-arm64.AppImage` instead. AppImage does
@@ -102,6 +102,35 @@ cgroups, OverlayFS, mount, and networking capabilities. The release does not
 publish a standard AppImage for ARMv6 because the official AppImage runtime
 supports x86_64, aarch64, and armhf, not true ARMv6. ARMv6 users should use
 the `dck-linux-armv6` binary or `.tar.gz` archive.
+
+#### Install by double-clicking on a Linux desktop
+
+The dck AppImage is a CLI runtime, not a graphical application. When you
+double-click the AppImage in a Linux file manager, it opens an available
+terminal and runs the desktop installer. The installer extracts the embedded
+static dck binary to `/usr/local/bin/dck`, asks for administrator permission
+when needed, and installs/starts `dck-bootstrap.service` when systemd is
+available. Your containers and images remain in the existing dck data
+directory, and the original AppImage remains portable.
+
+You can also start the same installer from a terminal:
+
+```bash
+./dck-linux-amd64.AppImage --install
+```
+
+To use the AppImage only as a portable CLI, pass a normal dck command instead:
+
+```bash
+./dck-linux-amd64.AppImage version
+./dck-linux-amd64.AppImage run --rm --network none alpine:latest echo OK
+```
+
+If double-clicking does nothing, make the file executable and choose **Run**
+rather than **Display** in the file manager. A desktop environment must have a
+terminal emulator installed (`x-terminal-emulator`, GNOME Terminal, Konsole,
+XFCE Terminal, or MATE Terminal). On a headless VPS, use the terminal commands
+above instead.
 
 ### Verify the installation
 

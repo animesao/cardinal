@@ -69,6 +69,18 @@ the Linux kernel features listed above. True ARMv6 hosts should use the raw
 `dck-linux-armv6` binary or its `.tar.gz` archive because the standard AppImage
 runtime does not support ARMv6.
 
+On a Linux desktop, double-clicking the AppImage opens a terminal-based installer
+that installs the embedded static binary to `/usr/local/bin/dck` and enables
+the systemd supervisor when available. The original AppImage remains portable.
+You can start the same installer explicitly with
+
+```bash
+./dck-<VERSION>-linux-amd64.AppImage --install
+```
+The AppImage remains a CLI runtime; pass a dck command such as `version` or
+`run` for normal portable use. On a headless VPS, run the AppImage from SSH
+instead of double-clicking it.
+
 ---
 
 ## Key Concepts
