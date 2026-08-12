@@ -1,3 +1,8 @@
+<!-- dck-version:start -->
+**Documentation version:** `1.23.17`
+**Project release:** `v1.23.17`
+<!-- dck-version:end -->
+
 # Usage & Commands
 
 dck is a lightweight container runtime — no daemon, no Docker. Just containers.

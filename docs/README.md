@@ -1,3 +1,10 @@
+<!-- dck-version:start -->
+**Documentation version:** `1.23.17`
+**Project release:** `v1.23.17`
+<!-- dck-version:end -->
+
+> Version markers are generated from the root `VERSION` file. Run `make docs` to update all Markdown files, or `make docs-check` in CI to verify synchronization.
+
 # dck Documentation
 
 **dck** — ~5 MB static binary, zero daemon. Drop-in container runtime for Linux.
@@ -156,7 +163,6 @@ The running guides cover installation, image/tag syntax, bind mounts, `.env`, Py
 | `dck update [--check]` | Self-update |
 | `dck bootstrap [--install\|--remove]` | Install/start or remove the systemd supervisor |
 | `dck version / --version / -v` | Show version |
-| `dck help / --help / -h` | Show help |
 | `dck help / --help / -h` | Show help |
 
 ## Run Options

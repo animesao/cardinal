@@ -1,3 +1,8 @@
+<!-- dck-version:start -->
+**Documentation version:** `1.23.17`
+**Project release:** `v1.23.17`
+<!-- dck-version:end -->
+
 # Compose / Развёртывание
 
 ## `dck up [имя] [-f <файл>]`

@@ -1,3 +1,8 @@
+<!-- dck-version:start -->
+**Documentation version:** `1.23.17`
+**Project release:** `v1.23.17`
+<!-- dck-version:end -->
+
 # dck Backups Guide
 
 Complete guide to automatic and manual backups, restoration, downloading backups to your local machine, and safety guarantees.

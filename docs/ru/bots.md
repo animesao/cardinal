@@ -1,3 +1,8 @@
+<!-- dck-version:start -->
+**Documentation version:** `1.23.17`
+**Project release:** `v1.23.17`
+<!-- dck-version:end -->
+
 # Развёртывание ботов с dck
 
 Запускайте Telegram, Discord, Slack ботов и других в контейнерах dck с постоянным хранилищем и авто-перезапуском.

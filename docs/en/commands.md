@@ -1,3 +1,8 @@
+<!-- dck-version:start -->
+**Documentation version:** `1.23.17`
+**Project release:** `v1.23.17`
+<!-- dck-version:end -->
+
 # dck CLI Command Reference
 
 This is the complete command reference for the Linux `dck` binary. It describes the command tree, positional arguments, short and long flags, aliases, defaults, and safety rules.

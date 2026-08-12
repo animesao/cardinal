@@ -1,4 +1,23 @@
+<!-- dck-version:start -->
+**Documentation version:** `1.23.17`
+**Project release:** `v1.23.17`
+<!-- dck-version:end -->
+
 # Changelog
+
+<!-- dck-current-release:start -->
+> Current release: **v1.23.17**. Detailed release notes below are maintained manually.
+<!-- dck-current-release:end -->
+
+## 1.23.17 (2026-08-12)
+
+### Documentation and release automation
+
+- Added a single-source documentation version marker synchronized from `VERSION` across every Markdown file.
+- Added `scripts/sync-docs-version.sh --check` and CI validation so stale documentation versions fail before release.
+- Updated installation, AppImage, update, backup, verification, restart, and multi-architecture guidance in English and Russian.
+- Removed unreliable third-party download mirror instructions and replaced unsafe manual binary replacement examples with `install -D`.
+- Fixed duplicate help/bootstrap documentation entries.
 
 ## 1.23.0 (2026-08-11)
 

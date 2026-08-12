@@ -1,3 +1,8 @@
+<!-- dck-version:start -->
+**Documentation version:** `1.23.17`
+**Project release:** `v1.23.17`
+<!-- dck-version:end -->
+
 # dck Command Examples
 
 Practical recipes for Linux hosts. Replace image names, passwords, paths, and public ports with your own values.

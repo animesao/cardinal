@@ -30,6 +30,15 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
 
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check documentation version markers
+        run: ./scripts/sync-docs-version.sh --check
+      - name: Check Markdown whitespace
+        run: git diff --check
+
   build:
     runs-on: ubuntu-latest
     needs: lint

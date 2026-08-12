@@ -1,3 +1,8 @@
+<!-- dck-version:start -->
+**Documentation version:** `1.23.17`
+**Project release:** `v1.23.17`
+<!-- dck-version:end -->
+
 # Running dck Containers
 
 This guide covers the complete day-to-day workflow: install dck, pull an image, run an application, mount persistent files, configure environment variables, inspect logs, update code, and recover from common errors.
@@ -49,20 +54,30 @@ makepkg -si
 
 **Fedora / RHEL / CentOS:**
 
-Download the release asset named `dck-<VERSION>-linux-amd64.rpm` from the [latest GitHub release](https://github.com/animesao/dck/releases/latest), then install the local file:
+Download and install the latest RPM asset from the [GitHub release page](https://github.com/animesao/dck/releases/latest):
 
 ```bash
-sudo dnf install ./dck-<VERSION>-linux-amd64.rpm
+TAG="$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')"
+test -n "$TAG" || { echo "Could not determine the latest release" >&2; exit 1; }
+VERSION="${TAG#v}"
+FILE="dck-${VERSION}-linux-amd64.rpm"
+curl -fL -o "$FILE" "https://github.com/animesao/dck/releases/download/$TAG/$FILE"
+sudo dnf install "./$FILE"
 # On older systems:
-# sudo rpm -Uvh ./dck-<VERSION>-linux-amd64.rpm
+# sudo rpm -Uvh "./$FILE"
 ```
 
 **Debian / Ubuntu (.deb):**
 
-Download the release asset named `dck-<VERSION>-linux-amd64.deb` from the [latest GitHub release](https://github.com/animesao/dck/releases/latest), then install the local file:
+Download and install the latest DEB asset from the [GitHub release page](https://github.com/animesao/dck/releases/latest):
 
 ```bash
-sudo apt install ./dck-<VERSION>-linux-amd64.deb
+TAG="$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')"
+test -n "$TAG" || { echo "Could not determine the latest release" >&2; exit 1; }
+VERSION="${TAG#v}"
+FILE="dck-${VERSION}-linux-amd64.deb"
+curl -fL -o "$FILE" "https://github.com/animesao/dck/releases/download/$TAG/$FILE"
+sudo apt install "./$FILE"
 ```
 
 **Snap (any distro with snapd):**
@@ -74,8 +89,9 @@ sudo snap install dck --classic
 **Manual binary install:**
 
 ```bash
-curl -fsSL https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64 -o /usr/local/bin/dck
-chmod +x /usr/local/bin/dck
+curl -fsSL https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64 -o /tmp/dck-new
+sudo install -D -m 0755 /tmp/dck-new /usr/local/bin/dck
+rm -f /tmp/dck-new
 dck bootstrap --install
 ```
 
@@ -86,17 +102,19 @@ from the [latest GitHub release](https://github.com/animesao/dck/releases/latest
 make it executable, and run it directly:
 
 ```bash
-# x86_64 / amd64
-curl -fL -o dck-linux-amd64.AppImage \
-  https://github.com/animesao/dck/releases/latest/download/dck-<VERSION>-linux-amd64.AppImage
-chmod +x dck-linux-amd64.AppImage
-./dck-linux-amd64.AppImage version
+# x86_64 / amd64: resolve the current release asset automatically
+TAG="$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')"
+test -n "$TAG" || { echo "Could not determine the latest release" >&2; exit 1; }
+FILE="dck-${TAG#v}-linux-amd64.AppImage"
+curl -fL -o "$FILE" "https://github.com/animesao/dck/releases/download/$TAG/$FILE"
+chmod +x "$FILE"
+"./$FILE" version
 
 # Install the embedded binary and enable the supervisor
-./dck-linux-amd64.AppImage --install
+"./$FILE" --install
 ```
 
-For ARM64, use `dck-<VERSION>-linux-arm64.AppImage` instead. AppImage does
+For ARM64, use the matching `dck-*-linux-arm64.AppImage` asset instead. AppImage does
 not require a package manager, but dck still needs the host's Linux namespaces,
 cgroups, OverlayFS, mount, and networking capabilities. The release does not
 publish a standard AppImage for ARMv6 because the official AppImage runtime
@@ -113,17 +131,23 @@ when needed, and installs/starts `dck-bootstrap.service` when systemd is
 available. Your containers and images remain in the existing dck data
 directory, and the original AppImage remains portable.
 
-You can also start the same installer from a terminal:
+You can also start the same installer from a terminal. Use the filename of the AppImage you downloaded:
 
 ```bash
-./dck-linux-amd64.AppImage --install
+APPIMAGE="$(find . -maxdepth 1 -type f -name 'dck-*-linux-amd64.AppImage' -print -quit)"
+test -n "$APPIMAGE" || { echo "AppImage not found in the current directory" >&2; exit 1; }
+chmod +x "$APPIMAGE"
+"$APPIMAGE" --install
 ```
 
-To use the AppImage only as a portable CLI, pass a normal dck command instead:
+To use the AppImage only as a portable CLI, pass a normal dck command instead. This block locates the downloaded file in the current directory:
 
 ```bash
-./dck-linux-amd64.AppImage version
-./dck-linux-amd64.AppImage run --rm --network none alpine:latest echo OK
+APPIMAGE="$(find . -maxdepth 1 -type f -name 'dck-*-linux-amd64.AppImage' -print -quit)"
+test -n "$APPIMAGE" || { echo "AppImage not found in the current directory" >&2; exit 1; }
+chmod +x "$APPIMAGE"
+"$APPIMAGE" version
+"$APPIMAGE" run --rm --network none alpine:latest echo OK
 ```
 
 If double-clicking does nothing, make the file executable and choose **Run**
@@ -165,12 +189,12 @@ If `dck update` cannot download the binary (older releases failed with `Failed t
 ```bash
 curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
   https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64
-sudo mv /tmp/dck-new /usr/local/bin/dck
-sudo chmod +x /usr/local/bin/dck
+sudo install -D -m 0755 /tmp/dck-new /usr/local/bin/dck
+rm -f /tmp/dck-new
 sudo systemctl restart dck-bootstrap   # if the systemd supervisor is installed
 ```
 
-Binary names are `dck-linux-amd64`, `dck-linux-arm64`, and `dck-linux-armv6`. Releases also provide native packages for each supported architecture: `.deb`, `.rpm`, `.pkg.tar.zst`, and `.apk` with `amd64`, `arm64`, or `armv6` in the filename. AppImage assets are published for `amd64` and `arm64`; ARMv6 uses the raw binary or `.tar.gz` archive. Choose the package matching both your distribution and CPU architecture. If GitHub is slow or blocked (common on some VPS providers), prefix the URL with a mirror such as `https://ghproxy.com/` or `https://mirror.ghproxy.com/`.
+Binary names are `dck-linux-amd64`, `dck-linux-arm64`, and `dck-linux-armv6`. Releases also provide native packages for each supported architecture: `.deb`, `.rpm`, `.pkg.tar.zst`, and `.apk` with `amd64`, `arm64`, or `armv6` in the filename. AppImage assets are published for `amd64` and `arm64`; ARMv6 uses the raw binary or `.tar.gz` archive. Choose the package matching both your distribution and CPU architecture. If GitHub is unavailable, download the asset from another trusted network or transfer it over SSH; do not use unverified third-party mirrors for release binaries. The `${VERSION}` placeholder means the tag without its leading `v` (for example, `1.23.17`).
 
 ## 3. Pull and run an image
 
@@ -847,8 +871,8 @@ The updater used to time out after ten seconds, which was too short for multi-me
 ```bash
 curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
   https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64
-sudo mv /tmp/dck-new /usr/local/bin/dck
-sudo chmod +x /usr/local/bin/dck
+sudo install -D -m 0755 /tmp/dck-new /usr/local/bin/dck
+rm -f /tmp/dck-new
 sudo systemctl restart dck-bootstrap
 ```
 
@@ -864,7 +888,7 @@ dck inspect NAME | grep -E '"status"|"pid"'
 
 ### A `--network none` container hangs before its command starts
 
-Before 1.22.37 every container waited up to 20 seconds for an `eth0` address, which never appears with `--network none`. The wait is now skipped for `none`/`host` and capped at five seconds for bridge mode. Update dck.
+For `--network none`, no `eth0` address is expected, so dck skips the interface wait. For `--network host`, the host interface is already available; bridge mode waits only briefly for the veth interface. If startup still hangs, update dck and inspect the container logs.
 
 ## 17. Data locations
 

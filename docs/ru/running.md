@@ -1,3 +1,8 @@
+<!-- dck-version:start -->
+**Documentation version:** `1.23.17`
+**Project release:** `v1.23.17`
+<!-- dck-version:end -->
+
 # Запуск контейнеров в dck
 
 Это практическое руководство по ежедневной работе: установка dck, загрузка образа, запуск приложения, подключение постоянных файлов, `.env`, просмотр логов, обновление кода и решение типичных ошибок.
@@ -49,20 +54,30 @@ makepkg -si
 
 **Fedora / RHEL / CentOS:**
 
-Скачайте asset с именем `dck-<VERSION>-linux-amd64.rpm` из [последнего GitHub-релиза](https://github.com/animesao/dck/releases/latest), затем установите локальный файл:
+Скачайте и установите последний RPM asset со [страницы GitHub-релиза](https://github.com/animesao/dck/releases/latest):
 
 ```bash
-sudo dnf install ./dck-<VERSION>-linux-amd64.rpm
+TAG="$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')"
+test -n "$TAG" || { echo "Не удалось определить последний релиз" >&2; exit 1; }
+VERSION="${TAG#v}"
+FILE="dck-${VERSION}-linux-amd64.rpm"
+curl -fL -o "$FILE" "https://github.com/animesao/dck/releases/download/$TAG/$FILE"
+sudo dnf install "./$FILE"
 # Для старых систем:
-# sudo rpm -Uvh ./dck-<VERSION>-linux-amd64.rpm
+# sudo rpm -Uvh "./$FILE"
 ```
 
 **Debian / Ubuntu (.deb):**
 
-Скачайте asset с именем `dck-<VERSION>-linux-amd64.deb` из [последнего GitHub-релиза](https://github.com/animesao/dck/releases/latest), затем установите локальный файл:
+Скачайте и установите последний DEB asset со [страницы GitHub-релиза](https://github.com/animesao/dck/releases/latest):
 
 ```bash
-sudo apt install ./dck-<VERSION>-linux-amd64.deb
+TAG="$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')"
+test -n "$TAG" || { echo "Не удалось определить последний релиз" >&2; exit 1; }
+VERSION="${TAG#v}"
+FILE="dck-${VERSION}-linux-amd64.deb"
+curl -fL -o "$FILE" "https://github.com/animesao/dck/releases/download/$TAG/$FILE"
+sudo apt install "./$FILE"
 ```
 
 **Snap (любой дистрибутив с snapd):**
@@ -74,8 +89,9 @@ sudo snap install dck --classic
 **Ручная установка бинарника:**
 
 ```bash
-curl -fsSL https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64 -o /usr/local/bin/dck
-chmod +x /usr/local/bin/dck
+curl -fsSL https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64 -o /tmp/dck-new
+sudo install -D -m 0755 /tmp/dck-new /usr/local/bin/dck
+rm -f /tmp/dck-new
 dck bootstrap --install
 ```
 
@@ -87,16 +103,18 @@ AppImage — это самодостаточный исполняемый фор
 
 ```bash
 # x86_64 / amd64
-curl -fL -o dck-linux-amd64.AppImage \
-  https://github.com/animesao/dck/releases/latest/download/dck-<VERSION>-linux-amd64.AppImage
-chmod +x dck-linux-amd64.AppImage
-./dck-linux-amd64.AppImage version
+TAG="$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')"
+test -n "$TAG" || { echo "Не удалось определить последний релиз" >&2; exit 1; }
+FILE="dck-${TAG#v}-linux-amd64.AppImage"
+curl -fL -o "$FILE" "https://github.com/animesao/dck/releases/download/$TAG/$FILE"
+chmod +x "$FILE"
+"./$FILE" version
 
 # Установить встроенный бинарник и включить supervisor
-./dck-linux-amd64.AppImage --install
+"./$FILE" --install
 ```
 
-Для ARM64 используйте `dck-<VERSION>-linux-arm64.AppImage`. AppImage не
+Для ARM64 используйте matching `dck-*-linux-arm64.AppImage` asset. AppImage не
 требует пакетного менеджера, но dck всё равно требует от хоста Linux
 namespace, cgroups, OverlayFS, mount и сетевые возможности. Стандартный
 AppImage для ARMv6 не публикуется: официальный runtime поддерживает
@@ -113,18 +131,24 @@ AppImage dck — это CLI-runtime, а не графическое прилож
 systemd. Существующие контейнеры и образы в каталоге данных dck сохраняются,
 а исходный AppImage остаётся переносимым.
 
-Тот же установщик можно запустить из терминала:
+Тот же установщик можно запустить из терминала. Используйте имя скачанного AppImage:
 
 ```bash
-./dck-linux-amd64.AppImage --install
+APPIMAGE="$(find . -maxdepth 1 -type f -name 'dck-*-linux-amd64.AppImage' -print -quit)"
+test -n "$APPIMAGE" || { echo "AppImage не найден в текущем каталоге" >&2; exit 1; }
+chmod +x "$APPIMAGE"
+"$APPIMAGE" --install
 ```
 
 Чтобы использовать AppImage только как переносимый CLI, передайте обычную
-команду dck:
+команду dck. Этот блок сам найдёт скачанный файл в текущем каталоге:
 
 ```bash
-./dck-linux-amd64.AppImage version
-./dck-linux-amd64.AppImage run --rm --network none alpine:latest echo OK
+APPIMAGE="$(find . -maxdepth 1 -type f -name 'dck-*-linux-amd64.AppImage' -print -quit)"
+test -n "$APPIMAGE" || { echo "AppImage не найден в текущем каталоге" >&2; exit 1; }
+chmod +x "$APPIMAGE"
+"$APPIMAGE" version
+"$APPIMAGE" run --rm --network none alpine:latest echo OK
 ```
 
 Если двойной клик ничего не делает, добавьте файлу право на запуск и выберите
@@ -168,12 +192,12 @@ dck run --rm alpine:latest echo "DCK UPDATE OK"
 ```bash
 curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
   https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64
-sudo mv /tmp/dck-new /usr/local/bin/dck
-sudo chmod +x /usr/local/bin/dck
+sudo install -D -m 0755 /tmp/dck-new /usr/local/bin/dck
+rm -f /tmp/dck-new
 sudo systemctl restart dck-bootstrap   # если установлен systemd supervisor
 ```
 
-Имена бинарников: `dck-linux-amd64`, `dck-linux-arm64`, `dck-linux-armv6`. В релизах также будут нативные пакеты каждой поддерживаемой архитектуры: `.deb`, `.rpm`, `.pkg.tar.zst` и `.apk`, где в имени указано `amd64`, `arm64` или `armv6`. AppImage публикуется для `amd64` и `arm64`; для ARMv6 используйте бинарник или архив `.tar.gz`. Выбирайте пакет одновременно по дистрибутиву и архитектуре CPU. Если GitHub качается медленно или недоступен (часто бывает на некоторых VPS), добавьте перед URL зеркало, например `https://ghproxy.com/` или `https://mirror.ghproxy.com/`.
+Имена бинарников: `dck-linux-amd64`, `dck-linux-arm64`, `dck-linux-armv6`. В релизах также будут нативные пакеты каждой поддерживаемой архитектуры: `.deb`, `.rpm`, `.pkg.tar.zst` и `.apk`, где в имени указано `amd64`, `arm64` или `armv6`. AppImage публикуется для `amd64` и `arm64`; для ARMv6 используйте бинарник или архив `.tar.gz`. Выбирайте пакет одновременно по дистрибутиву и архитектуре CPU. Если GitHub недоступен, скачайте asset через другую доверенную сеть или передайте его по SSH; не используйте непроверенные сторонние зеркала для release-бинарников. Здесь `${VERSION}` означает номер тега без начальной `v` (например, `1.23.17`).
 
 ## 3. Загрузка и запуск образа
 
@@ -850,8 +874,8 @@ dck logs ИМЯ
 ```bash
 curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
   https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64
-sudo mv /tmp/dck-new /usr/local/bin/dck
-sudo chmod +x /usr/local/bin/dck
+sudo install -D -m 0755 /tmp/dck-new /usr/local/bin/dck
+rm -f /tmp/dck-new
 sudo systemctl restart dck-bootstrap
 ```
 
@@ -867,7 +891,7 @@ dck inspect ИМЯ | grep -E '"status"|"pid"'
 
 ### Контейнер `--network none` «висит» перед запуском команды
 
-До версии 1.22.37 каждый контейнер до 20 секунд ждал появления `eth0`, которого при `--network none` не бывает. Теперь ожидание пропускается для `none`/`host` и ограничено пятью секундами в bridge-режиме. Обновите dck.
+При `--network none` интерфейс `eth0` не должен появляться, поэтому dck не ждёт его. При `--network host` уже используется интерфейс хоста, а в bridge-режиме dck недолго ждёт появления veth. Если запуск всё равно зависает, обновите dck и проверьте логи контейнера.
 
 ## 17. Где хранятся данные
 

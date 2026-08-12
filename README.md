@@ -1,3 +1,8 @@
+<!-- dck-version:start -->
+**Documentation version:** `1.23.17`
+**Project release:** `v1.23.17`
+<!-- dck-version:end -->
+
 <p align="center">
   <img src="https://img.shields.io/github/v/tag/animesao/dck?label=version&style=flat-square">
   <img src="https://img.shields.io/badge/go-1.25%2B-00ADD8?style=flat-square&logo=go">
@@ -29,11 +34,11 @@ curl http://localhost:8080
 ## Quick Start
 
 ```bash
-# Install via apt (Debian/Ubuntu)
-curl -sSL https://raw.githubusercontent.com/animesao/dck/main/scripts/install-apt.sh | sudo bash
+# Universal installer (Linux distributions)
+curl -fsSL https://raw.githubusercontent.com/animesao/dck/main/install.sh | sudo bash
 
-# Or build from source (Linux)
-curl -sSL https://raw.githubusercontent.com/animesao/dck/main/install.sh | sudo bash
+# Debian/Ubuntu APT repository installer (optional)
+curl -fsSL https://raw.githubusercontent.com/animesao/dck/main/scripts/install-apt.sh | sudo bash
 
 # dck-client
 curl -sSL https://raw.githubusercontent.com/animesao/dck-client/main/install.sh | sudo bash
@@ -75,7 +80,12 @@ the systemd supervisor when available. The original AppImage remains portable.
 You can start the same installer explicitly with
 
 ```bash
-./dck-<VERSION>-linux-amd64.AppImage --install
+TAG="$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')"
+test -n "$TAG" || { echo "Could not determine the latest release" >&2; exit 1; }
+FILE="dck-${TAG#v}-linux-amd64.AppImage"
+curl -fL -o "$FILE" "https://github.com/animesao/dck/releases/download/$TAG/$FILE"
+chmod +x "$FILE"
+"./$FILE" --install
 ```
 The AppImage remains a CLI runtime; pass a dck command such as `version` or
 `run` for normal portable use. On a headless VPS, run the AppImage from SSH
@@ -674,11 +684,6 @@ dck bootstrap --remove       # stop and remove it
 systemctl status dck-bootstrap
 ```
 
-```bash
-dck bootstrap --install      # manually install systemd service
-dck bootstrap --remove       # remove it
-```
-
 ```
 System boot → systemd → dck-bootstrap.service → dck supervisor
   └─ Adopt detached containers with an automatic restart policy
@@ -804,6 +809,10 @@ dck run -d
 ---
 
 ## Changelog
+
+<!-- dck-release:start -->
+**v1.23.17** — Documentation, installation, AppImage, update, and release automation are synchronized from the root `VERSION` file.
+<!-- dck-release:end -->
 
 **v1.23.0** — Persistent restart supervisor with configurable delays and crash-loop protection (`--restart-max-attempts`/`--restart-window`, `restart_blocked`), per-container scheduled backups with checksum verification (`dck backup verify`), offline image verification (`dck verify`), reliable `dck update`, runtime hardening (zombie-exit detection, `dck rm` tombstones, safe OCI layer extraction, protected bind sources, `:ro`/`:rw` and tmpfs/NFS volume modes), instant startup for `--network none`/`host` containers, and the complete bilingual EN/RU documentation suite.
 

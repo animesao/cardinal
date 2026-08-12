@@ -1,3 +1,8 @@
+<!-- dck-version:start -->
+**Documentation version:** `1.23.17`
+**Project release:** `v1.23.17`
+<!-- dck-version:end -->
+
 # Deploying Bots with dck
 
 Run Telegram, Discord, Slack bots and more inside dck containers with persistent storage and auto-restart.

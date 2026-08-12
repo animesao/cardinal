@@ -1,3 +1,8 @@
+<!-- dck-version:start -->
+**Documentation version:** `1.23.17`
+**Project release:** `v1.23.17`
+<!-- dck-version:end -->
+
 # Cluster Orchestration
 
 dck supports multi-node clustering with service management, DNS-based service discovery,

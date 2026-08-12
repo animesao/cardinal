@@ -1,3 +1,8 @@
+<!-- dck-version:start -->
+**Documentation version:** `1.23.17`
+**Project release:** `v1.23.17`
+<!-- dck-version:end -->
+
 # Примеры команд dck
 
 Практические рецепты для Linux. Замените имена образов, пароли, пути и публичные порты на свои.

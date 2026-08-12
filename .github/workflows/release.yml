@@ -44,6 +44,8 @@ jobs:
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
+      - name: Documentation check
+        run: ./scripts/sync-docs-version.sh --check
 
   release:
     needs: validate
@@ -116,13 +118,14 @@ jobs:
           echo "version=$NEXT" >> $GITHUB_OUTPUT
           echo "tag=v$NEXT" >> $GITHUB_OUTPUT
 
-      - name: Update VERSION file
+      - name: Update VERSION file and documentation
         run: |
           echo "${{ steps.version.outputs.version }}" > VERSION
+          ./scripts/sync-docs-version.sh
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add VERSION
-          git commit -m "Bump version to ${{ steps.version.outputs.version }}"
+          git add VERSION README.md CHANGELOG.md CONTRIBUTING.md SECURITY.md docs
+          git commit -m "chore: bump version to ${{ steps.version.outputs.version }} [skip ci]"
           git tag "v${{ steps.version.outputs.version }}"
           git push origin main --tags
 

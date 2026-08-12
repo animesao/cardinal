@@ -1,3 +1,8 @@
+<!-- dck-version:start -->
+**Documentation version:** `1.23.17`
+**Project release:** `v1.23.17`
+<!-- dck-version:end -->
+
 # Build, CI & Versioning
 
 ## Requirements
@@ -98,14 +103,17 @@ The repository has four workflows. CI also runs `govulncheck` against the Go dep
   creates AppImages for `amd64` and `arm64`, adds checksums, and publishes a
   GitHub release.
 - **Linux E2E** (`.github/workflows/e2e.yml`) is a manual privileged Ubuntu smoke test. It pulls Alpine, runs a namespace-isolated command, exercises restart recovery, and creates/verifies a backup. It is intentionally manual because it requires host kernel, mount, namespace, and networking capabilities.
-- **Release** (`.github/workflows/release.yml`) is a manual release workflow for
-  major/minor/patch/automatic version bumps and runs the same validation gates
-  before mutating `VERSION`, `main`, or tags. Build/release workflows use the
-  same serialized concurrency group so simultaneous runs do not race on
-  `VERSION`, `main`, or tags.
+- **Release** (`.github/workflows/release.yml`) is a manual, amd64-only release
+  workflow for major/minor/patch/automatic version bumps and runs the same
+  validation gates before mutating `VERSION`, `main`, or tags. Use
+  **Build & Release** for the complete multi-architecture package and AppImage
+  matrix. Build/release workflows use the same serialized concurrency group so
+  simultaneous runs do not race on `VERSION`, `main`, or tags.
 
-The automated version commit uses `[skip ci]`; the release artifacts are built
-from the version tag created by the same workflow.
+The automated version commit uses `[skip ci]`; the Build & Release artifacts are
+built from the version tag created by the same workflow. The sync script updates current version markers, the README release pointer, and
+an explicit current-release pointer in `CHANGELOG.md` automatically; detailed
+release notes remain manually maintained so historical entries are not overwritten.
 
 ## Goreleaser
 

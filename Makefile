@@ -1,4 +1,4 @@
-.PHONY: build build-amd64 build-arm64 deb clean release test lint
+.PHONY: build build-amd64 build-arm64 deb clean release test lint docs docs-check
 
 VERSION := $(shell cat VERSION 2>/dev/null || echo "dev")
 LDFLAGS := -s -w -X dck/cmd.version=$(VERSION)
@@ -17,6 +17,12 @@ test:
 lint:
 	go vet ./...
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8 run ./...
+
+docs:
+	./scripts/sync-docs-version.sh
+
+docs-check:
+	./scripts/sync-docs-version.sh --check
 
 deb: build
 	./scripts/build-deb.sh
