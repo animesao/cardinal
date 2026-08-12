@@ -1,0 +1,33 @@
+name: dck
+arch: "${ARCH}"
+platform: linux
+version: "${VERSION}"
+section: utils
+priority: optional
+maintainer: animesao <igorerantaev66@gmail.com>
+description: Lightweight container runtime for Linux
+vendor: animesao
+homepage: https://github.com/animesao/dck
+license: MIT
+
+contents:
+  - src: ./dck-linux-${ARCH}
+    dst: /usr/bin/dck
+
+scripts:
+  postinstall: packaging/deb/DEBIAN/postinst
+
+rpm:
+  group: System Environment/Base
+  compression: lzma
+
+archlinux:
+  pkgbase: dck
+  packager: animesao
+  compression: zstd
+  scripts:
+    post_install: packaging/arch/post-install.sh
+
+apk:
+  maintainers:
+    - animesao <igorerantaev66@gmail.com>
