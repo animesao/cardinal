@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check documentation version markers
-        run: ./scripts/sync-docs-version.sh --check
+        run: sh scripts/sync-docs-version.sh --check
       - name: Check Markdown whitespace
         run: git diff --check
 

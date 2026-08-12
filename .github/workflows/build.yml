@@ -37,7 +37,7 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
       - name: Documentation check
-        run: ./scripts/sync-docs-version.sh --check
+        run: sh scripts/sync-docs-version.sh --check
 
   version:
     needs: validate
@@ -67,7 +67,7 @@ jobs:
           fi
           echo "NEW_VER=$NEW_VER" >> $GITHUB_OUTPUT
           echo "$NEW_VER" > VERSION
-          ./scripts/sync-docs-version.sh
+          sh scripts/sync-docs-version.sh
 
       - name: Commit and tag
         run: |

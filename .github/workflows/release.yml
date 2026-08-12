@@ -45,7 +45,7 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
       - name: Documentation check
-        run: ./scripts/sync-docs-version.sh --check
+        run: sh scripts/sync-docs-version.sh --check
 
   release:
     needs: validate
@@ -121,7 +121,7 @@ jobs:
       - name: Update VERSION file and documentation
         run: |
           echo "${{ steps.version.outputs.version }}" > VERSION
-          ./scripts/sync-docs-version.sh
+          sh scripts/sync-docs-version.sh
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add VERSION README.md CHANGELOG.md CONTRIBUTING.md SECURITY.md docs

@@ -19,10 +19,10 @@ lint:
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8 run ./...
 
 docs:
-	./scripts/sync-docs-version.sh
+	sh scripts/sync-docs-version.sh
 
 docs-check:
-	./scripts/sync-docs-version.sh --check
+	sh scripts/sync-docs-version.sh --check
 
 deb: build
 	./scripts/build-deb.sh
