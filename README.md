@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.23.17`
-**Project release:** `v1.23.17`
+**Documentation version:** `1.23.18`
+**Project release:** `v1.23.18`
 <!-- dck-version:end -->
 
 <p align="center">
@@ -811,7 +811,7 @@ dck run -d
 ## Changelog
 
 <!-- dck-release:start -->
-**v1.23.17** — Documentation, installation, AppImage, update, and release automation are synchronized from the root `VERSION` file.
+**v1.23.18** — Documentation, installation, AppImage, update, and release automation are synchronized from the root `VERSION` file.
 <!-- dck-release:end -->
 
 **v1.23.0** — Persistent restart supervisor with configurable delays and crash-loop protection (`--restart-max-attempts`/`--restart-window`, `restart_blocked`), per-container scheduled backups with checksum verification (`dck backup verify`), offline image verification (`dck verify`), reliable `dck update`, runtime hardening (zombie-exit detection, `dck rm` tombstones, safe OCI layer extraction, protected bind sources, `:ro`/`:rw` and tmpfs/NFS volume modes), instant startup for `--network none`/`host` containers, and the complete bilingual EN/RU documentation suite.
