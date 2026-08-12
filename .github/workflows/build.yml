@@ -122,25 +122,32 @@ jobs:
           sha256sum "dck-linux-$SUFFIX" > "dck-linux-$SUFFIX.sha256"
 
       - name: Build packages (deb, rpm, arch, apk)
-        if: matrix.goarch == 'amd64'
         run: |
           VERSION=${{ needs.version.outputs.new_ver }}
-          
-          # Install nfpm via go install (Go is already available)
+          SUFFIX="${{ matrix.goarch }}"
+          [ "$SUFFIX" = "arm" ] && SUFFIX="armv6"
+
+          # nfpm uses ARCH for package metadata and BIN_ARCH for the binary path.
+          export ARCH="${{ matrix.goarch }}"
+          export BIN_ARCH="$SUFFIX"
+          export VERSION="$VERSION"
+
+          # Install nfpm via go install (Go is already available).
           go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
-          
-          # Export arch variable for nfpm.yaml
-          export ARCH=amd64
-          export VERSION=$VERSION
-          
-          # Build all package formats
-          nfpm package --packager deb --target "dck-$VERSION-linux-amd64.deb"
-          nfpm package --packager rpm --target "dck-$VERSION-linux-amd64.rpm"
-          nfpm package --packager archlinux --target "dck-$VERSION-linux-amd64.pkg.tar.zst"
-          nfpm package --packager apk --target "dck-$VERSION-linux-amd64.apk"
-          
-          # Create checksums
-          for f in dck-$VERSION-linux-amd64.deb dck-$VERSION-linux-amd64.rpm dck-$VERSION-linux-amd64.pkg.tar.zst dck-$VERSION-linux-amd64.apk; do
+
+          # Go installs binaries in GOBIN/GOPATH/bin; expose it explicitly.
+          export PATH="$(go env GOPATH)/bin:$PATH"
+
+          nfpm package --packager deb --target "dck-$VERSION-linux-$SUFFIX.deb"
+          nfpm package --packager rpm --target "dck-$VERSION-linux-$SUFFIX.rpm"
+          nfpm package --packager archlinux --target "dck-$VERSION-linux-$SUFFIX.pkg.tar.zst"
+          nfpm package --packager apk --target "dck-$VERSION-linux-$SUFFIX.apk"
+
+          for f in \
+            "dck-$VERSION-linux-$SUFFIX.deb" \
+            "dck-$VERSION-linux-$SUFFIX.rpm" \
+            "dck-$VERSION-linux-$SUFFIX.pkg.tar.zst" \
+            "dck-$VERSION-linux-$SUFFIX.apk"; do
             if [ -f "$f" ]; then
               sha256sum "$f" > "${f}.sha256"
               echo "Built: $f"

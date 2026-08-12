@@ -107,7 +107,7 @@ sudo chmod +x /usr/local/bin/dck
 sudo systemctl restart dck-bootstrap   # если установлен systemd supervisor
 ```
 
-Имена бинарников: `dck-linux-amd64`, `dck-linux-arm64`, `dck-linux-armv6`. Если GitHub качается медленно или недоступен (часто бывает на некоторых VPS), добавьте перед URL зеркало, например `https://ghproxy.com/` или `https://mirror.ghproxy.com/`.
+Имена бинарников: `dck-linux-amd64`, `dck-linux-arm64`, `dck-linux-armv6`. В релизах также будут нативные пакеты каждой поддерживаемой архитектуры: `.deb`, `.rpm`, `.pkg.tar.zst` и `.apk`, где в имени указано `amd64`, `arm64` или `armv6`. Выбирайте пакет одновременно по дистрибутиву и архитектуре CPU. Если GitHub качается медленно или недоступен (часто бывает на некоторых VPS), добавьте перед URL зеркало, например `https://ghproxy.com/` или `https://mirror.ghproxy.com/`.
 
 ## 3. Загрузка и запуск образа
 

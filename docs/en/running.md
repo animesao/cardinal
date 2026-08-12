@@ -107,7 +107,7 @@ sudo chmod +x /usr/local/bin/dck
 sudo systemctl restart dck-bootstrap   # if the systemd supervisor is installed
 ```
 
-Binary names are `dck-linux-amd64`, `dck-linux-arm64`, and `dck-linux-armv6`. If GitHub is slow or blocked (common on some VPS providers), prefix the URL with a mirror such as `https://ghproxy.com/` or `https://mirror.ghproxy.com/`.
+Binary names are `dck-linux-amd64`, `dck-linux-arm64`, and `dck-linux-armv6`. Releases also provide native packages for each supported architecture: `.deb`, `.rpm`, `.pkg.tar.zst`, and `.apk` with `amd64`, `arm64`, or `armv6` in the filename. Choose the package matching both your distribution and CPU architecture. If GitHub is slow or blocked (common on some VPS providers), prefix the URL with a mirror such as `https://ghproxy.com/` or `https://mirror.ghproxy.com/`.
 
 ## 3. Pull and run an image
 
