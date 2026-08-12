@@ -279,7 +279,7 @@ dck run -d \
 
 ## 11. Backup
 
-Automatic backup архивирует writable overlay и именованные volumes, но не host bind mounts.
+Automatic backup архивирует writable overlay и именованные volumes, но не host bind mounts. Полное руководство по бэкапам — автоматические, ручные, восстановление, скачивание на ПК, обход bind-монтов, граничные случаи и лучшие практики — см. в [Руководстве по бэкапам](backups.md).
 
 ```bash
 dck run -d \

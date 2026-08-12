@@ -279,7 +279,7 @@ Avoid using Paper's `/restart` command with a missing host-side `start.sh`; let 
 
 ## 11. Backups
 
-Automatic backups archive the writable overlay and named volumes. They do not archive host bind mounts.
+Automatic backups archive the writable overlay and named volumes. They do not archive host bind mounts. For the full backup guide — including automatic backups, manual backups, restoration, downloading to your local machine, bind-mount workarounds, edge cases, and best practices — see [Backups Guide](backups.md).
 
 ```bash
 dck run -d \

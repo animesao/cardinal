@@ -447,6 +447,8 @@ Remove local volumes not referenced by any container.
 
 Backups contain writable overlay data and named volumes, not host bind mounts. Scheduled backups briefly stop a running container for consistency, archive it, then start it again. Enabling a schedule does not create an immediate archive; the first archive is created after the interval. Until that first archive exists, `backup status` may show the schedule's initialization time rather than a completed archive. Install the persistent supervisor with `dck bootstrap --install`.
 
+For a complete guide to automatic backups, manual backups, restoration, downloading to your local machine, and edge cases, see the [Backups Guide](backups.md).
+
 ## 7. Compose-style configuration
 
 ### `dck up [-f FILE] [SERVICE]`
