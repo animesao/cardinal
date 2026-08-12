@@ -58,6 +58,48 @@ sync_version_marker() {
   if ! cmp -s "$tmp" "$path"; then mv "$tmp" "$path"; else rm -f "$tmp"; fi
 }
 
+sync_readme_version_badge() {
+  path=$1
+  start_count=$(grep -cF '<!-- dck-version-badge:start -->' "$path" || true)
+  end_count=$(grep -cF '<!-- dck-version-badge:end -->' "$path" || true)
+  if [ "$start_count" -ne 1 ] || [ "$end_count" -ne 1 ]; then
+    echo "Malformed or missing version badge markers in ${path#"$ROOT/"}" >&2
+    return 1
+  fi
+
+  tmp=$(mktemp "$path.tmp.XXXXXX")
+  awk -v version="$VERSION" '
+    /<!-- dck-version-badge:start -->/ {
+      print
+      print "  <img src=\"https://img.shields.io/badge/version-v" version "-blue?style=flat-square\">"
+      inside=1
+      next
+    }
+    /<!-- dck-version-badge:end -->/ {
+      print
+      inside=0
+      next
+    }
+    !inside { print }
+  ' "$path" > "$tmp"
+
+  if ! cmp -s "$tmp" "$path"; then mv "$tmp" "$path"; else rm -f "$tmp"; fi
+}
+
+check_readme_version_badge() {
+  path=$1
+  start_count=$(grep -cF '<!-- dck-version-badge:start -->' "$path" || true)
+  end_count=$(grep -cF '<!-- dck-version-badge:end -->' "$path" || true)
+  if [ "$start_count" -ne 1 ] || [ "$end_count" -ne 1 ]; then
+    echo "Malformed or missing version badge markers in ${path#"$ROOT/"}" >&2
+    return 1
+  fi
+  if ! sed -n '/<!-- dck-version-badge:start -->/,/<!-- dck-version-badge:end -->/p' "$path" | grep -q "version-v$VERSION-blue"; then
+    echo "Stale README version badge in ${path#"$ROOT/"}" >&2
+    return 1
+  fi
+}
+
 sync_changelog_current_release() {
   path=$1
   start_count=$(grep -cF '<!-- dck-current-release:start -->' "$path" || true)
@@ -221,9 +263,11 @@ while IFS= read -r path; do
 done < "$FILES"
 
 if [ "$mode" = update ]; then
+  sync_readme_version_badge "$ROOT/README.md" || status=1
   sync_readme_release_block "$ROOT/README.md" || status=1
   sync_changelog_current_release "$ROOT/CHANGELOG.md" || status=1
 else
+  check_readme_version_badge "$ROOT/README.md" || status=1
   check_readme_release_block "$ROOT/README.md" || status=1
   check_changelog_current_release "$ROOT/CHANGELOG.md" || status=1
 fi
