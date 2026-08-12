@@ -79,6 +79,30 @@ chmod +x /usr/local/bin/dck
 dck bootstrap --install
 ```
 
+**AppImage (amd64 и arm64):**
+
+AppImage — это самодостаточный исполняемый формат. Скачайте подходящий asset
+из [последнего GitHub-релиза](https://github.com/animesao/dck/releases/latest),
+добавьте право на запуск и запустите файл напрямую:
+
+```bash
+# x86_64 / amd64
+curl -fL -o dck-linux-amd64.AppImage \
+  https://github.com/animesao/dck/releases/latest/download/dck-<VERSION>-linux-amd64.AppImage
+chmod +x dck-linux-amd64.AppImage
+./dck-linux-amd64.AppImage version
+
+# При необходимости сделать доступным как dck
+sudo install -m 0755 dck-linux-amd64.AppImage /usr/local/bin/dck
+```
+
+Для ARM64 используйте `dck-<VERSION>-linux-arm64.AppImage`. AppImage не
+требует пакетного менеджера, но dck всё равно требует от хоста Linux
+namespace, cgroups, OverlayFS, mount и сетевые возможности. Стандартный
+AppImage для ARMv6 не публикуется: официальный runtime поддерживает
+x86_64, aarch64 и armhf, но не настоящий ARMv6. Пользователям ARMv6 нужно
+использовать бинарник `dck-linux-armv6` или архив `.tar.gz`.
+
 ### Проверка
 
 ```bash
@@ -110,7 +134,7 @@ sudo chmod +x /usr/local/bin/dck
 sudo systemctl restart dck-bootstrap   # если установлен systemd supervisor
 ```
 
-Имена бинарников: `dck-linux-amd64`, `dck-linux-arm64`, `dck-linux-armv6`. В релизах также будут нативные пакеты каждой поддерживаемой архитектуры: `.deb`, `.rpm`, `.pkg.tar.zst` и `.apk`, где в имени указано `amd64`, `arm64` или `armv6`. Выбирайте пакет одновременно по дистрибутиву и архитектуре CPU. Если GitHub качается медленно или недоступен (часто бывает на некоторых VPS), добавьте перед URL зеркало, например `https://ghproxy.com/` или `https://mirror.ghproxy.com/`.
+Имена бинарников: `dck-linux-amd64`, `dck-linux-arm64`, `dck-linux-armv6`. В релизах также будут нативные пакеты каждой поддерживаемой архитектуры: `.deb`, `.rpm`, `.pkg.tar.zst` и `.apk`, где в имени указано `amd64`, `arm64` или `armv6`. AppImage публикуется для `amd64` и `arm64`; для ARMv6 используйте бинарник или архив `.tar.gz`. Выбирайте пакет одновременно по дистрибутиву и архитектуре CPU. Если GitHub качается медленно или недоступен (часто бывает на некоторых VPS), добавьте перед URL зеркало, например `https://ghproxy.com/` или `https://mirror.ghproxy.com/`.
 
 ## 3. Загрузка и запуск образа
 

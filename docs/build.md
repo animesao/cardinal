@@ -40,8 +40,11 @@ The Makefile builds the regular Linux artifacts (`amd64` and `arm64`):
 make build
 ```
 
-The release workflow additionally builds an `armv6` artifact and publishes the
-checksums and amd64 Debian package.
+The release workflow additionally builds an `armv6` artifact, native packages
+for all three target architectures, and AppImage artifacts for `amd64` and
+`arm64`. Every release artifact has a SHA-256 checksum. A standard AppImage is
+not published for true ARMv6 because the official AppImage runtime does not
+support that CPU baseline; ARMv6 uses the raw binary and `.tar.gz` archive.
 
 ## Tests and checks
 
@@ -90,8 +93,10 @@ The repository has four workflows. CI also runs `govulncheck` against the Go dep
   the other architecture job.
 - **Build & Release** (`.github/workflows/build.yml`) runs validation before any
   version bump or publish. It increments `VERSION`, creates a version tag, checks
-  out that tag, builds Linux `amd64`, `arm64`, and `armv6`, creates checksums and
-  an amd64 `.deb`, then publishes a GitHub release.
+  out that tag, builds Linux `amd64`, `arm64`, and `armv6`, creates native
+  `.deb`, `.rpm`, `.pkg.tar.zst`, and `.apk` packages for each architecture,
+  creates AppImages for `amd64` and `arm64`, adds checksums, and publishes a
+  GitHub release.
 - **Linux E2E** (`.github/workflows/e2e.yml`) is a manual privileged Ubuntu smoke test. It pulls Alpine, runs a namespace-isolated command, exercises restart recovery, and creates/verifies a backup. It is intentionally manual because it requires host kernel, mount, namespace, and networking capabilities.
 - **Release** (`.github/workflows/release.yml`) is a manual release workflow for
   major/minor/patch/automatic version bumps and runs the same validation gates
@@ -127,9 +132,9 @@ upx --best dck
 ./dck info
 ```
 
-For a Linux binary, perform the runtime test on a matching Linux host. For
-cross-built arm64/armv6 artifacts, verify checksums and transfer them to the
-matching target architecture before execution.
+For a Linux binary, perform the runtime test on a matching Linux host. For cross-built arm64/armv6 artifacts, verify checksums and transfer them to the
+matching target architecture before execution. AppImages are available for
+amd64 and arm64; use the raw binary or `.tar.gz` on true ARMv6 hosts.
 
 ## Update check
 

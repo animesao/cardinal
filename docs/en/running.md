@@ -79,6 +79,30 @@ chmod +x /usr/local/bin/dck
 dck bootstrap --install
 ```
 
+**AppImage (amd64 and arm64):**
+
+AppImage is a self-contained executable format. Download the matching asset
+from the [latest GitHub release](https://github.com/animesao/dck/releases/latest),
+make it executable, and run it directly:
+
+```bash
+# x86_64 / amd64
+curl -fL -o dck-linux-amd64.AppImage \
+  https://github.com/animesao/dck/releases/latest/download/dck-<VERSION>-linux-amd64.AppImage
+chmod +x dck-linux-amd64.AppImage
+./dck-linux-amd64.AppImage version
+
+# Optional: make it available as dck
+sudo install -m 0755 dck-linux-amd64.AppImage /usr/local/bin/dck
+```
+
+For ARM64, use `dck-<VERSION>-linux-arm64.AppImage` instead. AppImage does
+not require a package manager, but dck still needs the host's Linux namespaces,
+cgroups, OverlayFS, mount, and networking capabilities. The release does not
+publish a standard AppImage for ARMv6 because the official AppImage runtime
+supports x86_64, aarch64, and armhf, not true ARMv6. ARMv6 users should use
+the `dck-linux-armv6` binary or `.tar.gz` archive.
+
 ### Verify the installation
 
 ```bash
@@ -110,7 +134,7 @@ sudo chmod +x /usr/local/bin/dck
 sudo systemctl restart dck-bootstrap   # if the systemd supervisor is installed
 ```
 
-Binary names are `dck-linux-amd64`, `dck-linux-arm64`, and `dck-linux-armv6`. Releases also provide native packages for each supported architecture: `.deb`, `.rpm`, `.pkg.tar.zst`, and `.apk` with `amd64`, `arm64`, or `armv6` in the filename. Choose the package matching both your distribution and CPU architecture. If GitHub is slow or blocked (common on some VPS providers), prefix the URL with a mirror such as `https://ghproxy.com/` or `https://mirror.ghproxy.com/`.
+Binary names are `dck-linux-amd64`, `dck-linux-arm64`, and `dck-linux-armv6`. Releases also provide native packages for each supported architecture: `.deb`, `.rpm`, `.pkg.tar.zst`, and `.apk` with `amd64`, `arm64`, or `armv6` in the filename. AppImage assets are published for `amd64` and `arm64`; ARMv6 uses the raw binary or `.tar.gz` archive. Choose the package matching both your distribution and CPU architecture. If GitHub is slow or blocked (common on some VPS providers), prefix the URL with a mirror such as `https://ghproxy.com/` or `https://mirror.ghproxy.com/`.
 
 ## 3. Pull and run an image
 

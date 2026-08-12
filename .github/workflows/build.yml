@@ -121,6 +121,64 @@ jobs:
           [ "$SUFFIX" = "arm" ] && SUFFIX="armv6"
           sha256sum "dck-linux-$SUFFIX" > "dck-linux-$SUFFIX.sha256"
 
+      - name: Build AppImage
+        if: matrix.goarch != 'arm'
+        run: |
+          VERSION=${{ needs.version.outputs.new_ver }}
+          SUFFIX="${{ matrix.goarch }}"
+          APPIMAGE_ARCH="x86_64"
+          [ "$SUFFIX" = "arm64" ] && APPIMAGE_ARCH="aarch64"
+
+          # The x86_64 appimagetool can cross-package a static binary by
+          # selecting the target runtime with ARCH. Pin the current tool
+          # digest so a mutable continuous release cannot silently change CI.
+          APPIMAGE_TOOL_SHA256="a6d71e2b6cd66f8e8d16c37ad164658985e0cf5fcaa950c90a482890cb9d13e0"
+          curl -fL --retry 3 \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage \
+            -o appimagetool
+          echo "$APPIMAGE_TOOL_SHA256  appimagetool" | sha256sum -c -
+          chmod +x appimagetool
+
+          RUNTIME_URL="https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64"
+          RUNTIME_SHA256="1cc49bcf1e2ccd593c379adb17c9f85a36d619088296504de95b1d06215aebbf"
+          if [ "$APPIMAGE_ARCH" = "aarch64" ]; then
+            RUNTIME_URL="https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-aarch64"
+            RUNTIME_SHA256="7d5d772b7c32f0c84caf0a452a3072a5709027d7eac5856feb89a7a7a8881372"
+          fi
+          curl -fL --retry 3 "$RUNTIME_URL" -o runtime
+          echo "$RUNTIME_SHA256  runtime" | sha256sum -c -
+
+          rm -rf AppDir
+          mkdir -p AppDir/usr/bin AppDir/usr/share/applications
+          cp "dck-linux-$SUFFIX" AppDir/usr/bin/dck
+          cat > AppDir/AppRun <<'EOF'
+          #!/bin/sh
+          set -eu
+          HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+          exec "$HERE/usr/bin/dck" "$@"
+          EOF
+          chmod +x AppDir/AppRun
+          cat > AppDir/usr/share/applications/dck.desktop <<'EOF'
+          [Desktop Entry]
+          Name=dck
+          Comment=Lightweight container runtime for Linux
+          Exec=dck
+          Type=Application
+          Categories=Utility;System;
+          Terminal=true
+          EOF
+
+          test -x AppDir/AppRun
+          test -f AppDir/usr/share/applications/dck.desktop
+          test -x AppDir/usr/bin/dck
+          ARCH="$APPIMAGE_ARCH" ./appimagetool --appimage-extract-and-run \
+            --runtime-file runtime \
+            AppDir "dck-$VERSION-linux-$SUFFIX.AppImage"
+          test -s "dck-$VERSION-linux-$SUFFIX.AppImage"
+          sha256sum "dck-$VERSION-linux-$SUFFIX.AppImage" \
+            > "dck-$VERSION-linux-$SUFFIX.AppImage.sha256"
+          echo "Built: dck-$VERSION-linux-$SUFFIX.AppImage"
+
       - name: Build packages (deb, rpm, arch, apk)
         run: |
           VERSION=${{ needs.version.outputs.new_ver }}

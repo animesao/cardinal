@@ -60,6 +60,15 @@ dck stop web && dck rm web
 **Requirements:** Linux with `unshare`, `nsenter`, `ip`, `iptables`, `mount`, `pgrep` +
 PID/Mount/Net/UTS/IPC namespaces + overlayfs.
 
+### Release formats
+
+GitHub Releases provide native `.deb`, `.rpm`, `.pkg.tar.zst`, and `.apk`
+packages for `amd64`, `arm64`, and `armv6`, plus self-contained AppImages for
+`amd64` and `arm64`. AppImage needs no package manager, but dck still requires
+the Linux kernel features listed above. True ARMv6 hosts should use the raw
+`dck-linux-armv6` binary or its `.tar.gz` archive because the standard AppImage
+runtime does not support ARMv6.
+
 ---
 
 ## Key Concepts
