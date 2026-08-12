@@ -149,18 +149,59 @@ func Update(args []string) {
 		os.Exit(1)
 	}
 
-	cmd := exec.Command("mv", tmpPath, selfPath)
-	if out, err := cmd.CombinedOutput(); err != nil {
+	targetPath, allowSudo := updateInstallTarget(selfPath)
+	if targetPath != selfPath {
+		fmt.Printf("AppImage detected; installing the updated binary to %s\n", targetPath)
+	}
+	if err := installUpdateBinary(tmpPath, targetPath, allowSudo); err != nil {
 		removeErr := os.Remove(tmpPath)
-		fmt.Fprintf(os.Stderr, "Failed to install update: %v: %s", err, string(out))
+		fmt.Fprintf(os.Stderr, "Failed to install update: %v", err)
 		if removeErr != nil {
 			fmt.Fprintf(os.Stderr, "; cleanup failed: %v", removeErr)
 		}
 		fmt.Fprintln(os.Stderr)
 		os.Exit(1)
 	}
+	if err := os.Remove(tmpPath); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not remove temporary update file: %v\n", err)
+	}
 
 	fmt.Println("Update complete!")
+}
+
+const appImageInstallPath = "/usr/local/bin/dck"
+
+func updateInstallTarget(selfPath string) (string, bool) {
+	if strings.TrimSpace(os.Getenv("APPIMAGE")) != "" || strings.Contains(selfPath, "/.mount_") {
+		return appImageInstallPath, true
+	}
+	return selfPath, false
+}
+
+func installUpdateBinary(sourcePath, targetPath string, allowSudo bool) error {
+	args := []string{"-m", "0755", sourcePath, targetPath}
+	cmd := exec.Command("install", args...)
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		return nil
+	}
+	firstErr := fmt.Errorf("install failed: %v: %s", err, strings.TrimSpace(string(output)))
+	if !allowSudo {
+		return firstErr
+	}
+
+	// An AppImage launched from a desktop session commonly runs as an ordinary
+	// user, while /usr/local/bin is root-owned. Let sudo perform only the
+	// verified binary installation; the checksum was checked before this point.
+	sudoArgs := append([]string{"install"}, args...)
+	sudoCmd := exec.Command("sudo", sudoArgs...)
+	sudoCmd.Stdin = os.Stdin
+	sudoCmd.Stdout = os.Stdout
+	sudoCmd.Stderr = os.Stderr
+	if err := sudoCmd.Run(); err != nil {
+		return fmt.Errorf("%v; sudo install failed: %w", firstErr, err)
+	}
+	return nil
 }
 
 func parseSHA256Checksum(contents string) (string, error) {

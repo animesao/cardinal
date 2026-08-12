@@ -146,6 +146,11 @@ dck update --check
 dck update
 ```
 
+When dck is running from an AppImage, `dck update` cannot modify the
+read-only AppImage mount. The updater now installs the verified new static
+binary to `/usr/local/bin/dck` instead and leaves the original AppImage
+unchanged. If the desktop user cannot write there, it requests `sudo`.
+
 After updating, verify the binary and run a disposable container:
 
 ```bash
