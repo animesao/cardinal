@@ -149,7 +149,7 @@ jobs:
           echo "$RUNTIME_SHA256  runtime" | sha256sum -c -
 
           rm -rf AppDir
-          mkdir -p AppDir/usr/bin AppDir/usr/share/applications
+          mkdir -p AppDir/usr/bin
           cp "dck-linux-$SUFFIX" AppDir/usr/bin/dck
           cat > AppDir/AppRun <<'EOF'
           #!/bin/sh
@@ -158,7 +158,8 @@ jobs:
           exec "$HERE/usr/bin/dck" "$@"
           EOF
           chmod +x AppDir/AppRun
-          cat > AppDir/usr/share/applications/dck.desktop <<'EOF'
+          # appimagetool requires the primary desktop file at AppDir root.
+          cat > AppDir/dck.desktop <<'EOF'
           [Desktop Entry]
           Name=dck
           Comment=Lightweight container runtime for Linux
@@ -169,7 +170,7 @@ jobs:
           EOF
 
           test -x AppDir/AppRun
-          test -f AppDir/usr/share/applications/dck.desktop
+          test -f AppDir/dck.desktop
           test -x AppDir/usr/bin/dck
           ARCH="$APPIMAGE_ARCH" ./appimagetool --appimage-extract-and-run \
             --runtime-file runtime \
