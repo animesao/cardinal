@@ -25,17 +25,29 @@ if [[ ! -r "$SOURCE_APPIMAGE" ]]; then
   fail "cannot read AppImage: $SOURCE_APPIMAGE"
 fi
 
-if [[ -z "$SOURCE_BINARY" || ! -x "$SOURCE_BINARY" ]]; then
+if [[ -z "$SOURCE_BINARY" || ! -f "$SOURCE_BINARY" || ! -x "$SOURCE_BINARY" ]]; then
   fail "the embedded dck binary was not found; run the AppImage directly instead of a manually extracted AppRun"
 fi
 
+# FUSE AppImage mounts are readable by the desktop user but often invisible to
+# root. Copy the embedded binary to a normal temporary file before invoking
+# sudo; otherwise sudo install fails with "cannot stat ... Permission denied".
+TMP_BINARY="$(mktemp "${TMPDIR:-/tmp}/dck-appimage.XXXXXX")"
+cleanup() { rm -f "$TMP_BINARY"; }
+trap cleanup EXIT
+
+if ! cp -- "$SOURCE_BINARY" "$TMP_BINARY"; then
+  fail "cannot copy the embedded dck binary from the AppImage mount"
+fi
+chmod 0755 "$TMP_BINARY"
+
 if [[ "$EUID" -eq 0 ]]; then
-  install -D -m 0755 "$SOURCE_BINARY" "$INSTALL_PATH"
+  install -D -m 0755 "$TMP_BINARY" "$INSTALL_PATH"
 else
   if ! command -v sudo >/dev/null 2>&1; then
     fail "sudo is required to install dck to $INSTALL_PATH"
   fi
-  sudo install -D -m 0755 "$SOURCE_BINARY" "$INSTALL_PATH"
+  sudo install -D -m 0755 "$TMP_BINARY" "$INSTALL_PATH"
 fi
 info "Installed the embedded dck binary from $SOURCE_APPIMAGE to $INSTALL_PATH"
 

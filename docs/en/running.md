@@ -130,7 +130,9 @@ If double-clicking does nothing, make the file executable and choose **Run**
 rather than **Display** in the file manager. A desktop environment must have a
 terminal emulator installed (`x-terminal-emulator`, GNOME Terminal, Konsole,
 XFCE Terminal, or MATE Terminal). On a headless VPS, use the terminal commands
-above instead.
+above instead. If an older AppImage reports `cannot stat ... Permission denied`
+from `sudo install`, download the latest AppImage again: older builds tried to
+read the FUSE-mounted binary as root instead of copying it first to `/tmp`.
 
 ### Verify the installation
 

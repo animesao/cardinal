@@ -131,7 +131,10 @@ systemd. Существующие контейнеры и образы в кат
 **Run/Запустить**, а не **Display/Показать** в файловом менеджере. В Desktop
 должен быть установлен эмулятор терминала (`x-terminal-emulator`, GNOME
 Terminal, Konsole, XFCE Terminal или MATE Terminal). На headless VPS используйте
-команды из терминала.
+команды из терминала. Если старый AppImage сообщает `cannot stat ... Permission
+denied` на этапе `sudo install`, скачайте новый AppImage: старые сборки пытались
+читать бинарник из FUSE mount от root вместо предварительного копирования в
+`/tmp`.
 
 ### Проверка
 
