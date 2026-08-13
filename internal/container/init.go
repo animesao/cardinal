@@ -104,11 +104,33 @@ func setNoNewPrivileges() error {
 	return prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)
 }
 
-func applyCapabilities(c *Container) error {
-	// Start with no capabilities. Only explicitly requested capabilities are
-	// retained; SETUID/SETGID are kept when the container explicitly switches
-	// user so the requested identity can be applied before exec.
-	keep := make(map[string]bool)
+// defaultContainerCapabilities matches the conventional Docker default set:
+// applications retain common filesystem, identity, and low-port capabilities,
+// while dangerous capabilities such as SYS_ADMIN and SYS_MODULE stay dropped.
+// A completely empty default set breaks ordinary images (for example nginx
+// needs CAP_CHOWN during its entrypoint initialization).
+var defaultContainerCapabilities = map[string]bool{
+	"CHOWN":           true,
+	"DAC_OVERRIDE":   true,
+	"FOWNER":         true,
+	"FSETID":         true,
+	"KILL":           true,
+	"SETGID":         true,
+	"SETUID":         true,
+	"SETPCAP":        true,
+	"NET_BIND_SERVICE": true,
+	"NET_RAW":        true,
+	"SYS_CHROOT":     true,
+	"MKNOD":          true,
+	"AUDIT_WRITE":    true,
+	"SETFCAP":        true,
+}
+
+func requestedCapabilities(c *Container) (map[string]bool, error) {
+	keep := make(map[string]bool, len(defaultContainerCapabilities))
+	for name := range defaultContainerCapabilities {
+		keep[name] = true
+	}
 	for _, capName := range c.CapAdd {
 		name := strings.ToUpper(strings.TrimPrefix(capName, "CAP_"))
 		if name == "ALL" {
@@ -118,7 +140,7 @@ func applyCapabilities(c *Container) error {
 			continue
 		}
 		if _, ok := capMap[name]; !ok {
-			return fmt.Errorf("unknown capability: %s", capName)
+			return nil, fmt.Errorf("unknown capability: %s", capName)
 		}
 		keep[name] = true
 	}
@@ -133,6 +155,14 @@ func applyCapabilities(c *Container) error {
 			continue
 		}
 		delete(keep, name)
+	}
+	return keep, nil
+}
+
+func applyCapabilities(c *Container) error {
+	keep, err := requestedCapabilities(c)
+	if err != nil {
+		return err
 	}
 
 	var data [2]unix.CapUserData
