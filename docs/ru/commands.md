@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.23.27`
-**Project release:** `v1.23.27`
+**Documentation version:** `1.23.28`
+**Project release:** `v1.23.28`
 <!-- dck-version:end -->
 
 # Полный справочник CLI dck

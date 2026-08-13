@@ -1,13 +1,21 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.23.27`
-**Project release:** `v1.23.27`
+**Documentation version:** `1.23.28`
+**Project release:** `v1.23.28`
 <!-- dck-version:end -->
 
 # Changelog
 
 <!-- dck-current-release:start -->
-> Current release: **v1.23.27**. Detailed release notes below are maintained manually.
+> Current release: **v1.23.28**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
+
+## 1.23.28 (2026-08-13)
+
+### Runtime fixes
+
+- Fixed `dck run` options placed after the image, including `--workdir`, being passed to the container command.
+- Preserved the safe default Linux capability set so standard images such as `nginx:alpine` can perform required startup filesystem operations while dangerous capabilities remain dropped.
+- Cleaned up container resources when the init process exits before namespace registration.
 
 ## 1.23.17 (2026-08-12)
 
