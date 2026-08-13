@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.23.24`
-**Project release:** `v1.23.24`
+**Documentation version:** `1.23.25`
+**Project release:** `v1.23.25`
 <!-- dck-version:end -->
 
 # Compose / Deployment
