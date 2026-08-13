@@ -80,18 +80,11 @@ curl -fL -o "$FILE" "https://github.com/animesao/dck/releases/download/$TAG/$FIL
 sudo apt install "./$FILE"
 ```
 
-**Snap (любой дистрибутив с snapd):**
+**Snap-пакет (из GitHub Releases):**
 
-Если публикация Snap Store включена для проекта:
-
-```bash
-sudo snap install dcktool --classic
-```
-
-Пакет в Store называется `dcktool`, а CLI-команда остаётся `dck` через Snap alias. Если alias ещё не одобрен Store, используйте `dcktool`.
-
-Каждый GitHub-релиз также содержит версионный asset `.snap` для amd64 и
-arm64. Его можно установить напрямую, если пакет ещё не опубликован в Store:
+Snap-пакеты собираются для каждого релиза и прикладываются к GitHub Releases,
+но автоматически в Snap Store не загружаются. Скачайте и установите версионный
+asset `.snap` напрямую:
 
 ```bash
 TAG="$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"\]*\)".*/\1/p')"

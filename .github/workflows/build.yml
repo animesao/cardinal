@@ -297,41 +297,6 @@ jobs:
             dck-*-linux-*
             dck-linux-*
 
-  snap-store:
-    needs: [version, build]
-    if: github.actor != 'github-actions[bot]'
-    strategy:
-      max-parallel: 1
-      matrix:
-        goarch: [amd64, arm64]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: build-${{ matrix.goarch }}
-          path: artifacts
-
-      - name: Check Snap Store credentials
-        id: store
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-        run: |
-          if [ -n "$SNAPCRAFT_STORE_CREDENTIALS" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "SNAPCRAFT_STORE_CREDENTIALS is not configured; skipping dcktool Store publication."
-          fi
-
-      - name: Publish dcktool Snap to stable
-        if: steps.store.outputs.enabled == 'true'
-        uses: snapcore/action-publish@v1
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-        with:
-          snap: artifacts/dck-${{ needs.version.outputs.new_ver }}-linux-${{ matrix.goarch }}.snap
-          release: stable
-
   release:
     needs: [version, build]
     runs-on: ubuntu-latest
