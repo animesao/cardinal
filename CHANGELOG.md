@@ -1,12 +1,12 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.23.28`
-**Project release:** `v1.23.28`
+**Documentation version:** `1.23.29`
+**Project release:** `v1.23.29`
 <!-- dck-version:end -->
 
 # Changelog
 
 <!-- dck-current-release:start -->
-> Current release: **v1.23.28**. Detailed release notes below are maintained manually.
+> Current release: **v1.23.29**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
 
 ## 1.23.28 (2026-08-13)

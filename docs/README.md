@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.23.28`
-**Project release:** `v1.23.28`
+**Documentation version:** `1.23.29`
+**Project release:** `v1.23.29`
 <!-- dck-version:end -->
 
 > Version markers are generated from the root `VERSION` file. Run `make docs` to update all Markdown files, or `make docs-check` in CI to verify synchronization.
