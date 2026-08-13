@@ -85,8 +85,10 @@ sudo apt install "./$FILE"
 Если публикация Snap Store включена для проекта:
 
 ```bash
-sudo snap install dck --classic
+sudo snap install dcktool --classic
 ```
+
+Пакет в Store называется `dcktool`, а CLI-команда остаётся `dck` через Snap alias. Если alias ещё не одобрен Store, используйте `dcktool`.
 
 Каждый GitHub-релиз также содержит версионный asset `.snap` для amd64 и
 arm64. Его можно установить напрямую, если пакет ещё не опубликован в Store:

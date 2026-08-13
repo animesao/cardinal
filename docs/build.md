@@ -104,7 +104,7 @@ The repository has four workflows. CI also runs `govulncheck` against the Go dep
   creates Snap packages and AppImages for `amd64` and `arm64`, adds checksums,
   and publishes a GitHub release. If the `SNAPCRAFT_STORE_CREDENTIALS`
   repository secret is configured, the same workflow also publishes amd64 and
-  arm64 snaps to the Store `edge` channel; without it, Store publication is
+  arm64 snaps to the `dcktool` Store `stable` channel; without it, Store publication is
   skipped and the generated `.snap` files are still attached to the GitHub
   release.
 - **Linux E2E** (`.github/workflows/e2e.yml`) is a manual privileged Ubuntu smoke test. It pulls Alpine, runs a namespace-isolated command, exercises restart recovery, and creates/verifies a backup. It is intentionally manual because it requires host kernel, mount, namespace, and networking capabilities.
@@ -112,11 +112,13 @@ The repository has four workflows. CI also runs `govulncheck` against the Go dep
   workflow for major/minor/patch/automatic version bumps and runs the same
   validation gates before mutating `VERSION`, `main`, or tags. Use
   **Build & Release** for the complete multi-architecture package and AppImage
-  matrix. Build/release workflows use the same serialized concurrency group so
-  simultaneous runs do not race on `VERSION`, `main`, or tags.
+  matrix. It also publishes the amd64 Snap to `dcktool` Store `stable` when
+  `SNAPCRAFT_STORE_CREDENTIALS` is configured. Build/release workflows use the
+  same serialized concurrency group so simultaneous runs do not race on
+  `VERSION`, `main`, or tags.
 
 To enable Store publication, create restricted credentials with
-`snapcraft export-login --snaps=dck --acls package_access,package_push,package_update,package_release`
+`snapcraft export-login --snaps=dcktool --acls package_access,package_push,package_update,package_release`
 and save the resulting file contents as the repository secret
 `SNAPCRAFT_STORE_CREDENTIALS`.
 

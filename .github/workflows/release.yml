@@ -160,6 +160,27 @@ jobs:
           cp "${{ steps.snapcraft.outputs.snap }}" "dist/$SNAP_NAME"
           sha256sum "dist/$SNAP_NAME" > "dist/$SNAP_NAME.sha256"
 
+      - name: Check Snap Store credentials
+        id: store
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        run: |
+          if [ -n "$SNAPCRAFT_STORE_CREDENTIALS" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "SNAPCRAFT_STORE_CREDENTIALS is not configured; skipping dcktool Store publication."
+          fi
+
+      - name: Publish Snap to stable
+        if: steps.store.outputs.enabled == 'true'
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: dist/dck-${{ steps.version.outputs.version }}-linux-amd64.snap
+          release: stable
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:

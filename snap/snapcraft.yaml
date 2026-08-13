@@ -1,4 +1,4 @@
-name: dck
+name: dcktool
 base: core22
 version: 0.0.0
 summary: Lightweight container runtime
@@ -16,8 +16,10 @@ architectures:
     build-for: [arm64]
 
 apps:
-  dck:
+  dcktool:
     command: bin/dck
+    aliases:
+      - dck
 
 parts:
   dck:
