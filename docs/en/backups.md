@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.23.20`
-**Project release:** `v1.23.20`
+**Documentation version:** `1.23.21`
+**Project release:** `v1.23.21`
 <!-- dck-version:end -->
 
 # dck Backups Guide
