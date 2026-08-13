@@ -1,6 +1,6 @@
 name: dck
 base: core22
-version: latest
+version: 0.0.0
 summary: Lightweight container runtime
 description: |
   dck is a lightweight container runtime for Linux.
@@ -9,13 +9,28 @@ license: MIT
 confinement: classic
 grade: stable
 
+architectures:
+  - build-on: [amd64]
+    build-for: [amd64]
+  - build-on: [amd64]
+    build-for: [arm64]
+
 apps:
   dck:
-    command: dck
+    command: bin/dck
 
 parts:
   dck:
     plugin: go
-    source: .
+    source: ..
     build-snaps:
-      - go/1.25/stable
+      - go/1.26/stable
+    build-environment:
+      - CGO_ENABLED: "0"
+    override-build: |
+      mkdir -p "$CRAFT_PART_INSTALL/bin"
+      GOOS=linux GOARCH="$CRAFT_ARCH_BUILD_FOR" CGO_ENABLED=0 go build \
+        -tags netgo \
+        -ldflags="-s -w -X dck/cmd.version=${SNAPCRAFT_PROJECT_VERSION}" \
+        -o "$CRAFT_PART_INSTALL/bin/dck" \
+        .

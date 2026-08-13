@@ -258,12 +258,79 @@ jobs:
             echo "Built: $f"
           done
 
+      - name: Prepare Snapcraft project
+        if: matrix.goarch != 'arm'
+        run: |
+          # The action runs Snapcraft from the project root mounted in LXD.
+          # Use a temporary root-level project file so source: .. is not
+          # resolved outside the mounted project tree.
+          cp snap/snapcraft.yaml snapcraft.yaml
+          sed -i \
+            -e "s/^version: .*/version: ${{ needs.version.outputs.new_ver }}/" \
+            -e 's|source: \.\.|source: .|' \
+            snapcraft.yaml
+
+      - name: Build Snap
+        if: matrix.goarch != 'arm'
+        id: snapcraft
+        uses: snapcore/action-build@v1
+        with:
+          path: .
+          snapcraft-args: --build-for=${{ matrix.goarch }}
+
+      - name: Rename Snap and create checksum
+        if: matrix.goarch != 'arm'
+        run: |
+          VERSION=${{ needs.version.outputs.new_ver }}
+          SUFFIX="${{ matrix.goarch }}"
+          SNAP_PATH="${{ steps.snapcraft.outputs.snap }}"
+          SNAP_NAME="dck-$VERSION-linux-$SUFFIX.snap"
+          test -s "$SNAP_PATH"
+          cp "$SNAP_PATH" "$SNAP_NAME"
+          sha256sum "$SNAP_NAME" > "$SNAP_NAME.sha256"
+          echo "Built: $SNAP_NAME"
+
       - uses: actions/upload-artifact@v4
         with:
           name: build-${{ matrix.goarch }}
           path: |
             dck-*-linux-*
             dck-linux-*
+
+  snap-store:
+    needs: [version, build]
+    if: github.actor != 'github-actions[bot]'
+    strategy:
+      max-parallel: 1
+      matrix:
+        goarch: [amd64, arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-${{ matrix.goarch }}
+          path: artifacts
+
+      - name: Check Snap Store credentials
+        id: store
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        run: |
+          if [ -n "$SNAPCRAFT_STORE_CREDENTIALS" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "SNAPCRAFT_STORE_CREDENTIALS is not configured; skipping Store publication."
+          fi
+
+      - name: Publish Snap to edge
+        if: steps.store.outputs.enabled == 'true'
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: artifacts/dck-${{ needs.version.outputs.new_ver }}-linux-${{ matrix.goarch }}.snap
+          release: edge
 
   release:
     needs: [version, build]

@@ -82,9 +82,26 @@ sudo apt install "./$FILE"
 
 **Snap (any distro with snapd):**
 
+If the Snap Store publication is enabled for the project:
+
 ```bash
 sudo snap install dck --classic
 ```
+
+Every GitHub release also contains a versioned `.snap` asset for amd64 and
+arm64. Install it directly when the package has not been published to the
+Store yet:
+
+```bash
+TAG="$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"\]*\)".*/\1/p')"
+test -n "$TAG" || { echo "Could not determine the latest release" >&2; exit 1; }
+FILE="dck-${TAG#v}-linux-amd64.snap"
+curl -fL -o "$FILE" "https://github.com/animesao/dck/releases/download/$TAG/$FILE"
+sudo snap install --dangerous --classic "$FILE"
+```
+
+Use the `arm64` suffix on ARM64 hosts. The Snap uses classic confinement
+because dck needs host namespace, mount, cgroup, and networking capabilities.
 
 **Manual binary install:**
 

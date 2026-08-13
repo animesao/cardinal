@@ -136,6 +136,30 @@ jobs:
           cd dist
           sha256sum dck-linux-amd64 > dck-linux-amd64.sha256
 
+      - name: Prepare Snapcraft project
+        run: |
+          # Build from a temporary root-level project file so the local
+          # source stays inside the LXD project tree.
+          cp snap/snapcraft.yaml snapcraft.yaml
+          sed -i \
+            -e "s/^version: .*/version: ${{ steps.version.outputs.version }}/" \
+            -e 's|source: \.\.|source: .|' \
+            snapcraft.yaml
+
+      - name: Build Snap
+        id: snapcraft
+        uses: snapcore/action-build@v1
+        with:
+          path: .
+          snapcraft-args: --build-for=amd64
+
+      - name: Add Snap release asset
+        run: |
+          SNAP_NAME="dck-${{ steps.version.outputs.version }}-linux-amd64.snap"
+          test -s "${{ steps.snapcraft.outputs.snap }}"
+          cp "${{ steps.snapcraft.outputs.snap }}" "dist/$SNAP_NAME"
+          sha256sum "dist/$SNAP_NAME" > "dist/$SNAP_NAME.sha256"
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:

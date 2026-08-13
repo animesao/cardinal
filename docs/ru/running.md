@@ -82,9 +82,25 @@ sudo apt install "./$FILE"
 
 **Snap (любой дистрибутив с snapd):**
 
+Если публикация Snap Store включена для проекта:
+
 ```bash
 sudo snap install dck --classic
 ```
+
+Каждый GitHub-релиз также содержит версионный asset `.snap` для amd64 и
+arm64. Его можно установить напрямую, если пакет ещё не опубликован в Store:
+
+```bash
+TAG="$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"\]*\)".*/\1/p')"
+test -n "$TAG" || { echo "Не удалось определить последний релиз" >&2; exit 1; }
+FILE="dck-${TAG#v}-linux-amd64.snap"
+curl -fL -o "$FILE" "https://github.com/animesao/dck/releases/download/$TAG/$FILE"
+sudo snap install --dangerous --classic "$FILE"
+```
+
+На ARM64 используйте суффикс `arm64`. Snap использует classic confinement,
+потому что dck требует namespace, mount, cgroup и сетевые возможности хоста.
 
 **Ручная установка бинарника:**
 

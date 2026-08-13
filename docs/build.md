@@ -46,10 +46,11 @@ make build
 ```
 
 The release workflow additionally builds an `armv6` artifact, native packages
-for all three target architectures, and AppImage artifacts for `amd64` and
-`arm64`. Every release artifact has a SHA-256 checksum. A standard AppImage is
-not published for true ARMv6 because the official AppImage runtime does not
-support that CPU baseline; ARMv6 uses the raw binary and `.tar.gz` archive.
+for all three target architectures, Snap packages for `amd64` and `arm64`, and
+AppImage artifacts for `amd64` and `arm64`. Every release artifact has a
+SHA-256 checksum. A standard AppImage is not published for true ARMv6 because
+the official AppImage runtime does not support that CPU baseline; ARMv6 uses
+the raw binary and `.tar.gz` archive.
 
 ## Tests and checks
 
@@ -100,8 +101,12 @@ The repository has four workflows. CI also runs `govulncheck` against the Go dep
   version bump or publish. It increments `VERSION`, creates a version tag, checks
   out that tag, builds Linux `amd64`, `arm64`, and `armv6`, creates native
   `.deb`, `.rpm`, `.pkg.tar.zst`, and `.apk` packages for each architecture,
-  creates AppImages for `amd64` and `arm64`, adds checksums, and publishes a
-  GitHub release.
+  creates Snap packages and AppImages for `amd64` and `arm64`, adds checksums,
+  and publishes a GitHub release. If the `SNAPCRAFT_STORE_CREDENTIALS`
+  repository secret is configured, the same workflow also publishes amd64 and
+  arm64 snaps to the Store `edge` channel; without it, Store publication is
+  skipped and the generated `.snap` files are still attached to the GitHub
+  release.
 - **Linux E2E** (`.github/workflows/e2e.yml`) is a manual privileged Ubuntu smoke test. It pulls Alpine, runs a namespace-isolated command, exercises restart recovery, and creates/verifies a backup. It is intentionally manual because it requires host kernel, mount, namespace, and networking capabilities.
 - **Release** (`.github/workflows/release.yml`) is a manual, amd64-only release
   workflow for major/minor/patch/automatic version bumps and runs the same
@@ -109,6 +114,11 @@ The repository has four workflows. CI also runs `govulncheck` against the Go dep
   **Build & Release** for the complete multi-architecture package and AppImage
   matrix. Build/release workflows use the same serialized concurrency group so
   simultaneous runs do not race on `VERSION`, `main`, or tags.
+
+To enable Store publication, create restricted credentials with
+`snapcraft export-login --snaps=dck --acls package_access,package_push,package_update,package_release`
+and save the resulting file contents as the repository secret
+`SNAPCRAFT_STORE_CREDENTIALS`.
 
 The automated version commit uses `[skip ci]`; the Build & Release artifacts are
 built from the version tag created by the same workflow. The sync script updates current version markers, the README release pointer, and
