@@ -66,7 +66,6 @@ func reorderRunFlags(args []string, fs *flag.FlagSet) []string {
 
 func Run(args []string) {
 	fs := flag.NewFlagSet("run", flag.ExitOnError)
-	args = reorderRunFlags(args, fs)
 	detach := fs.Bool("d", false, "Detach mode")
 	name := fs.String("n", "", "Container name")
 	interactive := fs.Bool("i", false, "Interactive mode")
@@ -123,6 +122,10 @@ func Run(args []string) {
 
 	startupScript := fs.String("startup", "", "Startup script (inline script or @filepath)")
 
+	// Register all flags before reordering them. This allows Docker-style
+	// options after the image (for example: image --workdir /app) to be
+	// recognized as runtime options instead of being passed to the image CMD.
+	args = reorderRunFlags(args, fs)
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing run options: %v\n", err)
 		os.Exit(1)

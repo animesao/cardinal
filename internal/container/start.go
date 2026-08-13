@@ -112,6 +112,10 @@ func (c *Container) startInternal() error {
 
 	mountNS, pidNS, networkNS, ipcNS, utsNS, err := containerNamespaceIdentities(childPID)
 	if err != nil {
+		// The init process may have exited while startup was in progress (for
+		// example because the image command was invalid). Do not leave the
+		// overlay, network, cgroup, or console helper behind in that case.
+		c.abortStart(cmd)
 		return fmt.Errorf("record container namespaces: %w", err)
 	}
 	// The container may have been removed (dck rm) while this start was in
