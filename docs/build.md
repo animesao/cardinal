@@ -112,7 +112,9 @@ The repository has four workflows. CI also runs `govulncheck` against the Go dep
   matrix. It also attaches the amd64 Snap and its checksum to the GitHub
   release; neither release workflow uploads Snap packages to the Snap Store.
   Build/release workflows use the same serialized concurrency group so
-  simultaneous runs do not race on `VERSION`, `main`, or tags.
+  simultaneous runs do not race on `VERSION`, `main`, or tags. Run only one
+  release workflow at a time; prefer **Build & Release** for normal releases
+  because it is the canonical multi-architecture publisher.
 
 The automated version commit uses `[skip ci]`; the Build & Release artifacts are
 built from the version tag created by the same workflow. The sync script updates current version markers, the README release pointer, and

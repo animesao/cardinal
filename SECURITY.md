@@ -14,7 +14,7 @@ Run `dck` as a dedicated non-root account where possible. Running a container ru
 ## Current hardening
 
 - Container commands entered through `exec`, `cp`, `top`, and healthchecks use `nsenter -r` and verify persisted mount, PID, network, IPC, and UTS namespace identities.
-- Container initialization drops capabilities by default, honors explicit capability allowlists, enables `no_new_privs`, and restricts container sysctls to network-namespace `net.*` names.
+- Container initialization keeps a Docker-compatible safe capability set by default, drops dangerous capabilities such as `SYS_ADMIN` and `SYS_MODULE`, honors explicit `--cap-add`/`--cap-drop` settings, enables `no_new_privs`, and restricts container sysctls to network-namespace `net.*` names. Use `--cap-drop ALL` for a fully empty capability set.
 - Bind mounts and container targets are validated against traversal, protected host paths, and symlink escapes. Use named volumes or a dedicated `/data/...` directory for application data.
 - Image layers and imported archives reject traversal, unsafe links, special device entries, duplicate metadata, and excessive entry/total sizes.
 - Dockerfile `COPY` stays inside the build context, rejects source links/special files and symlink destinations, and does not inherit arbitrary host environment variables into `RUN` or ARG substitution.

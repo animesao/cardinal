@@ -658,14 +658,14 @@ dck run -d --user 1000:1000 nginx   # UID:GID
 
 ### Capabilities
 
-By default, dck drops dangerous Linux capabilities (SYS_ADMIN, SYS_MODULE, etc.).
+By default, dck keeps the Docker-compatible safe capability set needed by common images (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `FSETID`, `KILL`, `SETGID`, `SETUID`, `SETPCAP`, `NET_BIND_SERVICE`, `NET_RAW`, `SYS_CHROOT`, `MKNOD`, `AUDIT_WRITE`, and `SETFCAP`). Dangerous capabilities such as `SYS_ADMIN` and `SYS_MODULE` remain dropped. This lets standard images such as `nginx:alpine` initialize their filesystems normally.
 
 ```bash
 # Add capabilities
 dck run -d --cap-add NET_ADMIN nginx
 dck run -d --cap-add NET_ADMIN --cap-add SYS_PTRACE nginx
 
-# Drop all capabilities
+# Drop all capabilities (maximum restriction)
 dck run -d --cap-drop ALL nginx
 
 # Add specific capabilities back after --cap-drop ALL

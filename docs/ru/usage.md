@@ -687,14 +687,14 @@ dck run -d --user 1000:1000 nginx   # UID:GID
 
 ### Capabilities
 
-По умолчанию dck отключает опасные capability (SYS_ADMIN, SYS_MODULE и т.д.).
+По умолчанию dck сохраняет безопасный Docker-совместимый набор capabilities, необходимый обычным образам (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `FSETID`, `KILL`, `SETGID`, `SETUID`, `SETPCAP`, `NET_BIND_SERVICE`, `NET_RAW`, `SYS_CHROOT`, `MKNOD`, `AUDIT_WRITE` и `SETFCAP`). Опасные capabilities, такие как `SYS_ADMIN` и `SYS_MODULE`, по-прежнему отключены. Поэтому стандартные образы вроде `nginx:alpine` могут нормально подготовить файловую систему.
 
 ```bash
 # Добавить capability
 dck run -d --cap-add NET_ADMIN nginx
 dck run -d --cap-add NET_ADMIN --cap-add SYS_PTRACE nginx
 
-# Отключить все
+# Отключить все capabilities (максимальное ограничение)
 dck run -d --cap-drop ALL nginx
 
 # Вернуть конкретные после --cap-drop ALL
