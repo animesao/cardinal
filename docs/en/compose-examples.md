@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.23.23`
-**Project release:** `v1.23.23`
+**Documentation version:** `1.23.24`
+**Project release:** `v1.23.24`
 <!-- dck-version:end -->
 
 # Compose Examples — 15 Real-World Configurations
