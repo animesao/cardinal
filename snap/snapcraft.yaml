@@ -25,11 +25,26 @@ parts:
   dck:
     plugin: go
     source: ..
-    build-snaps:
-      - go/1.26/stable
+    build-packages:
+      - curl
+      - git
     build-environment:
       - CGO_ENABLED: "0"
+      - PATH: "/root/go/bin:$PATH"
     override-build: |
+      # Download Go directly to avoid snap channel lag
+      GO_VERSION="1.26.6"
+      GO_ARCH="amd64"
+      if [ "$CRAFT_ARCH_BUILD_FOR" = "arm64" ]; then
+        GO_ARCH="arm64"
+      fi
+      curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -o /tmp/go.tar.gz
+      rm -rf /root/go
+      tar -C /root -xzf /tmp/go.tar.gz
+      rm -f /tmp/go.tar.gz
+      export PATH="/root/go/bin:$PATH"
+      go version
+
       mkdir -p "$CRAFT_PART_INSTALL/bin"
       GOOS=linux GOARCH="$CRAFT_ARCH_BUILD_FOR" CGO_ENABLED=0 go build \
         -tags netgo \
