@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.24.7`
-**Project release:** `v1.24.7`
+**Documentation version:** `1.24.8`
+**Project release:** `v1.24.8`
 <!-- dck-version:end -->
 
 # Deploying Bots with dck
