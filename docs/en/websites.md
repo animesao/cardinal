@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.24.6`
-**Project release:** `v1.24.6`
+**Documentation version:** `1.24.7`
+**Project release:** `v1.24.7`
 <!-- dck-version:end -->
 
 # Deploying Websites with dck
