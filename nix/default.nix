@@ -23,12 +23,7 @@ buildGoModule {
 
   tags = [ "netgo" ];
 
-  # Allow Go to download the exact toolchain version required by go.mod
-  # (nixpkgs may ship an older Go, but go.mod requires >= 1.26.6)
-  # Use overrideAttrs to avoid conflict with buildGoModule's GOTOOLCHAIN=local
-  preBuild = ''
-    export GOTOOLCHAIN=auto
-  '';
+
 
   nativeBuildInputs = [ installShellFiles ];
 

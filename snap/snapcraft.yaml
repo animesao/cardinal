@@ -53,4 +53,4 @@ parts:
         -o "$CRAFT_PART_INSTALL/bin/dck" \
         .
 
-      file "$CRAFT_PART_INSTALL/bin/dck"
+      echo "Built: $(ls -lh $CRAFT_PART_INSTALL/bin/dck)"
