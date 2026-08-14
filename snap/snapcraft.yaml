@@ -29,13 +29,17 @@ parts:
       - curl
       - git
     override-build: |
-      # Download Go directly to avoid snap channel lag
+      # Download Go directly — always use the BUILD machine's arch (amd64)
+      # Cross-compile via GOARCH for arm64 targets.
       GO_VERSION="1.26.6"
-      GO_ARCH="amd64"
-      if [ "$CRAFT_ARCH_BUILD_FOR" = "arm64" ]; then
-        GO_ARCH="arm64"
-      fi
-      curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -o /tmp/go.tar.gz
+      HOST_ARCH=$(uname -m)
+      case "$HOST_ARCH" in
+        x86_64)  GO_HOST_ARCH="amd64" ;;
+        aarch64) GO_HOST_ARCH="arm64" ;;
+        *)       echo "Unsupported host arch: $HOST_ARCH"; exit 1 ;;
+      esac
+      echo "Host arch: $HOST_ARCH -> Go: $GO_HOST_ARCH"
+      curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${GO_HOST_ARCH}.tar.gz" -o /tmp/go.tar.gz
       rm -rf /root/go
       tar -C /root -xzf /tmp/go.tar.gz
       rm -f /tmp/go.tar.gz
@@ -48,3 +52,5 @@ parts:
         -ldflags="-s -w -X dck/cmd.version=${SNAPCRAFT_PROJECT_VERSION}" \
         -o "$CRAFT_PART_INSTALL/bin/dck" \
         .
+
+      file "$CRAFT_PART_INSTALL/bin/dck"
