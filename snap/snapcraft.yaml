@@ -23,14 +23,11 @@ apps:
 
 parts:
   dck:
-    plugin: go
+    plugin: nil
     source: ..
     build-packages:
       - curl
       - git
-    build-environment:
-      - CGO_ENABLED: "0"
-      - PATH: "/root/go/bin:$PATH"
     override-build: |
       # Download Go directly to avoid snap channel lag
       GO_VERSION="1.26.6"

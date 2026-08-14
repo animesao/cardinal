@@ -23,6 +23,13 @@ buildGoModule {
 
   tags = [ "netgo" ];
 
+  # Allow Go to download the exact toolchain version required by go.mod
+  # (nixpkgs may ship an older Go, but go.mod requires >= 1.26.6)
+  overrideModAttrs = old: {
+    GOTOOLCHAIN = "auto";
+  };
+  GOTOOLCHAIN = "auto";
+
   nativeBuildInputs = [ installShellFiles ];
 
   # Shell completions will be added when dck supports 'dck completion' command
