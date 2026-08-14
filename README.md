@@ -874,6 +874,22 @@ Downloads the latest binary and replaces `/usr/local/bin/dck`. The download allo
 - [Security model and vulnerability reporting](SECURITY.md)
 - [Build, CI, and versioning](docs/build.md) — local checks, cross-compilation, and release automation
 
+### Installation Guides
+
+| English | Русский |
+|---|---|
+| [Linux (Universal)](docs/en/install-linux.md) | [Linux (Универсальная)](docs/ru/install-linux.md) |
+| [Debian / Ubuntu](docs/en/install-debian.md) | [Debian / Ubuntu](docs/ru/install-debian.md) |
+| [Fedora / RHEL](docs/en/install-fedora.md) | [Fedora / RHEL](docs/ru/install-fedora.md) |
+| [Arch Linux](docs/en/install-arch.md) | [Arch Linux](docs/ru/install-arch.md) |
+| [Alpine Linux](docs/en/install-alpine.md) | [Alpine Linux](docs/ru/install-alpine.md) |
+| [NixOS](docs/en/install-nixos.md) | [NixOS](docs/ru/install-nixos.md) |
+| [Snap](docs/en/install-snap.md) | [Snap](docs/ru/install-snap.md) |
+| [AppImage](docs/en/install-appimage.md) | [AppImage](docs/ru/install-appimage.md) |
+| [Manual Binary](docs/en/install-manual.md) | [Ручная установка](docs/ru/install-manual.md) |
+
+### Guides
+
 | English | Русский |
 |---|---|
 | [Running Guide](docs/en/running.md) | [Руководство по запуску](docs/ru/running.md) |
