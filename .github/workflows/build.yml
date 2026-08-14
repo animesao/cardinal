@@ -324,7 +324,7 @@ jobs:
       - name: Build with Nix (amd64)
         run: |
           VERSION=${{ needs.version.outputs.new_ver }}
-          nix build .#packages.x86_64-linux.dck --impure --argstr version "$VERSION"
+          nix build .#packages.x86_64-linux.dck
           cp result/bin/dck dck-nixos-amd64
           sha256sum dck-nixos-amd64 > dck-nixos-amd64.sha256
           echo "Built Nix package: dck-nixos-amd64"

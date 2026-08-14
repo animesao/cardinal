@@ -16,7 +16,7 @@
       {
         packages = {
           dck = pkgs.callPackage ./nix/default.nix {
-            inherit versionStr;
+            version = versionStr;
           };
           default = self.packages.${system}.dck;
         };

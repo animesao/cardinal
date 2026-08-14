@@ -138,7 +138,7 @@ jobs:
 
       - name: Build with Nix
         run: |
-          nix build .#packages.x86_64-linux.dck --impure --argstr version "${{ steps.version.outputs.version }}"
+          nix build .#packages.x86_64-linux.dck
           cp result/bin/dck dist/dck-nixos-amd64
           cd dist
           sha256sum dck-nixos-amd64 > dck-nixos-amd64.sha256
