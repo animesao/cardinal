@@ -11,7 +11,8 @@ buildGoModule {
 
   src = ./..;
 
-  vendorHash = null; # Static binary, no vendor
+  # No vendor directory — download modules directly
+  vendorHash = null;
 
   subPackages = [ "." ];
 
@@ -23,7 +24,8 @@ buildGoModule {
 
   tags = [ "netgo" ];
 
-
+  # Use -mod=mod to download modules instead of using vendor
+  flags = [ "-mod=mod" ];
 
   nativeBuildInputs = [ installShellFiles ];
 
