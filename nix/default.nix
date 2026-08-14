@@ -1,7 +1,5 @@
 { lib
 , stdenv
-, buildGoModule
-, fetchFromGitHub
 , installShellFiles
 , version ? "dev"
 }:
@@ -14,18 +12,18 @@ stdenv.mkDerivation {
 
   nativeBuildInputs = [ installShellFiles ];
 
-  # Disable unpackPhase — we build from src directly
   dontUnpack = true;
+  dontConfigure = true;
 
   buildPhase = ''
     export GOPATH=$TMPDIR/gopath
     export GOMODCACHE=$TMPDIR/modcache
     export GOFLAGS="-mod=mod"
-    
+
     mkdir -p $GOPATH $GOMODCACHE
-    cp -r $src/* $TMPDIR/build/
-    cd $TMPDIR/build
-    
+    cp -r $src $TMPDIR/src
+    cd $TMPDIR/src
+
     go build \
       -tags netgo \
       -ldflags="-s -w -X dck/cmd.version=${version}" \
@@ -35,7 +33,7 @@ stdenv.mkDerivation {
 
   installPhase = ''
     mkdir -p $out/bin
-    cp dck $out/bin/dck
+    cp $TMPDIR/src/dck $out/bin/dck
   '';
 
   meta = with lib; {

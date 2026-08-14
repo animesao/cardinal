@@ -1,0 +1,3 @@
+# Ensure Nix files stay LF even on Windows (Nix doesn't understand CRLF)
+*.nix eol=lf
+flake.lock eol=lf
