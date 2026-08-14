@@ -27,13 +27,13 @@ stdenv.mkDerivation {
     go build \
       -tags netgo \
       -ldflags="-s -w -X dck/cmd.version=${version}" \
-      -o dck \
+      -o $TMPDIR/dck \
       .
   '';
 
   installPhase = ''
     mkdir -p $out/bin
-    cp $TMPDIR/src/dck $out/bin/dck
+    cp $TMPDIR/dck $out/bin/dck
   '';
 
   meta = with lib; {
