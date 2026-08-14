@@ -216,10 +216,12 @@ func EnsureAppArmorProfile() error {
 	defer os.Remove(tmpFile.Name())
 
 	if _, err := tmpFile.WriteString(DefaultAppArmorProfile()); err != nil {
-		tmpFile.Close()
+		_ = tmpFile.Close()
 		return fmt.Errorf("write profile: %w", err)
 	}
-	tmpFile.Close()
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("close temp profile: %w", err)
+	}
 
 	return LoadProfileIntoKernel(tmpFile.Name())
 }

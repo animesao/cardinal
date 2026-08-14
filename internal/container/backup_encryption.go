@@ -152,17 +152,20 @@ func (e *BackupEncryptor) EncryptFile(path string) error {
 	tmpPath := tmp.Name()
 
 	if _, err := tmp.Write(encrypted); err != nil {
-		tmp.Close()
-		os.Remove(tmpPath)
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("write encrypted: %w", err)
 	}
 
 	if err := tmp.Sync(); err != nil {
-		tmp.Close()
-		os.Remove(tmpPath)
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("sync: %w", err)
 	}
-	tmp.Close()
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("close temp: %w", err)
+	}
 
 	if err := os.Rename(tmpPath, path); err != nil {
 		os.Remove(tmpPath)
@@ -192,17 +195,20 @@ func (e *BackupEncryptor) DecryptFile(path string) error {
 	tmpPath := tmp.Name()
 
 	if _, err := tmp.Write(decrypted); err != nil {
-		tmp.Close()
-		os.Remove(tmpPath)
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("write decrypted: %w", err)
 	}
 
 	if err := tmp.Sync(); err != nil {
-		tmp.Close()
-		os.Remove(tmpPath)
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("sync: %w", err)
 	}
-	tmp.Close()
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("close temp: %w", err)
+	}
 
 	if err := os.Rename(tmpPath, path); err != nil {
 		os.Remove(tmpPath)
@@ -293,7 +299,7 @@ func SecureDelete(path string) error {
 	// Overwrite 3 times
 	for i := 0; i < 3; i++ {
 		if _, err := f.Seek(0, 0); err != nil {
-			f.Close()
+			_ = f.Close()
 			return err
 		}
 
@@ -306,12 +312,12 @@ func SecureDelete(path string) error {
 			}
 
 			if _, err := rand.Read(buf[:toWrite]); err != nil {
-				f.Close()
+				_ = f.Close()
 				return err
 			}
 
 			if _, err := f.Write(buf[:toWrite]); err != nil {
-				f.Close()
+				_ = f.Close()
 				return err
 			}
 
@@ -319,12 +325,12 @@ func SecureDelete(path string) error {
 		}
 
 		if err := f.Sync(); err != nil {
-			f.Close()
+			_ = f.Close()
 			return err
 		}
 	}
 
-	f.Close()
+	_ = f.Close()
 	return os.Remove(path)
 }
 

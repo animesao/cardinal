@@ -106,7 +106,7 @@ func CloseAuditLogger() {
 		globalAuditLogger.mu.Lock()
 		defer globalAuditLogger.mu.Unlock()
 		if globalAuditLogger.file != nil {
-			globalAuditLogger.file.Close()
+			_ = globalAuditLogger.file.Close()
 			globalAuditLogger.file = nil
 		}
 	}
