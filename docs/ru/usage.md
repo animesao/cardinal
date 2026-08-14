@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.24.8`
-**Project release:** `v1.24.8`
+**Documentation version:** `1.24.9`
+**Project release:** `v1.24.9`
 <!-- dck-version:end -->
 
 # Команды и использование
