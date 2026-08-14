@@ -1,36 +1,42 @@
 { lib
+, stdenv
 , buildGoModule
 , fetchFromGitHub
 , installShellFiles
 , version ? "dev"
 }:
 
-buildGoModule {
+stdenv.mkDerivation {
   pname = "dck";
   inherit version;
 
   src = ./..;
 
-  # No vendor directory — download modules directly
-  vendorHash = null;
-
-  subPackages = [ "." ];
-
-  ldflags = [
-    "-s"
-    "-w"
-    "-X dck/cmd.version=${version}"
-  ];
-
-  tags = [ "netgo" ];
-
-  # Use -mod=mod to download modules instead of using vendor
-  flags = [ "-mod=mod" ];
-
   nativeBuildInputs = [ installShellFiles ];
 
-  # Shell completions will be added when dck supports 'dck completion' command
-  # For now, install the binary only
+  # Disable unpackPhase — we build from src directly
+  dontUnpack = true;
+
+  buildPhase = ''
+    export GOPATH=$TMPDIR/gopath
+    export GOMODCACHE=$TMPDIR/modcache
+    export GOFLAGS="-mod=mod"
+    
+    mkdir -p $GOPATH $GOMODCACHE
+    cp -r $src/* $TMPDIR/build/
+    cd $TMPDIR/build
+    
+    go build \
+      -tags netgo \
+      -ldflags="-s -w -X dck/cmd.version=${version}" \
+      -o dck \
+      .
+  '';
+
+  installPhase = ''
+    mkdir -p $out/bin
+    cp dck $out/bin/dck
+  '';
 
   meta = with lib; {
     description = "Lightweight container runtime for Linux";
