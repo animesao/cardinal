@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.24.5`
-**Project release:** `v1.24.5`
+**Documentation version:** `1.24.6`
+**Project release:** `v1.24.6`
 <!-- dck-version:end -->
 
 # Compose / Развёртывание
