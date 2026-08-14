@@ -1,5 +1,6 @@
 { lib
 , stdenv
+, go
 , installShellFiles
 , version ? "dev"
 }:
@@ -10,7 +11,7 @@ stdenv.mkDerivation {
 
   src = ./..;
 
-  nativeBuildInputs = [ installShellFiles ];
+  nativeBuildInputs = [ go installShellFiles ];
 
   dontUnpack = true;
   dontConfigure = true;
@@ -24,6 +25,7 @@ stdenv.mkDerivation {
     cp -r $src $TMPDIR/src
     cd $TMPDIR/src
 
+    go version
     go build \
       -tags netgo \
       -ldflags="-s -w -X dck/cmd.version=${version}" \
