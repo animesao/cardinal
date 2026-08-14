@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.24.0`
-**Project release:** `v1.24.0`
+**Documentation version:** `1.24.1`
+**Project release:** `v1.24.1`
 <!-- dck-version:end -->
 
 <p align="center">
