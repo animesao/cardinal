@@ -15,7 +15,7 @@ esac
 
 FILES=$(mktemp)
 trap 'rm -f "$FILES"' 0 1 2 3 15
-find "$ROOT" -type f -name '*.md' -not -path "$ROOT/.git/*" -print > "$FILES"
+find "$ROOT" -type f -name '*.md' -not -path "$ROOT/.git/*" -not -path "$ROOT/vendor/*" -print > "$FILES"
 
 sync_version_marker() {
   path=$1
