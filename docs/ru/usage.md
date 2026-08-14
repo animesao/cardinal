@@ -723,6 +723,70 @@ dck run -d --no-new-privs nginx
 dck run -d --sysctl net.ipv4.ip_forward=1 nginx
 ```
 
+### Профиль Seccomp
+
+dck применяет профиль seccomp по умолчанию, который блокирует 30+ опасных syscalls, включая `mount`, `ptrace`, `reboot`, `kexec_load`, `bpf` и `init_module`.
+
+```bash
+# Использовать профиль seccomp по умолчанию (автоматически)
+dck run -d nginx
+
+# Использовать кастомный профиль seccomp
+dck run -d --seccomp-profile /путь/к/профилю.json nginx
+```
+
+### Профиль AppArmor
+
+dck применяет профиль AppArmor по умолчанию (`dck-container`), который ограничивает доступ к чувствительным путям хоста и ограничивает возможности контейнера.
+
+```bash
+# Использовать профиль AppArmor по умолчанию (автоматически)
+dck run -d nginx
+
+# Использовать кастомный профиль AppArmor
+dck run -d --apparmor-profile мой-профиль nginx
+```
+
+### Сетевая изоляция
+
+Изолировать контейнер от всех других контейнеров для предотвращения lateral movement:
+
+```bash
+dck run -d --isolated nginx
+
+# Разрешить конкретную коммуникацию
+dck run -d --isolated --network appnet nginx
+```
+
+### Аудит-логирование
+
+Включить аудит-логирование для записи всех событий жизненного цикла контейнера:
+
+```bash
+dck run -d --audit-log nginx
+
+# События логируются в ~/.dck/audit/audit-YYYY-MM-DD.log
+cat ~/.dck/audit/audit-$(date +%Y-%m-%d).log
+```
+
+### Шифрование бэкапов
+
+Шифровать архивы бэкапов с помощью AES-256-GCM:
+
+```bash
+# Сгенерировать ключ шифрования
+dck backup generate-key
+
+# Установить ключ через переменную окружения
+export DCK_BACKUP_KEY="ваш-hex-ключ"
+
+# Создать зашифрованный бэкап
+dck backup create nginx -e
+
+# Создать зашифрованный бэкап с кастомным путём
+dck backup create nginx -o /data/backups/nginx.enc -e
+```
+
 ---
 
 ## Переменные окружения

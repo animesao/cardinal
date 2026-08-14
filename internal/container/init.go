@@ -570,6 +570,11 @@ func InitContainer(id, merged string) error {
 		return fmt.Errorf("set no-new-privileges: %w", err)
 	}
 
+	// Apply device restrictions (/dev/shm, /dev/mqueue, /proc/sys, /sys)
+	if err := ApplyDeviceRestrictions("/"); err != nil {
+		log.Warn("apply device restrictions: %v", err)
+	}
+
 	// Apply readonly rootfs (remount / as readonly after /proc is mounted)
 	if c.ReadonlyRootfs {
 		if err := syscall.Mount("", "/", "", syscall.MS_REMOUNT|syscall.MS_RDONLY, ""); err != nil {

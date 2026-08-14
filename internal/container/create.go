@@ -97,6 +97,11 @@ func New(img *image.Image, opts CreateOpts) *Container {
 		NetworkMode:        opts.NetworkMode,
 		Entrypoint:         opts.Entrypoint,
 		Ulimits:            opts.Ulimits,
+		SeccompProfile:     opts.SeccompProfile,
+		AppArmorProfile:    opts.AppArmorProfile,
+		Isolated:           opts.Isolated,
+		EncryptedBackup:    opts.EncryptedBackup,
+		AuditLogging:       opts.AuditLogging,
 	}
 }
 

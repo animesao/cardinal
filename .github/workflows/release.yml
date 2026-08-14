@@ -136,6 +136,14 @@ jobs:
           cd dist
           sha256sum dck-linux-amd64 > dck-linux-amd64.sha256
 
+      - name: Build with Nix
+        run: |
+          nix build .#packages.x86_64-linux.dck --impure --argstr version "${{ steps.version.outputs.version }}"
+          cp result/bin/dck dist/dck-nixos-amd64
+          cd dist
+          sha256sum dck-nixos-amd64 > dck-nixos-amd64.sha256
+          echo "Built Nix package: dck-nixos-amd64"
+
       - name: Prepare Snapcraft project
         run: |
           # Build from a temporary root-level project file so the local

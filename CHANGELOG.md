@@ -3,6 +3,10 @@
 **Project release:** `v1.23.30`
 <!-- dck-version:end -->
 
+<p align="center">
+  <img src="img/dck.png" alt="dck logo" width="100">
+</p>
+
 # Changelog
 
 <!-- dck-current-release:start -->

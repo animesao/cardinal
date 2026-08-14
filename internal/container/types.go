@@ -89,6 +89,11 @@ type Container struct {
 	NetworkIP           string             `json:"network_ip,omitempty"`
 	Entrypoint          string             `json:"entrypoint,omitempty"`
 	Ulimits             []Ulimit           `json:"ulimits,omitempty"`
+	SeccompProfile      string             `json:"seccomp_profile,omitempty"`     // Path to seccomp profile JSON
+	AppArmorProfile     string             `json:"apparmor_profile,omitempty"`    // AppArmor profile name
+	Isolated            bool               `json:"isolated,omitempty"`            // Network isolation from other containers
+	EncryptedBackup     bool               `json:"encrypted_backup,omitempty"`    // Encrypt backup archives
+	AuditLogging        bool               `json:"audit_logging,omitempty"`       // Enable audit logging
 
 	ConsoleServePID int           `json:"console_serve_pid,omitempty"`
 	PortForwardPIDs []int         `json:"port_forward_pids,omitempty"`
@@ -172,7 +177,12 @@ type CreateOpts struct {
 	NetworkMode        string
 	NetworkIP          string
 	Entrypoint         string
-	Ulimits            []Ulimit
+	Ulimits             []Ulimit
+	SeccompProfile      string     // Path to seccomp profile JSON
+	AppArmorProfile     string     // AppArmor profile name
+	Isolated            bool       // Network isolation from other containers
+	EncryptedBackup     bool       // Encrypt backup archives
+	AuditLogging        bool       // Enable audit logging
 }
 
 func shortID(id string, n int) string {

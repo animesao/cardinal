@@ -3,6 +3,10 @@
 **Project release:** `v1.23.30`
 <!-- dck-version:end -->
 
+<p align="center">
+  <img src="img/dck.png" alt="dck logo" width="120">
+</p>
+
 # Contributors
 
 Thank you to everyone who helps improve **dck**.

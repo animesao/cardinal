@@ -42,6 +42,8 @@ func Backup(args []string) {
 		backupStatus(args[1:])
 	case "verify":
 		backupVerify(args[1:])
+	case "generate-key":
+		backupGenerateKey(args[1:])
 	default:
 		fmt.Printf("unknown backup command: %s\n", args[0])
 		printBackupUsage()
@@ -53,18 +55,24 @@ func printBackupUsage() {
 	fmt.Println(`Usage: dck backup COMMAND
 
 Commands:
-  create <container> [-o file.tar.gz]  Archive container writable data and metadata
-  list                                 List backups in the dck backup directory
-  restore <container> <file.tar.gz>    Restore writable data into a stopped container
-  enable <container> [options]         Enable scheduled backups
-  disable <container>                  Disable scheduled backups
-  status <container>                   Show scheduled backup settings
-  verify <file.tar.gz>                 Verify archive checksum
+  create <container> [-o file.tar.gz] [-e]  Archive container writable data and metadata
+  list                                      List backups in the dck backup directory
+  restore <container> <file.tar.gz>         Restore writable data into a stopped container
+  enable <container> [options]              Enable scheduled backups
+  disable <container>                       Disable scheduled backups
+  status <container>                        Show scheduled backup settings
+  verify <file.tar.gz>                      Verify archive checksum
+  generate-key                              Generate a new encryption key
+
+Create options:
+  -o <file>                                Output file path
+  -e, --encrypt                            Encrypt the backup archive (requires DCK_BACKUP_KEY)
 
 Enable options:
-  --interval <duration>                Backup interval (default: 24h)
-  --retention <n>                      Number of archives to keep (default: 7)
-  --dir <path>                         Backup directory (default: dck data/backups/<container>)`)
+  --interval <duration>                    Backup interval (default: 24h)
+  --retention <n>                          Number of archives to keep (default: 7)
+  --dir <path>                             Backup directory (default: dck data/backups/<container>)
+  --encrypt                                Enable encryption for automatic backups`)
 }
 
 func backupDir() string { return filepath.Join(state.DataDir(), "backups") }
@@ -185,15 +193,18 @@ func backupStatus(args []string) {
 
 func backupCreate(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck backup create <container> [-o file.tar.gz]")
+		fmt.Println("Usage: dck backup create <container> [-o file.tar.gz] [-e]")
 		os.Exit(1)
 	}
 	name := args[0]
 	output := ""
+	encrypt := false
 	for i := 1; i < len(args); i++ {
 		if args[i] == "-o" && i+1 < len(args) {
 			output = args[i+1]
 			i++
+		} else if args[i] == "-e" || args[i] == "--encrypt" {
+			encrypt = true
 		}
 	}
 	c, err := container.Load(name)
@@ -210,7 +221,11 @@ func backupCreate(args []string) {
 			fmt.Fprintf(os.Stderr, "Error creating backup directory: %v\n", err)
 			os.Exit(1)
 		}
-		output = filepath.Join(backupDir(), fmt.Sprintf("%s-%s.tar.gz", c.Name, time.Now().Format("20060102-150405")))
+		ext := ".tar.gz"
+		if encrypt {
+			ext = ".tar.gz.enc"
+		}
+		output = filepath.Join(backupDir(), fmt.Sprintf("%s-%s%s", c.Name, time.Now().Format("20060102-150405"), ext))
 	}
 	parent, err := validateBackupDirectory(filepath.Dir(output))
 	if err != nil {
@@ -232,8 +247,43 @@ func backupCreate(args []string) {
 		fmt.Fprintf(os.Stderr, "Error writing checksum: %v\n", err)
 		os.Exit(1)
 	}
+	// Encrypt backup if requested
+	if encrypt {
+		enc, err := container.NewBackupEncryptorFromEnv()
+		if err != nil {
+			_ = os.Remove(output)
+			_ = os.Remove(backupChecksumPath(output))
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if err := enc.EncryptFile(output); err != nil {
+			_ = os.Remove(output)
+			_ = os.Remove(backupChecksumPath(output))
+			fmt.Fprintf(os.Stderr, "Error encrypting backup: %v\n", err)
+			os.Exit(1)
+		}
+		// Recalculate checksum for encrypted file
+		_ = os.Remove(backupChecksumPath(output))
+		if err := writeBackupChecksum(output); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not write encrypted checksum: %v\n", err)
+		}
+		fmt.Printf("Backup encrypted with AES-256-GCM\n")
+	}
 	fmt.Printf("Created backup: %s (%d bytes)\n", output, fileSize(output))
 	fmt.Printf("Checksum: %s\n", backupChecksumPath(output))
+}
+
+func backupGenerateKey(args []string) {
+	key, err := container.GenerateEncryptionKey()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error generating key: %v\n", err)
+		os.Exit(1)
+	}
+	hexKey := hex.EncodeToString(key)
+	fmt.Printf("Generated encryption key:\n%s\n\n", hexKey)
+	fmt.Println("Save this key securely. You can:")
+	fmt.Println("  1. Set environment variable: export DCK_BACKUP_KEY=" + hexKey)
+	fmt.Println("  2. Save to file: dck backup generate-key > ~/.dck-backup-key && chmod 600 ~/.dck-backup-key")
 }
 
 func validateBackupDirectory(path string) (string, error) {

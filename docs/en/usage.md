@@ -694,6 +694,70 @@ Disables acquiring new privileges (setuid, setgid, capabilities) for all process
 dck run -d --sysctl net.ipv4.ip_forward=1 nginx
 ```
 
+### Seccomp Profile
+
+dck applies a default seccomp profile that blocks 30+ dangerous syscalls including `mount`, `ptrace`, `reboot`, `kexec_load`, `bpf`, and `init_module`.
+
+```bash
+# Use default seccomp profile (automatic)
+dck run -d nginx
+
+# Use custom seccomp profile
+dck run -d --seccomp-profile /path/to/profile.json nginx
+```
+
+### AppArmor Profile
+
+dck applies a default AppArmor profile (`dck-container`) that restricts access to sensitive host paths and limits container capabilities.
+
+```bash
+# Use default AppArmor profile (automatic)
+dck run -d nginx
+
+# Use custom AppArmor profile
+dck run -d --apparmor-profile my-profile nginx
+```
+
+### Network Isolation
+
+Isolate a container from all other containers to prevent lateral movement:
+
+```bash
+dck run -d --isolated nginx
+
+# Allow specific communication
+dck run -d --isolated --network appnet nginx
+```
+
+### Audit Logging
+
+Enable audit logging to record all container lifecycle events:
+
+```bash
+dck run -d --audit-log nginx
+
+# Events are logged to ~/.dck/audit/audit-YYYY-MM-DD.log
+cat ~/.dck/audit/audit-$(date +%Y-%m-%d).log
+```
+
+### Backup Encryption
+
+Encrypt backup archives with AES-256-GCM:
+
+```bash
+# Generate encryption key
+dck backup generate-key
+
+# Set key via environment variable
+export DCK_BACKUP_KEY="your-hex-key"
+
+# Create encrypted backup
+dck backup create nginx -e
+
+# Create encrypted backup with custom output
+dck backup create nginx -o /data/backups/nginx.enc -e
+```
+
 ---
 
 ## Environment Variables

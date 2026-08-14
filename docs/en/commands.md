@@ -199,6 +199,11 @@ Create and start a container. The image may instead be supplied with `--image`, 
 | `--healthcheck-interval SECONDS` | Healthcheck interval |
 | `--healthcheck-retries N` | Consecutive failures before restart |
 | `--healthcheck-timeout SECONDS` | Healthcheck timeout |
+| `--seccomp-profile FILE` | Path to custom seccomp profile JSON (default: built-in profile) |
+| `--apparmor-profile NAME` | AppArmor profile name |
+| `--isolated` | Isolate container from other containers (network segmentation) |
+| `--encrypted-backup` | Encrypt backup archives with AES-256-GCM |
+| `--audit-log` | Enable audit logging for container events |
 
 Examples:
 

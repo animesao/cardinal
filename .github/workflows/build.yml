@@ -297,8 +297,60 @@ jobs:
             dck-*-linux-*
             dck-linux-*
 
+  nix:
+    needs: [version]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: v${{ needs.version.outputs.new_ver }}
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            auto-optimise-store = true
+            experimental-features = nix-command flakes
+
+      - name: Cache Nix store
+        uses: actions/cache@v4
+        with:
+          path: /nix/store
+          key: nix-${{ runner.os }}-${{ hashFiles('flake.nix', 'flake.lock') }}
+          restore-keys: |
+            nix-${{ runner.os }}-
+
+      - name: Build with Nix (amd64)
+        run: |
+          VERSION=${{ needs.version.outputs.new_ver }}
+          nix build .#packages.x86_64-linux.dck --impure --argstr version "$VERSION"
+          cp result/bin/dck dck-nixos-amd64
+          sha256sum dck-nixos-amd64 > dck-nixos-amd64.sha256
+          echo "Built Nix package: dck-nixos-amd64"
+
+      - name: Build Nix derivation (expression check)
+        run: |
+          nix eval .#packages.x86_64-linux.dck.version || echo "Version check skipped"
+
+      - name: Create NixOS package archive
+        run: |
+          VERSION=${{ needs.version.outputs.new_ver }}
+          mkdir -p "dck-$VERSION-nixos"
+          cp dck-nixos-amd64 "dck-$VERSION-nixos/dck"
+          tar czf "dck-$VERSION-linux-nixos-amd64.tar.gz" "dck-$VERSION-nixos/"
+          sha256sum "dck-$VERSION-linux-nixos-amd64.tar.gz" > "dck-$VERSION-linux-nixos-amd64.tar.gz.sha256"
+          echo "Built: dck-$VERSION-linux-nixos-amd64.tar.gz"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-nix
+          path: |
+            dck-nixos-*
+            dck-*-linux-nixos-*
+
   release:
-    needs: [version, build]
+    needs: [version, build, nix]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4

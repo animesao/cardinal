@@ -122,6 +122,13 @@ func Run(args []string) {
 
 	startupScript := fs.String("startup", "", "Startup script (inline script or @filepath)")
 
+	// Security flags
+	seccompProfile := fs.String("seccomp-profile", "", "Path to seccomp profile JSON (default: built-in profile)")
+	apparmorProfile := fs.String("apparmor-profile", "", "AppArmor profile name")
+	isolated := fs.Bool("isolated", false, "Isolate container from other containers (network segmentation)")
+	encryptedBackup := fs.Bool("encrypted-backup", false, "Encrypt backup archives with AES-256-GCM")
+	auditLog := fs.Bool("audit-log", false, "Enable audit logging for container events")
+
 	// Register all flags before reordering them. This allows Docker-style
 	// options after the image (for example: image --workdir /app) to be
 	// recognized as runtime options instead of being passed to the image CMD.
@@ -374,6 +381,11 @@ func Run(args []string) {
 		NetworkMode:        *networkMode,
 		Entrypoint:         *entrypoint,
 		Ulimits:            parsedUlimits,
+		SeccompProfile:     *seccompProfile,
+		AppArmorProfile:    *apparmorProfile,
+		Isolated:           *isolated,
+		EncryptedBackup:    *encryptedBackup,
+		AuditLogging:       *auditLog,
 	}
 
 	c := container.New(img, opts)

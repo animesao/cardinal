@@ -3,6 +3,10 @@
 **Project release:** `v1.23.30`
 <!-- dck-version:end -->
 
+<p align="center">
+  <img src="img/dck.png" alt="dck logo" width="120">
+</p>
+
 # Security
 
 ## Security model
@@ -15,12 +19,17 @@ Run `dck` as a dedicated non-root account where possible. Running a container ru
 
 - Container commands entered through `exec`, `cp`, `top`, and healthchecks use `nsenter -r` and verify persisted mount, PID, network, IPC, and UTS namespace identities.
 - Container initialization keeps a Docker-compatible safe capability set by default, drops dangerous capabilities such as `SYS_ADMIN` and `SYS_MODULE`, honors explicit `--cap-add`/`--cap-drop` settings, enables `no_new_privs`, and restricts container sysctls to network-namespace `net.*` names. Use `--cap-drop ALL` for a fully empty capability set.
+- **Seccomp filtering** blocks 30+ dangerous syscalls (mount, ptrace, reboot, kexec_load, bpf, etc.) by default. Use `--seccomp-profile` to provide a custom JSON profile.
+- **AppArmor profile** (`dck-container`) restricts access to sensitive host paths (`/proc/sys`, `/sys/firmware`), denies device access (`/dev/mem`, `/dev/kmem`), and limits ptrace to within the container. Use `--apparmor-profile` to override.
+- **Device restrictions**: `/dev/shm` is mounted with `noexec,nosuid,nodev` and a 64MB size limit; `/dev/mqueue` is mounted with `noexec,nosuid,nodev`; `/proc/sys` and `/sys` are bind-mounted read-only; sensitive devices (`/dev/mem`, `/dev/kmem`, `/dev/sda*`) are removed from the container.
+- **Network segmentation** (`--isolated`) blocks inter-container traffic via iptables, preventing lateral movement between containers.
+- **Audit logging** records container lifecycle events (start, stop, exec, backup, etc.) with timestamps, user info, and success/failure status. Enable with `--audit-log`.
 - Bind mounts and container targets are validated against traversal, protected host paths, and symlink escapes. Use named volumes or a dedicated `/data/...` directory for application data.
 - Image layers and imported archives reject traversal, unsafe links, special device entries, duplicate metadata, and excessive entry/total sizes.
 - Dockerfile `COPY` stays inside the build context, rejects source links/special files and symlink destinations, and does not inherit arbitrary host environment variables into `RUN` or ARG substitution.
 - The API refuses external binds without a Bearer token, limits request bodies, applies timeouts, only allows localhost CORS origins, and can serve HTTPS with `--tls-cert`/`--tls-key`.
 - `dck doctor` and `dck security check` provide read-only host/runtime diagnostics; use `--strict` in deployment checks to fail on warnings as well as errors.
-- Backup archives have SHA-256 sidecar checksums. Verify backups before restore and remember that host bind mounts are not included.
+- Backup archives have SHA-256 sidecar checksums and optional **AES-256-GCM encryption** (`--encrypt` or `-e` flag). Verify backups before restore and remember that host bind mounts are not included.
 
 ## Important limitations
 

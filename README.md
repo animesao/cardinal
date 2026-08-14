@@ -4,6 +4,10 @@
 <!-- dck-version:end -->
 
 <p align="center">
+  <img src="img/dck.png" alt="dck logo" width="200">
+</p>
+
+<p align="center">
   <!-- dck-version-badge:start -->
   <img src="https://img.shields.io/badge/version-v1.23.30-blue?style=flat-square">
   <!-- dck-version-badge:end -->
@@ -274,6 +278,11 @@ Use `-v` (bind mount) for live file sharing — changes on host are instantly vi
 | `--healthcheck-interval` | Health check interval (seconds) |
 | `--healthcheck-retries` | Health check retries |
 | `--healthcheck-timeout` | Health check timeout (seconds) |
+| `--seccomp-profile` | Path to seccomp profile JSON (default: built-in profile) |
+| `--apparmor-profile` | AppArmor profile name |
+| `--isolated` | Isolate container from other containers (network segmentation) |
+| `--encrypted-backup` | Encrypt backup archives with AES-256-GCM |
+| `--audit-log` | Enable audit logging for container events |
 
 ---
 
@@ -807,6 +816,11 @@ dck run -d
 | Compose depends_on | ✅ | ✅ |
 | Cluster orchestration | ✅ | ✅ (Swarm) |
 | Rolling updates | ✅ | ✅ |
+| Seccomp profile | ✅ (default + custom) | ✅ |
+| AppArmor profile | ✅ (default + custom) | ✅ |
+| Network segmentation | ✅ (--isolated) | ✅ (network policies) |
+| Backup encryption | ✅ (AES-256-GCM) | ❌ |
+| Audit logging | ✅ | ❌ (auditd integration) |
 
 ---
 
@@ -815,6 +829,8 @@ dck run -d
 <!-- dck-release:start -->
 **v1.23.30** — Documentation, installation, AppImage, update, and release automation are synchronized from the root `VERSION` file.
 <!-- dck-release:end -->
+
+**v1.24.0** — Major security hardening: seccomp profile (blocks 30+ dangerous syscalls), AppArmor profile, device restrictions (/dev/shm, /dev/mqueue, /proc/sys, /sys read-only), network segmentation (`--isolated`), backup encryption (AES-256-GCM with `--encrypt`), audit logging for container lifecycle events, new CLI flags (`--seccomp-profile`, `--apparmor-profile`, `--isolated`, `--encrypted-backup`, `--audit-log`).
 
 **v1.23.0** — Persistent restart supervisor with configurable delays and crash-loop protection (`--restart-max-attempts`/`--restart-window`, `restart_blocked`), per-container scheduled backups with checksum verification (`dck backup verify`), offline image verification (`dck verify`), reliable `dck update`, runtime hardening (zombie-exit detection, `dck rm` tombstones, safe OCI layer extraction, protected bind sources, `:ro`/`:rw` and tmpfs/NFS volume modes), instant startup for `--network none`/`host` containers, and the complete bilingual EN/RU documentation suite.
 

@@ -3,6 +3,10 @@
 **Project release:** `v1.23.30`
 <!-- dck-version:end -->
 
+<p align="center">
+  <img src="../img/dck.png" alt="dck logo" width="150">
+</p>
+
 > Version markers are generated from the root `VERSION` file. Run `make docs` to update all Markdown files, or `make docs-check` in CI to verify synchronization.
 
 # dck Documentation
