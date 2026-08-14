@@ -258,7 +258,7 @@ func IsEncrypted(path string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// Read first 12 bytes (nonce size) + some ciphertext
 	header := make([]byte, 32)
