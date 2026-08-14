@@ -18,10 +18,11 @@ stdenv.mkDerivation {
 
   buildPhase = ''
     export GOPATH=$TMPDIR/gopath
+    export GOCACHE=$TMPDIR/gocache
     export GOMODCACHE=$TMPDIR/modcache
     export GOFLAGS="-mod=mod"
 
-    mkdir -p $GOPATH $GOMODCACHE
+    mkdir -p $GOPATH $GOCACHE $GOMODCACHE
     cp -r $src $TMPDIR/src
     cd $TMPDIR/src
 
