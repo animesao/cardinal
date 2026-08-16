@@ -24,52 +24,35 @@ nfpms:
     description: Lightweight container runtime
     maintainer: animesao <animesao@users.noreply.github.com>
     license: MIT
-    contents:
-      # `src` is the source path on the build host, NOT the install
-      # path inside the package. goreleaser drops built binaries
-      # under `dist/<project>_<os>_<arch>[_v<variant>]/<project>`
-      # by default. For our two Go builds goreleaser materialises:
-      #   dist/dck_linux_amd64_v1/dck          (linux/amd64)
-      #   dist/dck_linux_arm64_v8.0/dck        (linux/arm64)
-      #
-      # Why we cannot build the path with `replace`: in the nfpm
-      # template context goreleaser v2.4.5 only exposes `.Arch`
-      # (the nfpm-flavoured string: "amd64v1" / "arm64v8.0",
-      # no underscore), and `.Mips`. There is no `.GoArch`,
-      # `.GoArm`, `.Os`, or `.Binary` in this context. Trying to
-      # synthesise a path via string-manipulation ran into two
-      # separate Go template-parser problems:
-      #   1.  `replace .Arch "v" "_v"`                  (3-arg)
-      #       goreleaser aliases `replace` to stdlib
-      #       strings.Replace(s, old, new, n) with `n=0` default
-      #       when omitted, so it returns `s` unchanged = "v".
-      #       CI: matching "./dist/dck_linux_v/dck"
-      #   2.  `replaceAll .Arch "v" "_v"`              (sprig-style)
-      #       undefined in goreleaser v2.4.5's func map.
-      #       CI: function "replaceAll" not defined
-      #   3.  `replace .Arch "v" "_v" -1`              (4-arg)
-      #       Go's text/template parser does NOT accept negative
-      #       integer literals as function arguments -- the `-` is
-      #       not parsed as part of the integer literal. CI:
-      #       -1 arg int 4
-      #
-      # Pragmatic fix: Since we build exactly two architectures,
-      # branch on `.Arch` with a literal `if/else` and emit the full
-      # path. No string manipulation at all, parser cannot trip:
-      #   .Arch == "amd64v1"   -> dist/dck_linux_amd64_v1/dck
-      #   default              -> dist/dck_linux_arm64_v8.0/dck
-      #
-      # This is robust against every future goreleaser template
-      # engine rewrite: the only thing the engine has to support is
-      # `eq`, which has been part of text/template since Go 1.0.
-      #
-      # When we add riscv64, add a per-arch `Contents:` entry
-      # targetting the matching .Arch (riscv64). Do not try to
-      # reuse this template -- the variant-suffix encoding for
-      # riscv64 differs from amd64/arm64 and pushing that into a
-      # generic replace() was the source of these bugs.
-      - src: './dist/dck_linux_{{ if eq .Arch "amd64v1" }}amd64_v1{{ else }}arm64_v8.0{{ end }}/dck'
-        dst: /usr/bin/dck
+    # We deliberately leave `contents:` empty here, even though it
+    # looks tempting to add a `src: ./dist/dck_linux_<arch>/dck`
+    # entry. Looking at goreleaser source (internal/pipe/nfpm/nfpm.go
+    # in function `create()`):
+    #
+    #     if !fpm.Meta {
+    #       for _, art := range artifacts {
+    #         contents = append(contents, &files.Content{
+    #           Source:      art.Path,
+    #           Destination: filepath.Join(<bindir>, art.Name),
+    #           ...
+    #         })
+    #       }
+    #     }
+    #
+    # goreleaser auto-injects every build artefact under `bindir`,
+    # filtered by the per-package artifact list (one package per
+    # OS + arch via GroupByPlatform()). Adding a manual entries
+    # pointing to the same `dst: /usr/bin/dck` produced
+    # `content collision: ... dist/dck_linux_amd64_v1/dck is
+    # already present at this destination ... dist/dck_linux_arm64_v8.0/dck`
+    # because nfpm sees the auto-injected arch-B source while
+    # evaluating arch-A's contents list.
+    #
+    # bindir defaults to `/usr/bin`, so we don't have to write it.
+    # We set it explicitly to make the install path obvious from
+    # this file alone and to defend against a future goreleaser
+    # default-change.
+    bindir: /usr/bin
     scripts:
       postinstall: packaging/deb/DEBIAN/postinst
 
