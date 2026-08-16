@@ -229,11 +229,18 @@ jobs:
           path: dist
 
       - name: Generate SHA256SUMS.txt
+        # Filter candidate paths through `find -type f` because
+      # actions/download-artifact occasionally re-materialises a
+      # previously uploaded sidecar file as a directory on disk
+      # (`cat: ...: Is a directory`). The strict file-only filter
+      # also handles the case where a stray goreleaser cleanup pass
+      # leaves behind a same-named directory mountpoint.
         run: |
           cd dist
-          for f in *.sha256; do
-            cat "$f"
-          done > SHA256SUMS.txt
+          : > SHA256SUMS.txt
+          while IFS= read -r -d '' f; do
+            cat "$f" >> SHA256SUMS.txt
+          done < <(find . -maxdepth 1 -type f -name '*.sha256' -print0)
           echo "--- final SHA256SUMS.txt ---"
           cat SHA256SUMS.txt
 
@@ -267,12 +274,17 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           cd dist
-          # goreleaser writes its own checksum file; merge it into the
-          # pipeline-level SHA256SUMS.txt so a single file covers the
-          # raw binaries, the archives and every nfpm package.
-          if [ -f *_checksums.txt ]; then
-            cat *_checksums.txt >> SHA256SUMS.txt
-          fi
+          # goreleaser writes its own checksum file; merge it into
+          # the pipeline-level SHA256SUMS.txt so a single file covers
+          # the raw binaries, the archives and every nfpm package.
+          # Use `find -type f` for the same defensive reason as in
+          # Generate SHA256SUMS.txt above: download-artifact and
+          # goreleaser teardown both occasionally leave behind
+          # same-named directories, and a glob-then-cat would fail
+          # with "Is a directory" on those.
+          while IFS= read -r -d '' f; do
+            cat "$f" >> SHA256SUMS.txt
+          done < <(find . -maxdepth 1 -type f -name '*_checksums.txt' -print0)
           echo "--- final SHA256SUMS.txt (merged) ---"
           cat SHA256SUMS.txt
           echo "--- contents of dist/ ---"
