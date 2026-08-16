@@ -10,8 +10,19 @@
 # Changelog
 
 <!-- dck-current-release:start -->
-> Current release: **v1.24.16**. Detailed release notes below are maintained manually.
+> Current release: **v1.24.17**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
+
+## 1.24.17 (2026-08-16)
+
+### API fixes
+
+- Preserve CPU, memory, and disk resource limits in container inspection and stats responses.
+- Return a clear conflict response when a requested container name is already in use instead of allowing ambiguous creation state.
+
+### Desktop integration
+
+- Added support for live resource reporting consumed by DCK Desktop.
 
 ## 1.24.16 (2026-08-16)
 

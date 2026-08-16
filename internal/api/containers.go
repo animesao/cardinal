@@ -235,6 +235,8 @@ func containerToInspect(c *container.Container) *ContainerInspect {
 		CapAdd:         c.CapAdd,
 		CapDrop:        c.CapDrop,
 		Memory:         c.MemoryLimit,
+		NanoCPUs:       int64(c.CPUCount * 1_000_000_000),
+		DiskLimit:      c.DiskLimit,
 	}
 	for i, v := range c.Volumes {
 		hostConfig.Binds[i] = mountSpec(v)
@@ -312,6 +314,9 @@ func handleContainersCreate(w http.ResponseWriter, r *http.Request) {
 		if existing := container.FindByName(name); existing != nil {
 			name = name + "_" + strconv.FormatInt(time.Now().UnixNano()%10000, 10)
 		}
+	} else if existing := container.FindByName(name); existing != nil {
+		writeError(w, http.StatusConflict, fmt.Sprintf("container name already in use: %s", name))
+		return
 	}
 
 	// Parse port bindings from HostConfig
@@ -414,10 +419,16 @@ func handleContainersCreate(w http.ResponseWriter, r *http.Request) {
 		capDrop = req.HostConfig.CapDrop
 	}
 
-	// Memory
+	// Resource limits
 	var memLimit int64
+	var cpuCount float64
+	var diskLimit int64
 	if req.HostConfig != nil {
 		memLimit = req.HostConfig.Memory
+		if req.HostConfig.NanoCPUs > 0 {
+			cpuCount = float64(req.HostConfig.NanoCPUs) / 1_000_000_000
+		}
+		diskLimit = req.HostConfig.DiskLimit
 	}
 
 	// Network mode
@@ -448,6 +459,8 @@ func handleContainersCreate(w http.ResponseWriter, r *http.Request) {
 		CapAdd:      capAdd,
 		CapDrop:     capDrop,
 		MemoryLimit: memLimit,
+		CPUCount:    cpuCount,
+		DiskLimit:   diskLimit,
 		NetworkMode: networkMode,
 		Entrypoint:  entrypoint,
 		WorkingDir:  workdir,

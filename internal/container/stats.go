@@ -33,6 +33,9 @@ type ContainerStats struct {
 	IOReadBytes  uint64 `json:"io_read_bytes"`
 	IOWriteBytes uint64 `json:"io_write_bytes"`
 
+	DiskUsage uint64 `json:"disk_usage_bytes"`
+	DiskLimit uint64 `json:"disk_limit_bytes"`
+
 	Timestamp int64 `json:"timestamp"`
 }
 
@@ -47,6 +50,7 @@ func ReadContainerStats(c *Container) (*ContainerStats, error) {
 		Name:        c.Name,
 		Status:      c.Status,
 		PID:         c.PID,
+		MemoryLimit: uint64(maxInt64(c.MemoryLimit)),
 		CPUCount:    c.CPUCount,
 		Timestamp:   time.Now().UnixNano(),
 	}
@@ -55,6 +59,7 @@ func ReadContainerStats(c *Container) (*ContainerStats, error) {
 	readCPUStats(s, cgPath)
 	readPIDsStats(s, cgPath)
 	readIOStats(s, cgPath)
+	readDiskStats(s, c)
 
 	if s.MemoryLimit > 0 {
 		s.MemoryPercent = float64(s.MemoryUsage) / float64(s.MemoryLimit) * 100
@@ -125,6 +130,30 @@ func readCPUStats(s *ContainerStats, cgPath string) {
 			}
 		}
 	}
+}
+
+func readDiskStats(s *ContainerStats, c *Container) {
+	s.DiskLimit = uint64(maxInt64(c.DiskLimit))
+	upper, _, _ := c.OverlayDirs()
+	var total uint64
+	_ = filepath.WalkDir(upper, func(_ string, entry os.DirEntry, err error) error {
+		if err != nil || entry == nil || !entry.Type().IsRegular() {
+			return nil
+		}
+		info, err := entry.Info()
+		if err == nil {
+			total += uint64(info.Size())
+		}
+		return nil
+	})
+	s.DiskUsage = total
+}
+
+func maxInt64(value int64) int64 {
+	if value < 0 {
+		return 0
+	}
+	return value
 }
 
 func readPIDsStats(s *ContainerStats, cgPath string) {

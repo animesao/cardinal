@@ -107,6 +107,7 @@ type HostConfig struct {
 	CapDrop        []string                 `json:"CapDrop,omitempty"`
 	Memory         int64                    `json:"Memory,omitempty"`
 	NanoCPUs       int64                    `json:"NanoCpus,omitempty"`
+	DiskLimit      int64                    `json:"DiskLimit,omitempty"`
 	Runtime        string                   `json:"Runtime,omitempty"`
 }
 
@@ -239,6 +240,7 @@ type CreateHostConfig struct {
 	CapDrop        []string                 `json:"CapDrop,omitempty"`
 	Memory         int64                    `json:"Memory,omitempty"`
 	NanoCPUs       int64                    `json:"NanoCpus,omitempty"`
+	DiskLimit      int64                    `json:"DiskLimit,omitempty"`
 	ExtraHosts     []string                 `json:"ExtraHosts,omitempty"`
 }
 
