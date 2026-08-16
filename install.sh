@@ -123,6 +123,24 @@ log "Downloading dck ${LATEST_TAG} (${ARCH})..."
 curl -fsSL "https://github.com/$REPO/releases/download/${LATEST_TAG}/${ARCHIVE_NAME}" \
   -o "$TMP_ARCHIVE"
 
+# Verify archive checksum before extraction
+SUMS_URL="https://github.com/$REPO/releases/download/${LATEST_TAG}/${CHECKSUMS_NAME}"
+if curl -fsSL "$SUMS_URL" -o "$TMP_SUMS"; then
+  EXPECTED="$(grep -E "^[0-9a-fA-F]{64}[[:space:]]+${ARCHIVE_NAME}\$" "$TMP_SUMS" | awk '{print $1}')"
+  if [[ -z "$EXPECTED" ]]; then
+    warn "Checksums file does not contain ${ARCHIVE_NAME}; cannot verify"
+  else
+    ACTUAL="$(sha256sum "$TMP_ARCHIVE" | awk '{print $1}')"
+    if [[ "$ACTUAL" != "$EXPECTED" ]]; then
+      rm -f "$TMP_BIN" "$TMP_ARCHIVE" "$TMP_SUMS"
+      err "SHA256 mismatch: expected ${EXPECTED}, got ${ACTUAL}"
+    fi
+    log "SHA256 verified: ${ACTUAL}"
+  fi
+else
+  warn "Checksums file not available for this release; skipping verification"
+fi
+
 # Extract binary from tar.gz
 tar -xzf "$TMP_ARCHIVE" -C "$(dirname "$TMP_BIN")" --strip-components=0 dck 2>/dev/null \
   || tar -xzf "$TMP_ARCHIVE" -C /tmp dck 2>/dev/null && cp /tmp/dck "$TMP_BIN"
@@ -131,24 +149,6 @@ rm -f "$TMP_ARCHIVE" /tmp/dck
 if [[ ! -s "$TMP_BIN" ]]; then
   rm -f "$TMP_BIN" "$TMP_SUMS"
   err "Failed to extract dck binary from archive"
-fi
-
-# Checksums file is published alongside every release; verify by default.
-SUMS_URL="https://github.com/$REPO/releases/download/${LATEST_TAG}/${CHECKSUMS_NAME}"
-if curl -fsSL "$SUMS_URL" -o "$TMP_SUMS"; then
-  EXPECTED="$(grep -E "^[0-9a-fA-F]{64}[[:space:]]+${ARCHIVE_NAME}\$" "$TMP_SUMS" | awk '{print $1}')"
-  if [[ -z "$EXPECTED" ]]; then
-    warn "Checksums file does not contain ${ARCHIVE_NAME}; cannot verify"
-  else
-    ACTUAL="$(sha256sum "$TMP_BIN" | awk '{print $1}')"
-    if [[ "$ACTUAL" != "$EXPECTED" ]]; then
-      rm -f "$TMP_BIN" "$TMP_SUMS"
-      err "SHA256 mismatch: expected ${EXPECTED}, got ${ACTUAL}"
-    fi
-    log "SHA256 verified: ${ACTUAL}"
-  fi
-else
-  warn "Checksums file not available for this release; skipping verification"
 fi
 
 install -m 0755 "$TMP_BIN" "$DCK_BIN"

@@ -77,30 +77,30 @@ func Update(args []string) {
 	archiveURL := fmt.Sprintf("%s/releases/download/%s/%s", releaseURL, releaseTag, archiveName)
 
 	fmt.Println("Downloading update...")
-	expectedChecksum, err := fetchChecksumForFile(checksumURL, archiveName)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to fetch update checksum: %v\n", err)
-		os.Exit(1)
-	}
-
 	body, err := fetchURLBytes(archiveURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to download archive: %v\n", err)
 		os.Exit(1)
 	}
 
-	binaryData, err := extractBinaryFromTarGz(body, "dck")
+	expectedChecksum, err := fetchChecksumForFile(checksumURL, archiveName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to extract binary from archive: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to fetch update checksum: %v\n", err)
 		os.Exit(1)
 	}
 
-	actualHex := fmt.Sprintf("%x", sha256.Sum256(binaryData))
+	actualHex := fmt.Sprintf("%x", sha256.Sum256(body))
 	if !strings.EqualFold(actualHex, expectedChecksum) {
 		fmt.Fprintf(os.Stderr, "Checksum mismatch! Expected %s, got %s. Aborting update.\n", expectedChecksum, actualHex)
 		os.Exit(1)
 	}
 	fmt.Println("Checksum verified.")
+
+	binaryData, err := extractBinaryFromTarGz(body, "dck")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to extract binary from archive: %v\n", err)
+		os.Exit(1)
+	}
 
 	// Optional: hard-fail unless the release is signed by cosign.
 	// Activated when DCK_REQUIRE_SIGNATURE=1 is set in the environment.
