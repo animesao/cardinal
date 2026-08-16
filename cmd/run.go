@@ -128,6 +128,8 @@ func Run(args []string) {
 	isolated := fs.Bool("isolated", false, "Isolate container from other containers (network segmentation)")
 	encryptedBackup := fs.Bool("encrypted-backup", false, "Encrypt backup archives with AES-256-GCM")
 	auditLog := fs.Bool("audit-log", false, "Enable audit logging for container events")
+	allowDangerousCaps := fs.Bool("allow-dangerous-caps", false, "Acknowledge unsafe capabilities (SYS_ADMIN, SYS_MODULE, SYS_RAWIO, SYS_PTRACE)")
+	allowRoot := fs.Bool("allow-root", false, "Acknowledge running with --user 0 (UID/GID 0). Document the rationale in the audit log.")
 
 	// Register all flags before reordering them. This allows Docker-style
 	// options after the image (for example: image --workdir /app) to be
@@ -139,6 +141,17 @@ func Run(args []string) {
 	}
 
 	freeArgs := fs.Args()
+
+	// Security policy enforcement: refuse obviously-dangerous capability
+	// escalations unless the operator explicitly acknowledges them.
+	// This is the most common path that lets a container escape its
+	// sandbox (e.g. by mounting cgroups, loading kernel modules, reading
+	// physical memory). See SECURITY.md "Container runtime hardening".
+	if len(capAdd) > 0 || *user != "" {
+		if !validateDangerousRuntimeOptions(capAdd, *user, *allowDangerousCaps, *allowRoot) {
+			os.Exit(ExitCodeUserError)
+		}
+	}
 
 	// Merge aliases
 	if *portMapping == "" && *portsAlias != "" {

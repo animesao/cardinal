@@ -103,6 +103,21 @@ func Update(args []string) {
 	}
 	fmt.Println("Checksum verified.")
 
+	// Optional: hard-fail unless the release is signed by cosign.
+	// Activated when DCK_REQUIRE_SIGNATURE=1 is set in the environment.
+	// This protects supply-chain integrity on production deployment hosts
+	// where TLS-only trust is not acceptable. See SECURITY.md.
+	if strings.EqualFold(os.Getenv("DCK_REQUIRE_SIGNATURE"), "1") ||
+		strings.EqualFold(os.Getenv("DCK_REQUIRE_SIGNATURE"), "true") {
+		sigURL := checksumURL + ".sig"
+		bundleURL := sigURL + ".bundle"
+		if err := verifyCosignSignature(releaseTag, binaryName, actualHex, sigURL, bundleURL); err != nil {
+			fmt.Fprintf(os.Stderr, "Signature verification failed: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Signature verified.")
+	}
+
 	// Get current binary path
 	selfPath, err := os.Executable()
 	if err != nil {
@@ -411,4 +426,72 @@ func compareVersions(a, b string) int {
 		}
 	}
 	return 0
+}
+
+// verifyCosignSignature performs an out-of-band cosign verification.
+//
+// The release workflow publishes:
+//   <binary>.sha256         — `sha256sum`-formatted digest (already verified above)
+//   <binary>.sha256.sig     — cosign signature over the .sha256 file
+//
+// We re-fetch the .sha256 file (so cosign verifies the same content the
+// client will rely on) and delegate verification to cosign. Cosign 1.x+
+// supports certificate-based identity pinning which lets us bind the
+// signature to a specific GitHub Actions workflow ref (defense against
+// arbitrary key compromise). The cert URL pattern is documented in
+// https://docs.sigstore.dev/cosign/verify/.
+func verifyCosignSignature(releaseTag, binaryName, _ string, sigURL, _ string) error {
+	cosign, err := exec.LookPath("cosign")
+	if err != nil {
+		return fmt.Errorf("cosign binary not found in PATH; install from https://docs.sigstore.dev/cosign/installation to enable signature verification")
+	}
+
+	// Re-fetch the upstream .sha256 file (cosign verifies an artifact by
+	// path; we use the .sha256 file because that's what the workflow signs).
+	checksumURL := sigURL[:len(sigURL)-len(".sig")]
+	checksumBytes, err := fetchURLBytes(checksumURL)
+	if err != nil {
+		return fmt.Errorf("could not re-fetch %s: %w", checksumURL, err)
+	}
+	tmp, err := os.CreateTemp("", "dck-verify-*.sha256")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.Write(checksumBytes); err != nil {
+		return err
+	}
+	tmp.Close()
+
+	// Pin the certificate to the release workflow ref so a stolen key alone
+	// cannot re-sign a malicious build from a different workflow run.
+	idRegex := fmt.Sprintf("^https://github.com/animesao/dck/.github/workflows/release.yml@refs/tags/%s$",
+		regexpQuoteMeta(releaseTag))
+
+	cmd := exec.Command(cosign, "verify-blob",
+		"--signature", sigURL,
+		"--certificate-identity-regexp", idRegex,
+		"--certificate-oidc-issuer", "https://token.actions.githubusercontent.com",
+		tmp.Name(),
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("cosign verify-blob failed: %w (output: %s)", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// regexpQuoteMeta is a tiny dependency-free implementation of regexp.QuoteMeta
+// so cmd/update.go does not have to import the regexp package for one symbol.
+func regexpQuoteMeta(s string) string {
+	const special = `\.+*?()|[]{}^$`
+	var b strings.Builder
+	b.Grow(len(s) * 2)
+	for _, r := range s {
+		if strings.ContainsRune(special, r) {
+			b.WriteRune('\\')
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
