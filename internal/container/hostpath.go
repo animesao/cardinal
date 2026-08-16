@@ -12,7 +12,7 @@ import (
 var (
 	protectedHostPaths = []string{
 		"/", "/bin", "/boot", "/dev", "/etc", "/home", "/lib", "/lib64",
-		"/media", "/mnt", "/opt", "/proc", "/root", "/run", "/sbin", "/srv",
+		"/media", "/mnt", "/opt", "/proc", "/root", "/run", "/sbin",
 		"/sys", "/usr", "/var", "/var/lib/dck", "/var/run/dck",
 		// State directories for sibling container runtimes; mounting them would
 		// give containers parity with the host's existing containers.

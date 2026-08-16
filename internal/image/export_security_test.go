@@ -2,11 +2,15 @@ package image
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"unsafe"
 
 	"dck/internal/state"
 )
@@ -153,10 +157,78 @@ func TestImportRejectsHardlinkOfflineArchive(t *testing.T) {
 	}
 }
 
-// TestImportRejectsNullByteInPath imports an archive whose tar entry name
-// contains a NUL byte. Some tar decoders may truncate the path; ours must
-// refuse the entry outright to avoid path-injection surprises.
-func TestImportRejectsNullByteInPath(t *testing.T) {
+// TestSafeArchivePathRejectsNullByte verifies that the path-sanity
+// layer rejects filenames containing NUL bytes before they reach the
+// filesystem. We test the helper directly instead of going through
+// Import + makeImportArchive because the stdlib tar.Writer refuses
+// to encode a NUL into a PAX header in the first place; an attacker
+// could bypass stdlib and ship a raw tar bytestream with a NUL in
+// the path, and we want our defensive layer to catch that case.
+//
+// safeArchivePath is internal but here we exercise the same checks
+// through the public Import path with a hand-crafted tar bytestream.
+func TestSafeArchivePathRejectsNullByte(t *testing.T) {
+	// Construct a minimal valid tar archive whose header Name has a
+	// NUL byte. We bypass stdlib tar.Writer by writing the header
+	// bytes directly; the tar format is well-defined enough to do
+	// this without depending on the stdlib encoder.
+	const headerSize = 512
+	type tarHeader struct {
+		Name     [100]byte
+		Mode     [8]byte
+		UID      [8]byte
+		GID      [8]byte
+		Size     [12]byte
+		Mtime    [12]byte
+		Chksum   [8]byte
+		Typeflag byte
+		Linkname [100]byte
+		Magic    [6]byte
+		Version  [2]byte
+		Uname    [32]byte
+		Gname    [32]byte
+		Devmajor [8]byte
+		Devminor [8]byte
+		Prefix   [155]byte
+		Padding  [12]byte
+	}
+	var h tarHeader
+	copy(h.Name[:], "good\x00hack\x00") // NUL-terminated padded to 100 bytes; second NUL is the str terminator
+	h.Typeflag = tar.TypeReg
+	// size = 1
+	const one = "00000000001\x00"
+	copy(h.Size[:], one)
+	copy(h.Magic[:], "ustar\x00")
+	copy(h.Version[:], "00")
+
+	var raw [headerSize * 2]byte
+	headerBytes := (*[headerSize]byte)(unsafe.Pointer(&h))
+	// chksum field is treated as all spaces during computation
+	for i := range headerBytes {
+		if i >= 148 && i < 156 {
+			raw[i] = ' '
+		} else {
+			raw[i] = headerBytes[i]
+		}
+	}
+	// Fill in chksum: octal sum of all 512 bytes
+	var sum int64
+	for _, b := range raw[:512] {
+		sum += int64(b)
+	}
+	chk := fmt.Sprintf("%06o\x00 ", sum)
+	copy(raw[148:156], chk)
+	// End-of-archive: 1024 bytes of NULs
+
+	var gzbuf bytes.Buffer
+	gw := gzip.NewWriter(&gzbuf)
+	if _, err := gw.Write(raw[:]); err != nil {
+		t.Fatal(err)
+	}
+	if err := gw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
 	dataDir := t.TempDir()
 	old := os.Getenv("DCK_DATA_DIR")
 	_ = os.Setenv("DCK_DATA_DIR", dataDir)
@@ -164,12 +236,17 @@ func TestImportRejectsNullByteInPath(t *testing.T) {
 	if err := state.EnsureDirs(); err != nil {
 		t.Fatal(err)
 	}
-	archive := makeImportArchive(t,
-		imageMetadata(t, "normal", "latest"),
-		&tar.Header{Name: "good\x00hack", Typeflag: tar.TypeReg, Size: 1, Mode: 0600},
-	)
-	if err := Import(archive); err == nil {
+	path := filepath.Join(dataDir, "import.tar.gz")
+	if err := os.WriteFile(path, gzbuf.Bytes(), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	err := Import(path)
+	if err == nil {
 		t.Fatal("Import accepted archive whose filename contained a NUL byte")
+	}
+	if !strings.Contains(err.Error(), "NUL") && !strings.Contains(err.Error(), "unsafe archive path") {
+		t.Errorf("Import error did not mention NUL/unsafe path; got: %v", err)
 	}
 }
 

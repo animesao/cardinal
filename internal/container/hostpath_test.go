@@ -60,7 +60,17 @@ func IsProtectedHostHostPathForTest(p string) bool { return IsProtectedHostPath(
 func TestIsProtectedHostPath_AllowlistOverridesBlocklist(t *testing.T) {
 	// /etc/by-allowlist should be permitted via the env-driven allowlist.
 	t.Setenv("DCK_ALLOWED_HOST_PATHS", "/etc:/var/run/dck")
-	hostPolicyInited = false
+	// Reset both the global allowlist (which InitHostPathPolicy will
+	// append to) and the hostPolicyInited flag (so InitHostPathPolicy
+	// will re-read env). t.Cleanup restores the previous state so
+	// subsequent tests (TestBindSourceValidation, etc.) run against
+	// the production default blocklist.
+	t.Cleanup(func() {
+		protectedMu.Lock()
+		allowedHostPaths = nil
+		hostPolicyInited = false
+		protectedMu.Unlock()
+	})
 	InitHostPathPolicy()
 
 	if IsProtectedHostPath("/etc/foo") {
