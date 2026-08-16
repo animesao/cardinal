@@ -192,6 +192,47 @@ jobs:
           echo "--- final SHA256SUMS.txt ---"
           cat SHA256SUMS.txt
 
+      # goreleaser ships the full nfpm / archive / checksum artefact
+      # set declared in `.goreleaser.yaml`. It runs only on tag
+      # pushes because `goreleaser release` requires a version number;
+      # we take it from `${{ github.ref_name }}` (e.g. `v1.24.14`).
+      # --skip=publish overrides goreleaser's own GitHub Release
+      # publishing step so softprops/action-gh-release@v2 stays in
+      # charge of attaching files (we want to attach the SBOM and
+      # cosign signatures alongside, not just goreleaser's outputs).
+      - name: Install goreleaser
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          go install github.com/goreleaser/goreleaser/v2@v2.4.5
+          goreleaser --version
+
+      - name: Run goreleaser release (skips publish+announce)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          export VERSION="${GITHUB_REF_NAME#v}"
+          goreleaser release \
+            --clean \
+            --skip=publish \
+            --skip=announce \
+            --timeout 30m
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Append goreleaser artefacts to SHA256SUMS.txt
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cd dist
+          # goreleaser writes its own checksum file; merge it into the
+          # pipeline-level SHA256SUMS.txt so a single file covers the
+          # raw binaries, the archives and every nfpm package.
+          if [ -f *_checksums.txt ]; then
+            cat *_checksums.txt >> SHA256SUMS.txt
+          fi
+          echo "--- final SHA256SUMS.txt (merged) ---"
+          cat SHA256SUMS.txt
+          echo "--- contents of dist/ ---"
+          ls -la dist/
+
       - name: Install cosign (only when the maintainer signed a key)
         if: secrets.COSIGN_PRIVATE_KEY != ''
         run: |
