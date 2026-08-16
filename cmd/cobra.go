@@ -97,9 +97,14 @@ func applyLogOptions(level string, jsonOut, quiet bool) {
 func Execute() {
 	cmd := NewRoot()
 	if err := cmd.Execute(); err != nil {
-		// Cobra already prints the error; we leave a single newline so
-		// downstream parsers can split stdout from stderr cleanly.
-		fmt.Fprintln(os.Stderr)
+		// Every registered sub-command sets SilenceErrors=true so legacy
+		// command implementations can surface errors in their own way
+		// (most of them call os.Exit(1) directly after printing to
+		// stderr). That setting also causes cobra NOT to print the
+		// error itself, so we must replicate that printing here — without
+		// this line, an unknown flag leaves the user with an empty
+		// stderr and exit code 1, which is impossible to debug.
+		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
 }
