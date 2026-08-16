@@ -114,17 +114,31 @@ log "Latest version: $LATEST_TAG"
 
 # ---- Download binary and verify SHA256 checksum ----
 TMP_BIN="$(mktemp -t dck.XXXXXX)"
+TMP_ARCHIVE="$(mktemp -t dck-archive.XXXXXX)"
 TMP_SUMS="$(mktemp -t dck-sums.XXXXXX)"
+VERSION="${LATEST_TAG#v}"
+ARCHIVE_NAME="dck_${VERSION}_linux_${ARCH}.tar.gz"
+CHECKSUMS_NAME="dck_${VERSION}_checksums.txt"
 log "Downloading dck ${LATEST_TAG} (${ARCH})..."
-curl -fsSL "https://github.com/$REPO/releases/download/${LATEST_TAG}/dck-linux-${ARCH}" \
-  -o "$TMP_BIN"
+curl -fsSL "https://github.com/$REPO/releases/download/${LATEST_TAG}/${ARCHIVE_NAME}" \
+  -o "$TMP_ARCHIVE"
 
-# SHA256SUMS.txt is published alongside every release; verify by default.
-SUMS_URL="https://github.com/$REPO/releases/download/${LATEST_TAG}/SHA256SUMS.txt"
+# Extract binary from tar.gz
+tar -xzf "$TMP_ARCHIVE" -C "$(dirname "$TMP_BIN")" --strip-components=0 dck 2>/dev/null \
+  || tar -xzf "$TMP_ARCHIVE" -C /tmp dck 2>/dev/null && cp /tmp/dck "$TMP_BIN"
+rm -f "$TMP_ARCHIVE" /tmp/dck
+
+if [[ ! -s "$TMP_BIN" ]]; then
+  rm -f "$TMP_BIN" "$TMP_SUMS"
+  err "Failed to extract dck binary from archive"
+fi
+
+# Checksums file is published alongside every release; verify by default.
+SUMS_URL="https://github.com/$REPO/releases/download/${LATEST_TAG}/${CHECKSUMS_NAME}"
 if curl -fsSL "$SUMS_URL" -o "$TMP_SUMS"; then
-  EXPECTED="$(grep -E "^[0-9a-fA-F]{64}[[:space:]]+(.*/)?dck-linux-${ARCH}\$" "$TMP_SUMS" | awk '{print $1}')"
+  EXPECTED="$(grep -E "^[0-9a-fA-F]{64}[[:space:]]+${ARCHIVE_NAME}\$" "$TMP_SUMS" | awk '{print $1}')"
   if [[ -z "$EXPECTED" ]]; then
-    warn "SHA256SUMS.txt does not contain dck-linux-${ARCH}; cannot verify"
+    warn "Checksums file does not contain ${ARCHIVE_NAME}; cannot verify"
   else
     ACTUAL="$(sha256sum "$TMP_BIN" | awk '{print $1}')"
     if [[ "$ACTUAL" != "$EXPECTED" ]]; then
@@ -134,7 +148,7 @@ if curl -fsSL "$SUMS_URL" -o "$TMP_SUMS"; then
     log "SHA256 verified: ${ACTUAL}"
   fi
 else
-  warn "SHA256SUMS.txt not available for this release; skipping verification"
+  warn "Checksums file not available for this release; skipping verification"
 fi
 
 install -m 0755 "$TMP_BIN" "$DCK_BIN"
