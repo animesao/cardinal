@@ -131,3 +131,85 @@ func TestImportRejectsUnsafeMetadataReference(t *testing.T) {
 		t.Fatal("Import accepted unsafe image metadata")
 	}
 }
+
+// TestImportRejectsHardlinkOfflineArchive documents that hardlink entries
+// (TypeLink in tar) cannot be created in this codebase at all — we only
+// accept regular files, directories, and symlinks so a malicious layer can
+// not point a hardlink at /etc/passwd.
+func TestImportRejectsHardlinkOfflineArchive(t *testing.T) {
+	dataDir := t.TempDir()
+	old := os.Getenv("DCK_DATA_DIR")
+	_ = os.Setenv("DCK_DATA_DIR", dataDir)
+	t.Cleanup(func() { _ = os.Setenv("DCK_DATA_DIR", old) })
+	if err := state.EnsureDirs(); err != nil {
+		t.Fatal(err)
+	}
+	archive := makeImportArchive(t,
+		imageMetadata(t, "normal", "latest"),
+		&tar.Header{Name: "passwd", Typeflag: tar.TypeLink, Linkname: "../../../../etc/passwd"},
+	)
+	if err := Import(archive); err == nil {
+		t.Fatal("Import accepted archive with TypeLink")
+	}
+}
+
+// TestImportRejectsNullByteInPath imports an archive whose tar entry name
+// contains a NUL byte. Some tar decoders may truncate the path; ours must
+// refuse the entry outright to avoid path-injection surprises.
+func TestImportRejectsNullByteInPath(t *testing.T) {
+	dataDir := t.TempDir()
+	old := os.Getenv("DCK_DATA_DIR")
+	_ = os.Setenv("DCK_DATA_DIR", dataDir)
+	t.Cleanup(func() { _ = os.Setenv("DCK_DATA_DIR", old) })
+	if err := state.EnsureDirs(); err != nil {
+		t.Fatal(err)
+	}
+	archive := makeImportArchive(t,
+		imageMetadata(t, "normal", "latest"),
+		&tar.Header{Name: "good\x00hack", Typeflag: tar.TypeReg, Size: 1, Mode: 0600},
+	)
+	if err := Import(archive); err == nil {
+		t.Fatal("Import accepted archive whose filename contained a NUL byte")
+	}
+}
+
+// TestImportRejectsSymlinkLoop covers the secondary attack class where a
+// layer ships a symlink that points to itself or to an ancestor. The
+// symlink resolver caches paths and a permanent loop could enable
+// unbounded recursion if naive traversal code follows it.
+func TestImportRejectsSymlinkLoop(t *testing.T) {
+	dataDir := t.TempDir()
+	old := os.Getenv("DCK_DATA_DIR")
+	_ = os.Setenv("DCK_DATA_DIR", dataDir)
+	t.Cleanup(func() { _ = os.Setenv("DCK_DATA_DIR", old) })
+	if err := state.EnsureDirs(); err != nil {
+		t.Fatal(err)
+	}
+	archive := makeImportArchive(t,
+		imageMetadata(t, "normal", "latest"),
+		&tar.Header{Name: "loop", Typeflag: tar.TypeSymlink, Linkname: "loop"},
+	)
+	if err := Import(archive); err == nil {
+		t.Fatal("Import accepted a self-referencing symlink")
+	}
+}
+
+// TestImportRejectsDeepTraversal attempts to smuggle a file out of the
+// extraction root using `..` segments in the middle of a longer path; the
+// destination validator must still notice the parent-directory escape.
+func TestImportRejectsDeepTraversal(t *testing.T) {
+	dataDir := t.TempDir()
+	old := os.Getenv("DCK_DATA_DIR")
+	_ = os.Setenv("DCK_DATA_DIR", dataDir)
+	t.Cleanup(func() { _ = os.Setenv("DCK_DATA_DIR", old) })
+	if err := state.EnsureDirs(); err != nil {
+		t.Fatal(err)
+	}
+	archive := makeImportArchive(t,
+		imageMetadata(t, "normal", "latest"),
+		&tar.Header{Name: "good/../../escape", Typeflag: tar.TypeReg, Size: 1, Mode: 0600},
+	)
+	if err := Import(archive); err == nil {
+		t.Fatal("Import accepted nested-traversal path")
+	}
+}

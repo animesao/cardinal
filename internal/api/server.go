@@ -12,6 +12,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -81,7 +82,7 @@ func StartServerWithTLS(port int, host, certFile, keyFile string) error {
 	mux.HandleFunc("/cluster/containers", handleListContainersOnNode)
 
 	// Prometheus metrics endpoint
-	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/metrics", metricsHandler())
 
 	// Raw handler
 	mux.HandleFunc("/", handleRoot)
@@ -103,7 +104,7 @@ func StartServerWithTLS(port int, host, certFile, keyFile string) error {
 	fmt.Printf("  curl %s://%s/images/json\n", scheme, addr)
 
 	server := &http.Server{
-		Handler:           corsMiddleware(authMiddleware(jsonContentType(mux))),
+		Handler:           corsMiddleware(rateLimiter(authMiddleware(jsonContentType(mux)))),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      60 * time.Second,
@@ -216,6 +217,87 @@ func jsonContentType(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// rateLimiter is a tiny dependency-free per-IP token bucket. It is keyed by
+// the originating host and refreshed at `rate` tokens per second with a
+// burst of `bucket`. Because the runtime is privileged, requests are gated
+// more strictly than a normal HTTP service — a low cap protects the host
+// from accidental DoS loops in user scripts. The limiter exempts the
+// loopback interface because `dck exec`/`dck port` etc. all hit the API
+// multiple times per command and a slow token bucket there would hurt UX.
+type rateBucket struct {
+	tokens float64
+	last   time.Time
+}
+
+func rateLimiter(next http.Handler) http.Handler {
+	const (
+		rate   = 25.0 // tokens per second
+		bucket = 50   // initial burst
+	)
+	var (
+		mu      sync.Mutex
+		clients = map[string]*rateBucket{}
+	)
+	prune := func(maxAge time.Duration) {
+		cutoff := time.Now().Add(-maxAge)
+		mu.Lock()
+		defer mu.Unlock()
+		for k, v := range clients {
+			if v.last.Before(cutoff) {
+				delete(clients, k)
+			}
+		}
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			host = r.RemoteAddr
+		}
+		if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+			next.ServeHTTP(w, r)
+			return
+		}
+		mu.Lock()
+		state, ok := clients[host]
+		if !ok {
+			state = &rateBucket{tokens: bucket, last: time.Now()}
+			clients[host] = state
+		}
+		now := time.Now()
+		state.tokens += now.Sub(state.last).Seconds() * rate
+		if state.tokens > bucket {
+			state.tokens = bucket
+		}
+		state.last = now
+		if state.tokens < 1 {
+			mu.Unlock()
+			writeError(w, http.StatusTooManyRequests, "rate limit exceeded; retry later")
+			return
+		}
+		state.tokens--
+		mu.Unlock()
+
+		if len(clients) > 4096 {
+			prune(5 * time.Minute)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// metricsHandler restricts the Prometheus endpoint behind the API bearer
+// token. By default metrics end up leaking internal container state
+// (cgroup counters, image pull timestamps) that an attacker could use to
+// plan DoS attacks, so we require the same authentication that the rest of
+// the API needs. Loopback callers can opt out of the strict default by
+// setting DCK_METRICS_REQUIRES_AUTH=0.
+func metricsHandler() http.Handler {
+	strict := os.Getenv("DCK_METRICS_REQUIRES_AUTH") != "0"
+	if !strict {
+		return promhttp.Handler()
+	}
+	return authMiddleware(promhttp.Handler())
 }
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
