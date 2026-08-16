@@ -32,7 +32,10 @@ nfpms:
 
 archives:
   - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    formats: [tar.gz]
+    # `formats` was a v1 plural field; goreleaser v2 collapsed it
+    # into a singular `format`. The default when omitted is tar.gz,
+    # so this is explicit and self-documenting.
+    format: tar.gz
     files:
       - LICENSE*
 
