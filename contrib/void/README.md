@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.24.15`
-**Project release:** `v1.24.15`
+**Documentation version:** `1.24.16`
+**Project release:** `v1.24.16`
 <!-- dck-version:end -->
 
 # Void Linux xbps packaging for `dck`
@@ -36,7 +36,7 @@ cp path/to/dck/contrib/void/template srcpkgs/dck/template
 
 # 4. Build:
 ./xbps-src pkg dck
-# Produces: hostdir/binpkgs/dck-1.24.15_1.<arch>.xbps
+# Produces: hostdir/binpkgs/dck-1.24.16_1.<arch>.xbps
 
 # 5. (Local) install the result:
 sudo xbps-install --repository=hostdir/binpkgs dck

@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.24.15`
-**Project release:** `v1.24.15`
+**Documentation version:** `1.24.16`
+**Project release:** `v1.24.16`
 <!-- dck-version:end -->
 
 # Nix / NixOS packaging for `dck`
@@ -25,7 +25,7 @@ nix profile install github:animesao/dck
 
 # Add to a NixOS system configuration
 {
-  inputs.dck.url = "github:animesao/dck/v1.24.15";
+  inputs.dck.url = "github:animesao/dck/v1.24.16";
   outputs.nixosConfigurations.example = nixpkgs.lib.nixosSystem {
     modules = [
       ({ pkgs, ... }: { environment.systemPackages = [ inputs.dck.packages.${system}.default ]; })
@@ -58,7 +58,7 @@ the flake already carries them (post-tag).
 ## Verification after install
 
 ```bash
-dck version    # expect v1.24.15 (or the tag you pinned)
+dck version    # expect v1.24.16 (or the tag you pinned)
 dck doctor     # reports kernel-features / namespace / cgroup state
 ```
 

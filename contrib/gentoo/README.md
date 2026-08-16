@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.24.15`
-**Project release:** `v1.24.15`
+**Documentation version:** `1.24.16`
+**Project release:** `v1.24.16`
 <!-- dck-version:end -->
 
 # Gentoo packaging for `dck`
@@ -22,7 +22,7 @@ The upstream `vendor/` tree is left untouched and consumed via
 
 ```
 contrib/gentoo/
-├── dck-1.24.15.ebuild     # bump the version on each release
+├── dck-1.24.16.ebuild     # bump the version on each release
 └── README.md              # this file
 ```
 
@@ -38,12 +38,12 @@ masters = gentoo
 EOF
 
 # 2. Copy the ebuild into your overlay
-sudo cp contrib/gentoo/dck-1.24.15.ebuild \
-        /var/db/repos/dck-overlay/app-containers/dck/dck-1.24.15.ebuild
+sudo cp contrib/gentoo/dck-1.24.16.ebuild \
+        /var/db/repos/dck-overlay/app-containers/dck/dck-1.24.16.ebuild
 
 # 3. Generate an SHA256 manifest
 sudo chown -R portage:portage /var/db/repos/dck-overlay
-sudo Manifest-md5 /var/db/repos/dck-overlay/app-containers/dck/dck-1.24.15.ebuild || true
+sudo Manifest-md5 /var/db/repos/dck-overlay/app-containers/dck/dck-1.24.16.ebuild || true
 
 # 4. Emerge
 sudo emerge --sync dck-overlay
