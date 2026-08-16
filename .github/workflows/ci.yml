@@ -1,63 +1,46 @@
 name: CI
 
+# CI orchestrator: runs on every push and pull_request. The PR path uses
+# concurrency-cancel-in-progress so a force-push does not leave a stale
+# green check pointing at a superseded SHA.
+#
+# This file does no work itself — it dispatches to reusable-lint,
+# reusable-test, reusable-build and reusable-audit.
+
 on:
   push:
     branches: [main, master]
   pull_request:
     branches: [main, master]
 
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same PR; serialise pushes so a race
+# between two maintainers cannot tear down the test environment mid-run.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    name: lint / vet / vuln
+    uses: ./.github/workflows/reusable-lint.yml
+    with:
+      use_strict: ${{ github.event_name == 'pull_request' }}
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.26.6"
-          cache: true
-
-      - name: golangci-lint
-        run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
-          golangci-lint run ./...
-
-      - name: go vet
-        run: go vet ./...
-
-      - name: Go vulnerability scan
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./...
-
-  docs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check documentation version markers
-        run: sh scripts/sync-docs-version.sh --check
-      - name: Check Markdown whitespace
-        run: git diff --check
+  test:
+    name: tests / coverage / fuzz
+    uses: ./.github/workflows/reusable-test.yml
+    with:
+      fuzz-timeout: 10s
 
   build:
-    runs-on: ubuntu-latest
-    needs: lint
-    strategy:
-      fail-fast: false
-      matrix:
-        goarch: [amd64, arm64]
-    steps:
-      - uses: actions/checkout@v4
+    name: linux build matrix
+    uses: ./.github/workflows/reusable-build.yml
+    with:
+      binary-name: dck
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.26.6"
-          cache: true
-
-      - name: Build
-        run: GOOS=linux GOARCH=${{ matrix.goarch }} go build ./...
-
-      - name: Test (native amd64 runner)
-        if: matrix.goarch == 'amd64'
-        run: GOOS=linux GOARCH=amd64 go test ./... -v -count=1
-
+  audit:
+    name: scripts/audit.sh
+    uses: ./.github/workflows/reusable-audit.yml

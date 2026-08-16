@@ -1,0 +1,70 @@
+name: reusable-test
+
+# Reusable test workflow — runs the entire test suite with the race
+# detector and a coverage profile.
+#
+# Outputs:
+#   coverage_pct  string  Numeric percentage of statements covered.
+#   coverage_file artifact  Raw coverage.out uploaded to workflow artifacts.
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        type: string
+        default: "1.26.6"
+      fuzz-timeout:
+        type: string
+        default: "10s"
+    outputs:
+      coverage_pct:
+        description: Coverage percentage as a number (e.g. "67.4").
+        value: ${{ jobs.test.outputs.coverage_pct }}
+      coverage_file:
+        description: coverage.out artifact path.
+        value: ${{ jobs.test.outputs.coverage_file }}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: unit tests + race + coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      coverage_pct: ${{ steps.cov.outputs.pct }}
+      coverage_file: ${{ steps.cov.outputs.file }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+
+      - name: go test
+        run: go test -race -count=1 ./...
+
+      - name: coverage profile
+        id: cov
+        run: |
+          go test ./... -count=1 -coverprofile=coverage.out -covermode=atomic
+          pct=$(go tool cover -func=coverage.out | awk '/^total:/ {sub("%","",$3); print $3}')
+          echo "pct=$pct" >> "$GITHUB_OUTPUT"
+          echo "file=coverage.out" >> "$GITHUB_OUTPUT"
+          echo "coverage: ${pct}%"
+
+      - name: fuzz smoke
+        run: |
+          # Run the registered fuzz targets for a short time to catch
+          # breakdowns in the Dockerfile parser when a release lands.
+          go test -run='^$' -fuzz='^Fuzz' -fuzztime=${{ inputs.fuzz-timeout }} \
+            ./internal/builder/
+
+      - name: upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ github.run_id }}
+          path: coverage.out
+          retention-days: 14

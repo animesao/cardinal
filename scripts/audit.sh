@@ -264,6 +264,28 @@ else
 	warn "no cobra/spf13 framework in cmd/ (hand-rolled CLI dispatch)"
 fi
 
+# CI architecture: reusable workflows keep lint/test/build logic in one
+# place and reduce duplication from N×M to N+M.
+if grep -rq 'workflow_call' .github/workflows/ 2>/dev/null; then
+	count_callers=$(grep -rl 'uses: ./\.github/workflows/' .github/workflows/ 2>/dev/null | wc -l)
+	count_reusables=$(grep -rl 'workflow_call' .github/workflows/ 2>/dev/null | wc -l)
+	if (( count_callers >= 2 && count_reusables >= 2 )); then
+		pass "CI uses reusable workflows (reusables=$count_reusables callers=$count_callers)"
+	else
+		warn "CI has reusable workflows but usage is uneven (reusables=$count_reusables callers=$count_callers)"
+	fi
+else
+	warn "no reusable workflows in CI (consider extracting shared lint/test/build steps)"
+fi
+
+# CI concurrency: PR builds should cancel-in-progress to save runners.
+if grep -rq 'cancel-in-progress: \${{ github.event_name' .github/workflows/ 2>/dev/null \
+	|| grep -rq 'cancel-in-progress: true' .github/workflows/ 2>/dev/null; then
+	pass "PR concurrency cancel-in-progress configured"
+else
+	warn "no cancel-in-progress on PR runs (stale jobs will keep wasting runners)"
+fi
+
 # Command surface consistency: every function registered in cobra_commands.go
 # must have a matching `func X(args []string)` definition in cmd/*.go. This
 # is the cheapest static guarantee against typos and silent registration

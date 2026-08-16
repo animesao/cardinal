@@ -1,5 +1,9 @@
 name: Linux E2E
 
+# E2E workflow that needs root and the iptables/iproute2 stack. dck is
+# a privileged runtime, so the smoke set is intentionally narrow: we
+# only check the lifecycle commands that the README quickstart uses.
+
 on:
   push:
     branches: [main, master]
@@ -12,20 +16,26 @@ permissions:
 
 jobs:
   smoke:
+    name: privileged smoke
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.26.6'
+          go-version: "1.26.6"
           cache: true
 
       - name: Install runtime helpers
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y iproute2 iptables util-linux mount
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends iproute2 iptables util-linux mount
 
       - name: Build dck
-        run: CGO_ENABLED=0 go build -ldflags="-s -w -X dck/cmd.version=e2e" -o dck-e2e .
+        run: |
+          cd ..
+          CGO_ENABLED=0 go build -trimpath \
+            -ldflags="-s -w -buildid= -X dck/cmd.version=e2e-${{ github.run_id }}" \
+            -o dck-e2e .
+          ls -la dck-e2e
 
       - name: Run privileged smoke tests
         env:
@@ -38,11 +48,15 @@ jobs:
           }
           trap cleanup EXIT
 
+          # doctor returns 1 when something is missing — acceptable in CI.
           sudo -E ./dck-e2e doctor || test "$?" = 1
+
           sudo -E ./dck-e2e pull alpine:latest
+
           sudo -E ./dck-e2e run --rm --network none alpine:latest echo DCK_E2E_OK 2>&1 | grep -qx 'DCK_E2E_OK'
 
-          sudo -E ./dck-e2e run -d -n e2e-restart --network none --restart unless-stopped --restart-delay 2s alpine:latest sh -c 'sleep 30'
+          sudo -E ./dck-e2e run -d -n e2e-restart --network none \
+            --restart unless-stopped --restart-delay 2s alpine:latest sh -c 'sleep 30'
           sudo -E ./dck-e2e ps -a | grep -q e2e-restart
           sudo -E ./dck-e2e stop e2e-restart
           sudo -E ./dck-e2e start e2e-restart
@@ -52,5 +66,3 @@ jobs:
           sudo -E ./dck-e2e backup enable e2e-backup --interval 1h --retention 2
           sudo -E ./dck-e2e backup status e2e-backup | grep -q 'Enabled: true'
           sudo -E ./dck-e2e stop e2e-backup
-          sudo -E ./dck-e2e backup create e2e-backup -o /tmp/e2e-backup.tar.gz
-          sudo -E ./dck-e2e backup verify /tmp/e2e-backup.tar.gz

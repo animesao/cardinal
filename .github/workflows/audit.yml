@@ -1,10 +1,10 @@
 name: Audit
 
+# On-demand repository audit. Operators run this from the Actions tab
+# after making local changes; it does not appear on the PR gate because
+# the CI workflow already invokes reusable-audit.
+
 on:
-  push:
-    branches: [main, master]
-  pull_request:
-    branches: [main, master]
   workflow_dispatch:
 
 permissions:
@@ -12,33 +12,5 @@ permissions:
 
 jobs:
   audit:
-    name: Repository audit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.26.6"
-          cache: true
-
-      - name: Install shellcheck (best-effort)
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends shellcheck || true
-
-      - name: Shellcheck install scripts
-        run: |
-          set -e
-          for f in install.sh install-appimage.sh scripts/*.sh; do
-            [ -f "$f" ] && shellcheck -S warning "$f" || true
-          done
-
-      - name: Run repository audit
-        run: bash scripts/audit.sh --strict
-        continue-on-error: false
-
-      - name: Summarise
-        if: always()
-        run: |
-          echo "## Audit summary" >> $GITHUB_STEP_SUMMARY
-          echo "See the 'Run repository audit' step above for the per-section results." >> $GITHUB_STEP_SUMMARY
+    name: scripts/audit.sh
+    uses: ./.github/workflows/reusable-audit.yml

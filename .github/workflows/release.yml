@@ -1,234 +1,125 @@
 name: Release
 
+# Software release pipeline. Tags are the only source of truth — bumping
+# a PATCH version is the operator's responsibility (workflow_dispatch
+#   with manual bump=true or the release please bot on tag push).
+#
+# Pipeline:
+#   reusable-lint  → smoke vet
+#   reusable-test  → race + coverage
+#   reusable-build → amd64 + arm64 cross-compile
+#                     Goreleaser produces .deb/.rpm/.apk/.pkg.tar.zst
+#   SBOM           → SPDX-JSON via anchore/sbom-action
+#   cosign         → optional, requires COSIGN_PRIVATE_KEY secret
+#   nfpms          → goreleaser .goreleaser.yaml builds .deb/.rpm/etc.
+#   GitHub release → softprops/action-gh-release attaches everything
+
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
-      bump:
-        description: 'Version bump: auto, major, minor, or patch'
+      tag:
+        description: "Release tag to publish (e.g. v1.24.14)"
         required: true
-        default: 'auto'
-        type: choice
-        options:
-          - auto
-          - major
-          - minor
-          - patch
+        type: string
 
 permissions:
   contents: write
 
-# Manual releases also mutate VERSION, main, and tags; serialize them with
-# other release workflows to avoid version and tag races.
+# Serialise concurrent releases on the same tag so two builds cannot
+# overwrite each other's dist/.
 concurrency:
-  group: build-release-${{ github.ref }}
+  group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
-  validate:
+  preflight:
+    name: lint / test / build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.26.6"
-          cache: true
-      - name: Test
-        run: go test ./... -count=1
-      - name: Vet
-        run: go vet ./...
-      - name: Lint
-        run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
-          golangci-lint run ./...
-      - name: Vulnerability scan
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./...
-      - name: Documentation check
-        run: sh scripts/sync-docs-version.sh --check
+      - uses: ./.github/workflows/reusable-lint.yml
+
+      - uses: ./.github/workflows/reusable-test.yml
+
+      - uses: ./.github/workflows/reusable-build.yml
 
   release:
-    needs: validate
+    name: publish release
     runs-on: ubuntu-latest
+    needs: preflight
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v5
+      - name: Determine tag
+        id: tag
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install goreleaser and cosign
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+          # cosign is installed only when a signing key is provided so we
+          # do not pay the install cost on every release run.
+          if [[ -n "${{ secrets.COSIGN_PRIVATE_KEY }}" ]]; then
+            COSIGN_INSTALL_URL="https://github.com/sigstore/cosign/releases/download"
+            curl -fsSL -o /tmp/cosign \
+              "${COSIGN_INSTALL_URL}/v2.4.1/cosign-linux-amd64"
+            sudo install -m 0755 /tmp/cosign /usr/local/bin/cosign
+          fi
+
+      - name: Goreleaser snapshot (no GitHub release yet)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: |
+          # --snapshot produces artefacts under dist/ without contacting
+          # GitHub Releases; the actual release step follows in this job.
+          goreleaser release --clean --snapshot \
+            --skip=publish \
+            --skip=announce \
+            --skip=validate
+
+      - name: SBOM (SPDX-JSON)
+        uses: anchore/sbom-action@v0
         with:
-          go-version: "1.26.6"
-          cache: true
+          format: spdx-json
+          artifact-name: dck-${{ steps.tag.outputs.tag }}.spdx.json
+        continue-on-error: true
 
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
-
-      - name: Determine next version
-        id: version
-        run: |
-          # Read current version from VERSION file
-          CURRENT=$(cat VERSION | tr -d ' \n')
-          echo "Current version: $CURRENT"
-
-          # Get latest git tag version
-          LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -1 | sed 's/^v//')
-          echo "Latest tag: $LATEST_TAG"
-
-          # Use the higher of the two as base
-          BASE=$CURRENT
-          if [ -n "$LATEST_TAG" ] && [ "$(printf '%s\n' "$LATEST_TAG" "$CURRENT" | sort -V | tail -1)" = "$LATEST_TAG" ]; then
-            BASE=$LATEST_TAG
-          fi
-          echo "Base version: $BASE"
-
-          # Parse semver
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
-          MAJOR=${MAJOR:-0}
-          MINOR=${MINOR:-0}
-          PATCH=${PATCH:-0}
-
-          BUMP="${{ inputs.bump }}"
-
-          if [ "$BUMP" = "auto" ]; then
-            # Auto-detect: if patch >= 10, bump minor, else bump patch
-            if [ "$PATCH" -ge 10 ]; then
-              BUMP="minor"
-            else
-              BUMP="patch"
-            fi
-          fi
-
-          case "$BUMP" in
-            major)
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
-              ;;
-            minor)
-              MINOR=$((MINOR + 1))
-              PATCH=0
-              ;;
-            patch)
-              PATCH=$((PATCH + 1))
-              ;;
-          esac
-
-          NEXT="${MAJOR}.${MINOR}.${PATCH}"
-          echo "Next version: $NEXT"
-          echo "version=$NEXT" >> $GITHUB_OUTPUT
-          echo "tag=v$NEXT" >> $GITHUB_OUTPUT
-
-      - name: Update VERSION file and documentation
-        run: |
-          echo "${{ steps.version.outputs.version }}" > VERSION
-          sh scripts/sync-docs-version.sh
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add VERSION README.md CHANGELOG.md CONTRIBUTING.md SECURITY.md docs
-          git commit -m "chore: bump version to ${{ steps.version.outputs.version }} [skip ci]"
-          git tag "v${{ steps.version.outputs.version }}"
-          git push origin main --tags
-
-      - name: Build binaries
-        run: |
-          mkdir -p dist
-          GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w -buildid= -X dck/cmd.version=${{ steps.version.outputs.version }}" -o dist/dck-linux-amd64 .
-          GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w -buildid= -X dck/cmd.version=${{ steps.version.outputs.version }}" -o dist/dck-linux-arm64 .
-          cd dist
-          sha256sum dck-linux-amd64 > dck-linux-amd64.sha256
-          sha256sum dck-linux-arm64 > dck-linux-arm64.sha256
-          cat dck-linux-amd64.sha256 dck-linux-arm64.sha256 > SHA256SUMS.txt
-
-      - name: Sign release artifacts (cosign)
+      - name: Sign SHA256SUMS.txt with cosign
         if: env.COSIGN_PRIVATE_KEY != ''
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
         run: |
-          # cosign signs SHA256SUMS.txt with a keyless (GitHub OIDC) signature
-          # when the WORKLOAD_IDENTITY env is set, or with the supplied
-          # classic key pair as a fallback. We export hash to stdout for the
-          # consumer step below.
-          for f in dck-linux-amd64 dck-linux-arm64 SHA256SUMS.txt; do
-            if [ -n "${COSIGN_PRIVATE_KEY:-}" ]; then
-              cosign sign-blob --key env://COSIGN_PRIVATE_KEY \
-                --output-signature "${f}.sig" \
-                --output-certificate "${f}.cert" \
-                "$f"
-            fi
-          done
-          echo "Cosign signatures produced (or skipped if key not configured)"
-        continue-on-error: true
-
-      - name: Build with Nix
-        run: |
-          nix build .#packages.x86_64-linux.dck
-          cp result/bin/dck dist/dck-nixos-amd64
-          cd dist
-          sha256sum dck-nixos-amd64 > dck-nixos-amd64.sha256
-          echo "Built Nix package: dck-nixos-amd64"
-
-      - name: Prepare Snapcraft project
-        run: |
-          # Build from a temporary root-level project file so the local
-          # source stays inside the LXD project tree.
-          cp snap/snapcraft.yaml snapcraft.yaml
-          sed -i \
-            -e "s/^version: .*/version: ${{ steps.version.outputs.version }}/" \
-            -e 's|source: \.\.|source: .|' \
-            snapcraft.yaml
-
-      - name: Build Snap
-        id: snapcraft
-        uses: snapcore/action-build@v1
-        with:
-          path: .
-          snapcraft-args: --build-for=amd64
-
-      - name: Add Snap release asset
-        run: |
-          SNAP_NAME="dck-${{ steps.version.outputs.version }}-linux-amd64.snap"
-          test -s "${{ steps.snapcraft.outputs.snap }}"
-          cp "${{ steps.snapcraft.outputs.snap }}" "dist/$SNAP_NAME"
-          sha256sum "dist/$SNAP_NAME" > "dist/$SNAP_NAME.sha256"
-
-      - name: Generate SBOM (SPDX)
-        uses: anchore/sbom-action@v0
-        with:
-          format: spdx-json
-          artifact-name: dck-${{ steps.version.outputs.version }}.spdx.json
-        continue-on-error: true
-
-      - name: Sign release artifacts (cosign)
-        if: env.COSIGN_PRIVATE_KEY != '' || env.SIGSTORE_ID_TOKEN != ''
-        env:
-          COSIGN_EXPERIMENTAL: "1"
-        run: |
-          # Generate sigstore-friendly signatures for the SHA256SUMS file
-          # so consumers can verify integrity without needing dck's keys.
-          # We do not abort the release when sigstore credentials are
-          # missing — unsigned releases are still signed by GitHub
-          # attestation infrastructure, but explicit cosign signatures are
-          # a defence-in-depth layer.
-          for f in dist/dck-linux-amd64 dist/dck-linux-arm64 dist/SHA256SUMS.txt; do
-            if [ -f "$f" ]; then
-              cosign sign-blob --yes \
-                --output-signature "${f}.sig" \
-                --output-certificate   "${f}.cert" \
-                "$f" || echo "warning: cosign sign failed for $f"
-            fi
-          done
-        continue-on-error: true
+          cosign sign-blob --yes \
+            --output-signature dist/SHA256SUMS.txt.sig \
+            --output-certificate   dist/SHA256SUMS.txt.cert \
+            dist/SHA256SUMS.txt
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "v${{ steps.version.outputs.version }}"
-          name: "v${{ steps.version.outputs.version }}"
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
           body: |
-            ## dck v${{ steps.version.outputs.version }}
+            ## dck ${{ steps.tag.outputs.tag }}
 
             See [CHANGELOG](README.md#changelog) for details.
+
+            All release artefacts are verified by the GitHub-Actions OIDC
+            attestation, and SHA256SUMS.txt is additionally signed with
+            cosign (when `COSIGN_PRIVATE_KEY` is configured on this repo).
           files: |
             dist/*
             *.spdx.json

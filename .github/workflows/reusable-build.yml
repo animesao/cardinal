@@ -1,0 +1,119 @@
+name: reusable-build
+
+# Reusable cross-compile workflow.
+#
+# Inputs:
+#   binary-name      string  Output binary name.                default "dck"
+#   go-version       string  Go toolchain.                      default "1.26.6"
+#   ldflags-extra    string  Additional ldflags appended to the
+#                            standard reproducible-build triple.
+#                                                          default ""
+#
+# Outputs (per job):
+#   version  json  List of { arch, sha256, artifact } objects.
+#
+# The matrix covers every architecture dck advertises in the README:
+# linux/amd64 and linux/arm64. armv6 was retired from CI builds because
+# the project does not vendor a Go 1.26 cross-toolchain for it; users
+# on ARMv6 hosts still get a working binary from the goreleaser flow if
+# they need it.
+
+on:
+  workflow_call:
+    inputs:
+      binary-name:
+        type: string
+        default: "dck"
+      go-version:
+        type: string
+        default: "1.26.6"
+      ldflags-extra:
+        type: string
+        default: ""
+    outputs:
+      version:
+        description: JSON list with the produced artefacts.
+        value: ${{ jobs.build.outputs.version }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build / cross-compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        goarch: [amd64, arm64]
+    outputs:
+      version: ${{ steps.collect.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+
+      - name: Reproducible build
+        env:
+          BINARY_NAME: ${{ inputs.binary-name }}
+          ARCH:        ${{ matrix.goarch }}
+          LDFLAGS:     "-s -w -buildid= -X dck/cmd.version=${{ github.ref_name }} ${{ inputs.ldflags-extra }}"
+        run: |
+          mkdir -p dist
+          GOOS=linux GOARCH=${ARCH} \
+            CGO_ENABLED=0 \
+            go build -trimpath \
+              -ldflags="${LDFLAGS}" \
+              -o dist/${BINARY_NAME}-linux-${ARCH} .
+
+          sha256sum dist/${BINARY_NAME}-linux-${ARCH} \
+            | tee dist/${BINARY_NAME}-linux-${ARCH}.sha256
+
+      - name: upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.binary-name }}-linux-${{ matrix.goarch }}
+          path: dist/${{ inputs.binary-name }}-linux-${{ matrix.goarch }}
+          retention-days: 14
+
+      - name: upload checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.binary-name }}-linux-${{ matrix.goarch }}.sha256
+          path: dist/${{ inputs.binary-name }}-linux-${{ matrix.goarch }}.sha256
+          retention-days: 14
+
+  collect:
+    name: collect artefact metadata
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: download all artefacts
+        uses: actions/download-artifact@v4
+        with:
+          path: collect
+
+      - name: emit JSON summary
+        id: collect
+        run: |
+          cd collect
+          {
+            echo '['
+            first=1
+            for a in $(ls -1 *.sha256 2>/dev/null); do
+              [[ "$first" -eq 0 ]] && echo ','
+              first=0
+              arch=$(echo "$a" | sed -E 's/.*-linux-([a-z0-9]+)\.sha256/\1/')
+              hash=$(awk '{print $1}' "$a")
+              echo "  { \"arch\": \"$arch\", \"sha256\": \"$hash\" }"
+            done
+            echo ']'
+          } > version.json
+          cat version.json
+          echo "version<<EOF" >> "$GITHUB_OUTPUT"
+          cat version.json >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"

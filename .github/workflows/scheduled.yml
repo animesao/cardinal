@@ -1,0 +1,52 @@
+name: Scheduled security scan
+
+# Daily / weekly defensive scans triggered by cron. They rewrite nothing
+# unless the operator reviews and merges a follow-up PR:
+#   - govulncheck       daily     uses the latest vuln DB
+#   - gitleaks          weekly    full-history secret scan
+#   - scripts/audit.sh  daily     catches regressions on the host path
+#     audits
+#
+# `-snapshot: true` does not modify the codebase on success.
+
+on:
+  schedule:
+    # Every day at 03:00 UTC (off-peak).
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vuln:
+    name: govulncheck (daily DB refresh)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.6"
+          cache: true
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+  gitleaks:
+    name: gitleaks (weekly)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  audit:
+    name: scripts/audit.sh (regressions)
+    uses: ./.github/workflows/reusable-audit.yml
