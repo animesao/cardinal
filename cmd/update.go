@@ -461,7 +461,7 @@ func verifyCosignSignature(releaseTag, binaryName, _ string, sigURL, _ string) e
 	if _, err := tmp.Write(checksumBytes); err != nil {
 		return err
 	}
-	tmp.Close()
+	_ = tmp.Close()
 
 	// Pin the certificate to the release workflow ref so a stolen key alone
 	// cannot re-sign a malicious build from a different workflow run.

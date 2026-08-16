@@ -80,8 +80,8 @@ func (l *Logger) log(level Level, format string, args ...interface{}) {
 			Msg   string `json:"msg"`
 		}{timestamp, levelNames[level], msg})
 		if mErr == nil {
-			out.Write(payload)
-			out.Write([]byte("\n"))
+			_, _ = out.Write(payload)
+			_, _ = out.Write([]byte("\n"))
 		}
 	} else {
 		// Non-JSON mode still escapes newlines so the human-readable log
