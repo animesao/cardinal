@@ -29,6 +29,7 @@ type commandSpec struct {
 	use   string
 	short string
 	run   runFn
+	long  string
 }
 
 // allCommands is the registry of top-level cobra commands. Sub-commands
@@ -53,6 +54,7 @@ func register(spec commandSpec) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   spec.use,
 		Short: spec.short,
+		Long:  spec.long,
 		// SilenceUsage prevents cobra from appending a usage block to
 		// every error reported from the legacy function (which has its
 		// own usage message printing).
@@ -82,79 +84,185 @@ func register(spec commandSpec) *cobra.Command {
 
 func init() {
 	// Image operations
-	register(commandSpec{"pull", "Pull an image from a registry", Pull})
-	register(commandSpec{"push", "Push an image to a registry", Push})
-	register(commandSpec{"images", "List local images", Images})
-	register(commandSpec{"verify", "Verify an image manifest and layer digests", Verify})
-	register(commandSpec{"search", "Search images on Docker Hub", Search})
-	register(commandSpec{"rmi", "Remove an image", Rmi})
-	register(commandSpec{"commit", "Create an image from a container", Commit})
-	register(commandSpec{"build", "Build an image from a Dockerfile", Build})
-	register(commandSpec{"export", "Export an image to a tar.gz archive", Export})
+	register(commandSpec{"pull", "Pull an image from a registry", Pull, ""})
+	register(commandSpec{"push", "Push an image to a registry", Push, ""})
+	register(commandSpec{"images", "List local images", Images, ""})
+	register(commandSpec{"verify", "Verify an image manifest and layer digests", Verify, ""})
+	register(commandSpec{"search", "Search images on Docker Hub", Search, ""})
+	register(commandSpec{"rmi", "Remove an image", Rmi, ""})
+	register(commandSpec{"commit", "Create an image from a container", Commit, ""})
+	register(commandSpec{"build", "Build an image from a Dockerfile", Build, ""})
+	register(commandSpec{"export", "Export an image to a tar.gz archive", Export, ""})
 
 	// Container operations
-	register(commandSpec{"run", "Create and run a container", Run})
-	register(commandSpec{"start", "Start a stopped container", StartCmd})
-	register(commandSpec{"stop", "Stop a running container", Stop})
-	register(commandSpec{"restart", "Restart a container", Restart})
-	register(commandSpec{"rm", "Remove a container", Rm})
-	register(commandSpec{"rename", "Rename a container", Rename})
-	register(commandSpec{"set", "Modify container parameters", Set})
-	register(commandSpec{"ps", "List containers", Ps})
-	register(commandSpec{"inspect", "Inspect a container (JSON)", Inspect})
-	register(commandSpec{"logs", "Show container logs", Logs})
-	register(commandSpec{"stats", "Show CPU/memory/IO statistics", Stats})
-	register(commandSpec{"top", "Show running processes", Top})
-	register(commandSpec{"info", "System-wide information", Info})
+	register(commandSpec{"run", "Create and run a container", Run, `Usage: dck run [opts] <image> [cmd...]
+
+Resource limits:
+  --ram, --memory string     Memory limit (e.g. 512m, 8g)
+  --cpu, --cpus float        CPU limit (e.g. 0.5, 2)
+  --disk string              Disk limit (e.g. 1G, 512M)
+
+Networking:
+  -p, --ports string         Port mapping (host:container[/protocol])
+  --network string           Network mode (bridge/host/none/name)
+  --dns stringSlice          DNS server (repeatable)
+
+Storage:
+  -v, --volume, --vol string Volume mount (src:dst[:ro|rw], repeatable)
+
+Environment:
+  -e string                  Env var key=val (repeatable)
+  --env-file string          Path to .env file
+
+Identity and security:
+  -n string                  Container name
+  -h string                  Hostname
+  --user string              UID:GID or username
+  --cap-add stringSlice      Add capabilities (e.g. NET_ADMIN)
+  --cap-drop stringSlice     Drop capabilities (e.g. ALL)
+  --readonly                 Read-only rootfs
+  --no-new-privs             Block privilege escalation
+  --isolated                 Isolate from other containers
+  --seccomp-profile string   Seccomp profile path
+  --apparmor-profile string  AppArmor profile name
+
+Lifecycle:
+  -d                         Detach (background)
+  --rm                       Remove on exit
+  --restart string           Policy (always|on-failure|unless-stopped)
+  --restart-delay string     Delay before restart (e.g. 10s)
+  --restart-max-attempts int Max restarts in window
+  --restart-window string    Crash-loop window (e.g. 10m)
+
+Execution:
+  -it                        Interactive TTY
+  --entrypoint string        Override entrypoint
+  --workdir string           Working directory
+  --cmd, --command string    Command override
+  --image string             Container image (alternative to positional)
+  --label, -l string         Label key=val (repeatable)
+  --sysctl string            Sysctl key=val (repeatable)
+  --ulimit string            Ulimit name=soft:hard (repeatable)
+
+Health and startup:
+  --healthcheck-cmd string   Health check command
+  --healthcheck-interval int Interval (seconds)
+  --healthcheck-retries int  Retries
+  --healthcheck-timeout int  Timeout (seconds)
+  --startup string           Startup script or @filepath
+
+Safety:
+  --allow-dangerous-caps     Acknowledge unsafe caps (SYS_ADMIN etc)
+  --allow-root               Acknowledge running as UID 0
+  --audit-log                Enable audit logging
+  --encrypted-backup         Encrypt backup archives
+
+Examples:
+  dck run -d --ram 8g --cpu 2 -p 8080:80 --name web nginx
+  dck run -it --rm alpine sh
+  dck run -d -v /data:/app -e DB_HOST=localhost myapp:latest`})
+	register(commandSpec{"start", "Start a stopped container", StartCmd, ""})
+	register(commandSpec{"stop", "Stop a running container", Stop, ""})
+	register(commandSpec{"restart", "Restart a container", Restart, ""})
+	register(commandSpec{"rm", "Remove a container", Rm, ""})
+	register(commandSpec{"rename", "Rename a container", Rename, ""})
+	register(commandSpec{"set", "Modify container parameters", Set, `Usage: dck set <container> [flags]
+
+Flags:
+  --ram, --memory string   Memory limit (e.g. 512m, 8g)
+  --cpu, --cpus float      CPU limit (e.g. 1.5)
+  --disk string            Disk limit (e.g. 1G)
+  --restart string         Restart policy (no|always|on-failure|unless-stopped)
+  --restart-delay string   Delay before restart
+  -e string                Env var key=val (repeatable)
+  --workdir string         Working directory
+  --entrypoint string      Override entrypoint
+  --user string            UID:GID or username
+  --readonly               Read-only rootfs
+  --no-new-privs           Block privilege escalation
+  -h string                Hostname
+  --network string         Network mode (bridge/none/host)
+
+Example:
+  dck set myweb --ram 4g --cpu 2 --restart always`})
+	register(commandSpec{"ps", "List containers", Ps, ""})
+	register(commandSpec{"inspect", "Inspect a container (JSON)", Inspect, ""})
+	register(commandSpec{"logs", "Show container logs", Logs, ""})
+	register(commandSpec{"stats", "Show CPU/memory/IO statistics", Stats, ""})
+	register(commandSpec{"top", "Show running processes", Top, ""})
+	register(commandSpec{"info", "System-wide information", Info, ""})
 
 	// Execution
-	register(commandSpec{"exec", "Execute a command in a container", Exec})
-	register(commandSpec{"console", "Open a web terminal in a container", Console})
-	register(commandSpec{"console-serve", "Run the console HTTP backend only", ConsoleServe})
-	register(commandSpec{"attach", "Attach to the main container process", Attach})
+	register(commandSpec{"exec", "Execute a command in a container", Exec, ""})
+	register(commandSpec{"console", "Open a web terminal in a container", Console, ""})
+	register(commandSpec{"console-serve", "Run the console HTTP backend only", ConsoleServe, ""})
+	register(commandSpec{"attach", "Attach to the main container process", Attach, ""})
 
 	// Filesystem
-	register(commandSpec{"fs", "Browse container filesystem (ls|cat|tree|find)", Fs})
-	register(commandSpec{"cp", "Copy files between host and a container", Cp})
+	register(commandSpec{"fs", "Browse container filesystem (ls|cat|tree|find)", Fs, ""})
+	register(commandSpec{"cp", "Copy files between host and a container", Cp, ""})
 
 	// Network
-	register(commandSpec{"port", "Show or modify port mappings", Port})
-	register(commandSpec{"network", "Manage user-defined bridge networks", Network})
-	register(commandSpec{"login", "Log in to a registry", Login})
-	register(commandSpec{"logout", "Log out from a registry", Logout})
-	register(commandSpec{"events", "Stream container events", Events})
+	register(commandSpec{"port", "Show or modify port mappings", Port, ""})
+	register(commandSpec{"network", "Manage user-defined bridge networks", Network, ""})
+	register(commandSpec{"login", "Log in to a registry", Login, ""})
+	register(commandSpec{"logout", "Log out from a registry", Logout, ""})
+	register(commandSpec{"events", "Stream container events", Events, ""})
 
 	// Backup
-	register(commandSpec{"backup", "Manage container backups", Backup})
+	register(commandSpec{"backup", "Manage container backups", Backup, ""})
 
 	// Composition
-	register(commandSpec{"up", "Bring up containers from a Compose file", Up})
-	register(commandSpec{"down", "Tear down containers from a Compose file", Down})
-	register(commandSpec{"blueprint", "Apply a pre-canned blueprint", Blueprint})
-	register(commandSpec{"service", "Manage long-running services", Service})
-	register(commandSpec{"cluster", "Cluster orchestration commands", Cluster})
-	register(commandSpec{"fn", "Run a serverless function", Fn})
+	register(commandSpec{"up", "Bring up containers from a Compose file", Up, ""})
+	register(commandSpec{"down", "Tear down containers from a Compose file", Down, ""})
+	register(commandSpec{"blueprint", "Apply a pre-canned blueprint", Blueprint, ""})
+	register(commandSpec{"service", "Manage long-running services", Service, ""})
+	register(commandSpec{"cluster", "Cluster orchestration commands", Cluster, ""})
+	register(commandSpec{"fn", "Run a serverless function", Fn, ""})
 
 	// Diagnostics & lifecycle
-	register(commandSpec{"doctor", "Read-only host/runtime diagnostics", Doctor})
-	register(commandSpec{"security", "Security-focused diagnostics (alias for 'doctor security')", Security})
-	register(commandSpec{"serve", "Run the Docker-compatible HTTP API", Serve})
-	register(commandSpec{"supervisor", "Run the container supervisor (foreground)", Supervisor})
-	register(commandSpec{"bootstrap", "Install the systemd supervisor unit", Bootstrap})
-	register(commandSpec{"update", "Self-update dck", Update})
-	register(commandSpec{"version", "Print version information", versionCommand})
+	register(commandSpec{"doctor", "Read-only host/runtime diagnostics", Doctor, ""})
+	register(commandSpec{"security", "Security-focused diagnostics (alias for 'doctor security')", Security, ""})
+	register(commandSpec{"serve", "Run the Docker-compatible HTTP API", Serve, `Usage: dck serve [flags] [on|off|status]
+
+Start the Docker-compatible HTTP API server.
+
+Subcommands:
+  dck serve on [--port 2375]   Install as systemd service (auto-start on boot)
+  dck serve off                Stop and remove systemd service
+  dck serve status             Show service status
+
+Flags:
+  -p int                  API port (default 2375)
+  -H string               API host (default 127.0.0.1)
+  -d                      Run as daemon (foreground by default)
+  --token string          Auth token (or DCK_TOKEN env)
+  --tls-cert string       TLS certificate file
+  --tls-key string        TLS private key file
+
+Examples:
+  dck serve                         # foreground, port 2375
+  dck serve -p 2376 -d              # daemon, port 2376
+  sudo dck serve on -p 2375         # systemd service, auto-start
+  sudo dck serve off                # stop and disable service
+  dck serve status                  # check if running
+  journalctl -u dck-serve -f        # tail logs`})
+	register(commandSpec{"supervisor", "Run the container supervisor (foreground)", Supervisor, ""})
+	register(commandSpec{"bootstrap", "Install the systemd supervisor unit", Bootstrap, ""})
+	register(commandSpec{"update", "Self-update dck", Update, ""})
+	register(commandSpec{"version", "Print version information", versionCommand, ""})
 
 	// Volumes & images import
-	register(commandSpec{"volume", "Manage named volumes", Volume})
-	register(commandSpec{"system", "System-wide maintenance (prune, df)", System})
-	register(commandSpec{"init", "Initialize a container's namespaces (internal)", initContainer})
+	register(commandSpec{"volume", "Manage named volumes", Volume, ""})
+	register(commandSpec{"system", "System-wide maintenance (prune, df)", System, ""})
+	register(commandSpec{"init", "Initialize a container's namespaces (internal)", initContainer, ""})
 
 	// Registry allowlist
-	register(commandSpec{"registry", "Manage registry allowlist and credentials", Registry})
+	register(commandSpec{"registry", "Manage registry allowlist and credentials", Registry, ""})
 
 	// Import (the legacy command was created depending on user vector; it
 	// is treated as an image operation).
-	register(commandSpec{"import", "Import an image from a tar.gz archive", Import})
+	register(commandSpec{"import", "Import an image from a tar.gz archive", Import, ""})
 
 	// "init" shadowing on shell completion — provide a hidden alias for
 	// back-compat.
