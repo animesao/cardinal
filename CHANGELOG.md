@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.24.15`
-**Project release:** `v1.24.15`
+**Documentation version:** `1.24.16`
+**Project release:** `v1.24.16`
 <!-- dck-version:end -->
 
 <p align="center">
@@ -10,8 +10,14 @@
 # Changelog
 
 <!-- dck-current-release:start -->
-> Current release: **v1.24.15**. Detailed release notes below are maintained manually.
+> Current release: **v1.24.16**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
+
+## 1.24.16 (2026-08-16)
+
+### CI/CD
+
+- Patch release: full drop-in support for **Nix / NixOS**, **Gentoo**, and **Void Linux** under `contrib/`, plus GH-Actions artifact fallback so nfpm packages still land when the GitHub Release publish step hiccups. Identical upstream build flags across every contributor format so binaries are byte-equivalent.
 
 ## 1.24.15 (2026-08-16)
 
