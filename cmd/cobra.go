@@ -51,6 +51,143 @@ GLOBAL FLAGS:
   --quiet              Suppress non-essential output
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMAGE COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  dck pull <image>              Pull an image (--platform linux/amd64)
+  dck push <image>              Push an image (-u user -p pass)
+  dck images                    List local images
+  dck rmi <image>               Remove an image
+  dck build -t name:tag .       Build from Dockerfile (-f, --no-cache, --build-arg)
+  dck export -o file.tar.gz c   Export image to tar.gz
+  dck import file.tar.gz        Import image from tar.gz
+  dck commit <container>        Create image from container
+  dck search <query>            Search Docker Hub
+  dck verify <image>            Verify image manifest and digests
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTAINER COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  dck run [opts] <image> [cmd]  Create and run a container (see below)
+  dck start <container>         Start a stopped container
+  dck stop <container>          Stop a running container (--all for all)
+  dck restart <container>       Restart a container
+  dck rm <container>            Remove a container (-f to force)
+  dck rename <old> <new>        Rename a container
+  dck ps                        List containers (-a for all)
+  dck inspect <container>       Inspect container JSON (--sensitive for secrets)
+  dck logs <container>          Show logs (-f follow, --tail N, --previous)
+  dck stats                     Show CPU/memory/IO (--no-stream)
+  dck top <container>           Show running processes
+  dck attach <container>        Attach to main process
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXECUTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  dck exec -it <container> sh   Execute command in container
+  dck console <container>       Open web terminal
+  dck cp <src> <dst>            Copy files between host and container
+  dck fs ls <container> <path>  List files in container
+  dck fs cat <container> <file> Read file in container
+  dck fs tree <container> <dir> Show directory tree
+  dck fs find <container>       Find files (--name, --grep, --type f/d)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NETWORKING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  dck network create <name>     Create bridge network (--subnet)
+  dck network ls                List networks
+  dck network inspect <name>    Inspect network
+  dck network rm <name>         Remove network
+  dck port <container>          Show/modify port mappings
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VOLUMES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  dck volume create <name>      Create volume (-d driver, -l label)
+  dck volume ls                 List volumes
+  dck volume inspect <name>     Inspect volume
+  dck volume rm <name>          Remove volume
+  dck volume prune              Remove unused volumes
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COMPOSE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  dck up -f dck.toml            Start from config file
+  dck down -f dck.toml          Stop and remove (-a for all)
+  dck up --generate             Generate dck.toml from containers
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+API SERVER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  dck serve                     Run API server foreground (-p port)
+  dck serve -d                  Run as daemon
+  dck serve on -p 2375          Install systemd service (auto-start on boot)
+  dck serve off                 Stop and remove systemd service
+  dck serve status              Check service status
+  journalctl -u dck-serve -f    Tail logs
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REGISTRY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  dck login -u user -p pass     Log in to registry (--password-stdin)
+  dck logout                    Log out
+  dck registry add <host>       Add to registry allowlist
+  dck registry rm <host>        Remove from allowlist
+  dck registry list             List allowlist
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BACKUPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  dck backup create <name>      Create backup (-o path, -e encrypt)
+  dck backup list               List backups
+  dck backup restore <name>     Restore from backup
+  dck backup enable <name>      Enable scheduled backup (--interval, --retention)
+  dck backup disable <name>     Disable scheduled backup
+  dck backup status <name>      Show backup status
+  dck backup verify <file>      Verify SHA-256 checksum
+  dck backup generate-key       Generate encryption key
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLUSTER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  dck cluster init              Initialize cluster (--name, --bind, --port)
+  dck cluster join              Join cluster (--bind, --port, --token)
+  dck cluster leave             Leave cluster
+  dck cluster info              Cluster overview
+  dck cluster ls                List nodes
+  dck cluster serve             Start cluster API (-p, -H, --token)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SERVICES & FAAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  dck service create            Create service (--name, --replicas, -p, -e)
+  dck service ls                List services
+  dck service rm <name>         Remove service
+  dck service scale <name> N    Scale to N replicas
+  dck service update            Update service (--name, --image)
+  dck fn deploy                 Deploy function (--name, --port, --handler)
+  dck fn ls                     List functions
+  dck fn rm <name>              Remove function
+  dck fn call <name>            Call function (--data/-d)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DIAGNOSTICS & SYSTEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  dck doctor                    Host/runtime diagnostics (--strict)
+  dck security                  Security diagnostics
+  dck info                      System information
+  dck events                    Stream events (--since)
+  dck system prune              Remove unused data
+  dck version                   Print version
+  dck update                    Self-update (--check for dry run)
+  dck bootstrap                 Install systemd unit (--install/-i, --remove/-r)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MODIFY RUNNING CONTAINER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  dck set <container> [flags]   Modify parameters (see below)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 dck run — FULL FLAG REFERENCE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -133,24 +270,6 @@ dck set — MODIFY RUNNING CONTAINER
   --network string         Network mode (bridge/none/host)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-QUICK REFERENCE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  IMAGES        pull push images rmi build export import commit search verify
-  CONTAINERS    run start stop restart rm rename ps inspect logs stats top attach
-  EXECUTION     exec console cp fs
-  NETWORKING    network port
-  VOLUMES       volume
-  COMPOSE       up down
-  API SERVER    serve (on/off/status)
-  REGISTRY      login logout registry
-  BACKUPS       backup
-  CLUSTER       cluster
-  SERVICES      service fn
-  DIAGNOSTICS   doctor security info events system
-  LIFECYCLE     bootstrap update version
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EXAMPLES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -176,10 +295,9 @@ EXAMPLES
   dck fn deploy --name api --port 8080 --handler /handler`,
 		Version:      version,
 		SilenceUsage: true,
-		// Run the help when no args are provided; the legacy root used to
-		// print help on `dck` with no args and exit 1, but `SilenceUsage`
-		// plus the explicit Run keeps the same UX without an extra exit
-		// code on the success path.
+		// Disable cobra's auto-generated "Available Commands" and "Flags"
+		// sections so our custom Long text is the only help output.
+		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			applyLogOptions(logLevel, jsonOut, quiet)
 			return cmd.Help()
