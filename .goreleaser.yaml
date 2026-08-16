@@ -25,7 +25,13 @@ nfpms:
     maintainer: animesao <animesao@users.noreply.github.com>
     license: MIT
     contents:
-      - src: /usr/local/bin/dck
+      # `src` is the source path on the build host, NOT the install
+      # path inside the package. goreleaser drops built binaries
+      # under `dist/<project>_<os>_<arch>[_v<variant>]/<project>`.
+      # Templating here means the same src resolves to the right
+      # per-arch binary for the deb / rpm / apk / archlinux pkg
+      # build that goreleaser is currently running.
+      - src: ./dist/dck_linux_{{.Arch}}{{ with .Arm }}v{{ . }}{{ end }}/dck
         dst: /usr/bin/dck
     scripts:
       postinstall: packaging/deb/DEBIAN/postinst
