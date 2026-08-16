@@ -264,6 +264,43 @@ else
 	warn "no cobra/spf13 framework in cmd/ (hand-rolled CLI dispatch)"
 fi
 
+# Command surface consistency: every function registered in cobra_commands.go
+# must have a matching `func X(args []string)` definition in cmd/*.go. This
+# is the cheapest static guarantee against typos and silent registration
+# gaps. A handful of names have known free-function aliases (start/startCmd,
+# console-serve/ConsoleServe, version/versionCommand, init/initContainer)
+# and we map them explicitly so the audit script does not flag them as
+# missing.
+declare -A COBRA_NAME_ALIAS=(
+	[start]=StartCmd
+	[console-serve]=ConsoleServe
+	[version]=versionCommand
+	[init]=initContainer
+)
+if [[ -f cmd/cobra_commands.go ]]; then
+	missing=0
+	registered=$(grep -oE 'register\(commandSpec\{"[^"]+"' cmd/cobra_commands.go | sed -E 's/.*"([^"]+)"/\1/')
+	for name in $registered; do
+		case "$name" in
+			completion|help) continue ;;
+		esac
+		fname=${COBRA_NAME_ALIAS[$name]:-}
+		if [[ -z "$fname" ]]; then
+			fname=$(tr '[:lower:]' '[:upper:]' <<< "${name:0:1}")${name:1}
+		fi
+		if ! grep -rqE "^func ${fname}\((args |\\_ )\[\\]string\\)" cmd/*.go; then
+			echo "missing implementation: $name (looked for func $fname)"
+			missing=$((missing+1))
+		fi
+	done
+	if (( missing > 0 )); then
+		fail "$missing registered cobra commands have no matching func X(args []string) implementation"
+	else
+		registered_count=$(echo "$registered" | wc -l)
+		pass "every registered cobra command has a matching implementation (count=$registered_count)"
+	fi
+fi
+
 # go.mod tidy - for vendored projects this is informational only because
 # the locally installed Go toolchain may disagree with the project's locked
 # version (the diff purely reports test-only transitive deps).
