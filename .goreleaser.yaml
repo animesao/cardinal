@@ -27,52 +27,48 @@ nfpms:
     contents:
       # `src` is the source path on the build host, NOT the install
       # path inside the package. goreleaser drops built binaries
-      # under `dist/<project>_<os>_<arch>[:_v<variant>]/<project>`.
+      # under `dist/<project>_<os>_<arch>[_v<variant>]/<project>`
+      # by default. For our two Go builds goreleaser materialises:
+      #   dist/dck_linux_amd64_v1/dck          (linux/amd64)
+      #   dist/dck_linux_arm64_v8.0/dck        (linux/arm64)
       #
-      # For our two Go builds (linux/amd64 and linux/arm64) goreleaser
-      # materialises the architecture directory as:
-      #   dist/dck_linux_amd64_v1/dck
-      #   dist/dck_linux_arm64_v8.0/dck
+      # Why we cannot build the path with `replace`: in the nfpm
+      # template context goreleaser v2.4.5 only exposes `.Arch`
+      # (the nfpm-flavoured string: "amd64v1" / "arm64v8.0",
+      # no underscore), and `.Mips`. There is no `.GoArch`,
+      # `.GoArm`, `.Os`, or `.Binary` in this context. Trying to
+      # synthesise a path via string-manipulation ran into two
+      # separate Go template-parser problems:
+      #   1.  `replace .Arch "v" "_v"`                  (3-arg)
+      #       goreleaser aliases `replace` to stdlib
+      #       strings.Replace(s, old, new, n) with `n=0` default
+      #       when omitted, so it returns `s` unchanged = "v".
+      #       CI: matching "./dist/dck_linux_v/dck"
+      #   2.  `replaceAll .Arch "v" "_v"`              (sprig-style)
+      #       undefined in goreleaser v2.4.5's func map.
+      #       CI: function "replaceAll" not defined
+      #   3.  `replace .Arch "v" "_v" -1`              (4-arg)
+      #       Go's text/template parser does NOT accept negative
+      #       integer literals as function arguments -- the `-` is
+      #       not parsed as part of the integer literal. CI:
+      #       -1 arg int 4
       #
-      # The nfpm template context only exposes `.Arch` (nfpm-flavoured
-      # arch string, no underscore: "amd64v1" / "arm64v8.0") and
-      # `.Mips`. There is no `.GoArch`, `.GoArm`, `.Os` or `.Binary`
-      # in this context, so we cannot split `.Arch` and rejoin.
+      # Pragmatic fix: Since we build exactly two architectures,
+      # branch on `.Arch` with a literal `if/else` and emit the full
+      # path. No string manipulation at all, parser cannot trip:
+      #   .Arch == "amd64v1"   -> dist/dck_linux_amd64_v1/dck
+      #   default              -> dist/dck_linux_arm64_v8.0/dck
       #
-      # We use `replace` (which goreleaser v2.4.5 aliases to
-      # `strings.Replace(s, old, new, n int)`) with an explicit
-      # fourth argument `-1` so the function actually performs
-      # "replace all" instead of being a no-op. The intent is to
-      # convert the NFPM arch (no underscore) to the goreleaser
-      # build-output path (with underscore):
-      #   amd64v1    -> amd64_v1
-      #   arm64v8.0  -> arm64_v8.0
+      # This is robust against every future goreleaser template
+      # engine rewrite: the only thing the engine has to support is
+      # `eq`, which has been part of text/template since Go 1.0.
       #
-      # Why we cannot use `replaceAll`: that function is not
-      # defined in goreleaser v2.4.5's template func map. The
-      # relevant CI error after the previous attempt was
-      #
-      #     error=... function "replaceAll" not defined
-      #
-      # Why we cannot pass three arguments and rely on a default
-      # `-1`: strings.Replace is stdlib, so the missing `n` arg
-      # coerces to its zero value and zero replacements happen, so
-      # the function returns `s` unchanged. The older CI error was
-      #
-      #     error=... matching "./dist/dck_linux_v/dck"
-      #
-      # so we have to spell out the four-argument form.
-      #
-      # Edge case: riscv64 has the letter v in the arch name itself.
-      # nfpm's `.Arch = riscv64` (no subarch for riscv64), so
-      # `replace .Arch "v" "_v" -1` would yield `risc_v64` -- wrong,
-      # because goreleaser materialises that build at
-      # `dist/dck_linux_riscv64/dck` (no underscore, no `v`). We do
-      # not currently ship riscv64. When we add it, this template
-      # needs a separate branch or a different approach entirely
-      # (e.g. a `before:` hook that creates the right symlink or
-      # renames the build directory before nfpm runs).
-      - src: './dist/dck_linux_{{ replace .Arch "v" "_v" -1 }}/dck'
+      # When we add riscv64, add a per-arch `Contents:` entry
+      # targetting the matching .Arch (riscv64). Do not try to
+      # reuse this template -- the variant-suffix encoding for
+      # riscv64 differs from amd64/arm64 and pushing that into a
+      # generic replace() was the source of these bugs.
+      - src: './dist/dck_linux_{{ if eq .Arch "amd64v1" }}amd64_v1{{ else }}arm64_v8.0{{ end }}/dck'
         dst: /usr/bin/dck
     scripts:
       postinstall: packaging/deb/DEBIAN/postinst
