@@ -30,8 +30,10 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends iproute2 iptables util-linux mount
 
       - name: Build dck
+        # actions/checkout@v4 already places us in GITHUB_WORKSPACE
+        # which is the repository root; no `cd ..` is needed (or
+        # safe — that would step outside the repo).
         run: |
-          cd ..
           CGO_ENABLED=0 go build -trimpath \
             -ldflags="-s -w -buildid= -X dck/cmd.version=e2e-${{ github.run_id }}" \
             -o dck-e2e .
