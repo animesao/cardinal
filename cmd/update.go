@@ -524,7 +524,7 @@ func extractBinaryFromTarGz(data []byte, targetName string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("gzip.NewReader: %w", err)
 	}
-	defer gz.Close()
+	defer func() { _ = gz.Close() }()
 
 	tr := tar.NewReader(gz)
 	for {
