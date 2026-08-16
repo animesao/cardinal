@@ -4,6 +4,9 @@ param(
     [switch]$NoPath
 )
 
+# Exit early on any error so partial installs leave a clean state.
+$ErrorActionPreference = "Stop"
+
 $Host.UI.RawUI.ForegroundColor = "Green"
 Write-Host "[dck] dck - Simple Container Runtime Installer"
 $Host.UI.RawUI.ForegroundColor = "White"

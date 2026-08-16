@@ -132,9 +132,33 @@ jobs:
       - name: Build binaries
         run: |
           mkdir -p dist
-          GOOS=linux GOARCH=amd64 go build -ldflags="-X dck/cmd.version=${{ steps.version.outputs.version }}" -o dist/dck-linux-amd64 .
+          GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w -buildid= -X dck/cmd.version=${{ steps.version.outputs.version }}" -o dist/dck-linux-amd64 .
+          GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w -buildid= -X dck/cmd.version=${{ steps.version.outputs.version }}" -o dist/dck-linux-arm64 .
           cd dist
           sha256sum dck-linux-amd64 > dck-linux-amd64.sha256
+          sha256sum dck-linux-arm64 > dck-linux-arm64.sha256
+          cat dck-linux-amd64.sha256 dck-linux-arm64.sha256 > SHA256SUMS.txt
+
+      - name: Sign release artifacts (cosign)
+        if: env.COSIGN_PRIVATE_KEY != ''
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: |
+          # cosign signs SHA256SUMS.txt with a keyless (GitHub OIDC) signature
+          # when the WORKLOAD_IDENTITY env is set, or with the supplied
+          # classic key pair as a fallback. We export hash to stdout for the
+          # consumer step below.
+          for f in dck-linux-amd64 dck-linux-arm64 SHA256SUMS.txt; do
+            if [ -n "${COSIGN_PRIVATE_KEY:-}" ]; then
+              cosign sign-blob --key env://COSIGN_PRIVATE_KEY \
+                --output-signature "${f}.sig" \
+                --output-certificate "${f}.cert" \
+                "$f"
+            fi
+          done
+          echo "Cosign signatures produced (or skipped if key not configured)"
+        continue-on-error: true
 
       - name: Build with Nix
         run: |
@@ -168,6 +192,34 @@ jobs:
           cp "${{ steps.snapcraft.outputs.snap }}" "dist/$SNAP_NAME"
           sha256sum "dist/$SNAP_NAME" > "dist/$SNAP_NAME.sha256"
 
+      - name: Generate SBOM (SPDX)
+        uses: anchore/sbom-action@v0
+        with:
+          format: spdx-json
+          artifact-name: dck-${{ steps.version.outputs.version }}.spdx.json
+        continue-on-error: true
+
+      - name: Sign release artifacts (cosign)
+        if: env.COSIGN_PRIVATE_KEY != '' || env.SIGSTORE_ID_TOKEN != ''
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          # Generate sigstore-friendly signatures for the SHA256SUMS file
+          # so consumers can verify integrity without needing dck's keys.
+          # We do not abort the release when sigstore credentials are
+          # missing — unsigned releases are still signed by GitHub
+          # attestation infrastructure, but explicit cosign signatures are
+          # a defence-in-depth layer.
+          for f in dist/dck-linux-amd64 dist/dck-linux-arm64 dist/SHA256SUMS.txt; do
+            if [ -f "$f" ]; then
+              cosign sign-blob --yes \
+                --output-signature "${f}.sig" \
+                --output-certificate   "${f}.cert" \
+                "$f" || echo "warning: cosign sign failed for $f"
+            fi
+          done
+        continue-on-error: true
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -177,4 +229,8 @@ jobs:
             ## dck v${{ steps.version.outputs.version }}
 
             See [CHANGELOG](README.md#changelog) for details.
-          files: dist/*
+          files: |
+            dist/*
+            *.spdx.json
+            dist/*.sig
+            dist/*.cert

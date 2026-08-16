@@ -112,11 +112,33 @@ if [[ -z "$LATEST_TAG" ]]; then
 fi
 log "Latest version: $LATEST_TAG"
 
-# ---- Download binary ----
+# ---- Download binary and verify SHA256 checksum ----
+TMP_BIN="$(mktemp -t dck.XXXXXX)"
+TMP_SUMS="$(mktemp -t dck-sums.XXXXXX)"
 log "Downloading dck ${LATEST_TAG} (${ARCH})..."
 curl -fsSL "https://github.com/$REPO/releases/download/${LATEST_TAG}/dck-linux-${ARCH}" \
-  -o "$DCK_BIN"
-chmod +x "$DCK_BIN"
+  -o "$TMP_BIN"
+
+# SHA256SUMS.txt is published alongside every release; verify by default.
+SUMS_URL="https://github.com/$REPO/releases/download/${LATEST_TAG}/SHA256SUMS.txt"
+if curl -fsSL "$SUMS_URL" -o "$TMP_SUMS"; then
+  EXPECTED="$(grep -E "^[0-9a-fA-F]{64}[[:space:]]+(.*/)?dck-linux-${ARCH}\$" "$TMP_SUMS" | awk '{print $1}')"
+  if [[ -z "$EXPECTED" ]]; then
+    warn "SHA256SUMS.txt does not contain dck-linux-${ARCH}; cannot verify"
+  else
+    ACTUAL="$(sha256sum "$TMP_BIN" | awk '{print $1}')"
+    if [[ "$ACTUAL" != "$EXPECTED" ]]; then
+      rm -f "$TMP_BIN" "$TMP_SUMS"
+      err "SHA256 mismatch: expected ${EXPECTED}, got ${ACTUAL}"
+    fi
+    log "SHA256 verified: ${ACTUAL}"
+  fi
+else
+  warn "SHA256SUMS.txt not available for this release; skipping verification"
+fi
+
+install -m 0755 "$TMP_BIN" "$DCK_BIN"
+rm -f "$TMP_BIN" "$TMP_SUMS"
 log "Binary installed: $DCK_BIN"
 
 # ---- Verify binary works (check for glibc error) ----
