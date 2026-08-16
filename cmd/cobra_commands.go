@@ -39,6 +39,16 @@ var allCommands []*cobra.Command
 // register adds a top-level cobra command and appends it to the package
 // registry. The wrapper preserves SilenceUsage so legacy functions can
 // print their own usage blocks without cobra double-reporting them.
+//
+// For the `run` command we additionally disable cobra's flag parsing so
+// every argument after `dck run` — including `--rm`, `--network`,
+// `--memory`, `--cap-add`, `--label`, `--healthcheck-cmd` and 30+ other
+// legacy flags — is forwarded verbatim to `Run(args)`, where the legacy
+// stdlib `flag.NewFlagSet` already knows how to parse them. Without
+// this knob, cobra would reject any run-level flag that is not in its
+// own flag set, which historically means every dck invocation that we
+// wrote and tested before the cobra migration. Phased migration of
+// run flags into cobra is tracked as a follow-up.
 func register(spec commandSpec) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   spec.use,
@@ -53,6 +63,18 @@ func register(spec commandSpec) *cobra.Command {
 		Run: func(c *cobra.Command, args []string) {
 			spec.run(args)
 		},
+	}
+	if spec.use == "run" {
+		// Skip cobra's unknown-flag detection. PersistentFlags such as
+		// --log-level / --json / --quiet cannot be applied to `run`
+		// through cobra any more; document the trade-off. The legacy
+		// flag.NewFlagSet in Run() implements the same semantics
+		// internally because it ignores unknown flags and the legacy
+		// command ignores the global log-level flag by design.
+		cmd.DisableFlagParsing = true
+		// DisableFlagParsing implies cobra.OnInitialize-style hooks do
+		// not fire from this subcommand, which is harmless for `run`.
+		cmd.Args = cobra.ArbitraryArgs
 	}
 	allCommands = append(allCommands, cmd)
 	return cmd

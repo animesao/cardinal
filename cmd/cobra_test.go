@@ -130,6 +130,24 @@ func TestNewRoot_CompletionSubcommandExists(t *testing.T) {
 	}
 }
 
+// TestRunCommand_DisablesFlagParsing is a regression guard. The `run`
+// command sets DisableFlagParsing because every run-level flag (--rm,
+// --network, --memory, --cap-add, etc.) is parsed by the legacy
+// stdlib flag.NewFlagSet inside Run() rather than by cobra itself.
+// Without DisableFlagParsing, cobra would reject every run invocation
+// with `unknown flag: --rm`. If you migrate run-level flags into cobra,
+// flip this assertion.
+func TestRunCommand_DisablesFlagParsing(t *testing.T) {
+	root := NewRoot()
+	run := findRootSub(root, "run")
+	if run == nil {
+		t.Fatal("run command missing")
+	}
+	if !run.DisableFlagParsing {
+		t.Errorf("run.DisableFlagParsing = false; want true (legacy flag parsing)")
+	}
+}
+
 func TestNewRoot_HelpStringContainsSubcommandSplash(t *testing.T) {
 	out := captureRun(t, []string{"--help"})
 	if !strings.Contains(out, "Lightweight Linux container runtime") {
