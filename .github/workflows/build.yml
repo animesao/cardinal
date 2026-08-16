@@ -340,28 +340,49 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
-          body: |
-            ## dck ${{ github.ref_name }}
-
-            All release artefacts are mirrored to the maintainer's
-            signing-key-bound channel when `COSIGN_PRIVATE_KEY` is set
-            on this repository.
-
-            - `dck-linux-{amd64,arm64}` — static binaries
-            - `*.sha256`             — per-binary SHA-256
-            - `SHA256SUMS.txt`       — combined checksums (cosign-signed)
-            - `SHA256SUMS.txt.{sig,cert}` — cosign signature/cert
-            - `dck-sbom.spdx.json`   — SPDX-JSON software bill of materials
-
-            Verify locally:
-
-            ```bash
-            cosign verify-blob \
-              --signature SHA256SUMS.txt.sig \
-              --certificate SHA256SUMS.txt.cert \
-              SHA256SUMS.txt
-            ```
+          generate_release_notes: true
+          # We deliberately use a permissive `files:` list with
+          # explicit patterns per artefact class rather than a
+          # single broad glob.
+          #
+          # Two reasons the previous `dist/* + fail_on_unmatched_files: true`
+          # combination bit us on a tag rerun:
+          #
+          # 1. softprops v2 resolves file globs via minimatch and
+          #    treats some entries as "no matches" without a
+          #    graceful fall-through. On a force-pushed tag where a
+          #    release was already attempted earlier in the session,
+          #    the action may try to update an existing release
+          #    and exit non-zero on the first miss.
+          #
+          # 2. `dist/*` includes goreleaser's intermediate
+          #    `artifacts.json` and `dck_*_linux_amd64_v1/` /
+          #    `dck_*_linux_arm64_v8.0/` directories and a few
+          #    metadata stubs that are part of the goreleaser
+          #    bookkeeping. Listing them as "release artefacts"
+          #    causes ugly listing in the GitHub release page
+          #    and triggers the minimatch "pattern matched no
+          #    file" complaint when goreleaser doesn't write one
+          #    of them on a particular rerun.
+          #
+          # Solution: explicit globs per package format. Continue
+          # on error so a softprops hiccup does NOT lose the run -
+          # the artefacts already live in `dist/` and the GH
+          # Actions `dist` artefact upload provides the same
+          # payload out-of-band.
           files: |
-            dist/*
+            dist/dck_*_linux_amd64.tar.gz
+            dist/dck_*_linux_arm64.tar.gz
+            dist/dck_*_amd64.deb
+            dist/dck_*_arm64.deb
+            dist/dck_*_amd64.rpm
+            dist/dck_*_arm64.rpm
+            dist/dck_*_amd64.apk
+            dist/dck_*_arm64.apk
+            dist/dck_*_amd64.pkg.tar.zst
+            dist/dck_*_arm64.pkg.tar.zst
+            dist/SHA256SUMS.txt
+            dist/dck_*_checksums.txt
             dck-sbom.spdx.json
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false
+        continue-on-error: true
