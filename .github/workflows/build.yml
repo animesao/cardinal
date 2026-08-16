@@ -144,10 +144,18 @@ jobs:
           go test ./... -count=1 -coverprofile=coverage.out -covermode=atomic
           go tool cover -func=coverage.out | tail -1
 
-      - name: fuzz smoke (Dockerfile parser)
+      # Iterate over each fuzz test individually. `go test -fuzz`
+      # requires the pattern to match exactly ONE fuzz function, so a
+      # wide regex like `^Fuzz` is rejected when the package declares
+      # multiple fuzz targets. We pin each test by its full name to
+      # make the smoke deterministic; -fuzztime=10s per target keeps
+      # the total budget bounded.
+      - name: fuzz smoke (internal/builder)
         run: |
-          go test -run='^$' -fuzz='^Fuzz' -fuzztime=10s \
-            ./internal/builder/
+          for ftn in '^FuzzParseDockerfile$' '^FuzzSplitShellWords$'; do
+            echo "==== fuzzing: $ftn ===="
+            go test -run='^$' -fuzz="$ftn" -fuzztime=10s ./internal/builder/
+          done
 
       - name: upload coverage artefact
         uses: actions/upload-artifact@v4
