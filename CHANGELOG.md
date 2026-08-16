@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.24.13`
-**Project release:** `v1.24.13`
+**Documentation version:** `1.24.14`
+**Project release:** `v1.24.14`
 <!-- dck-version:end -->
 
 <p align="center">
@@ -10,8 +10,37 @@
 # Changelog
 
 <!-- dck-current-release:start -->
-> Current release: **v1.24.13**. Detailed release notes below are maintained manually.
+> Current release: **v1.24.14**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
+
+## 1.24.14 (2026-08-16)
+
+### CLI
+
+- Migrated the top-level dispatch from a hand-rolled switch / flag-parser in `cmd/root.go` to `spf13/cobra v1.8.1` with `spf13/pflag v1.0.5`. Every previously-working invocation (52 commands + 7 backup sub-commands + `security check`) is preserved as a thin cobra wrapper around the legacy free function, so existing tests and call sites stay green.
+- New global flags on every sub-command: `--log-level debug|info|warn|error`, `--json`, `--quiet`.
+- `dck completion` now generates shell scripts for **bash / zsh / fish / powershell** out of the box; installation instructions added to `docs/en/commands.md` and `docs/ru/commands.md`.
+- Discovered and fixed a regression where `dck run --rm --network none alpine:latest …` exited silently with empty stderr. The legacy flag-parsing path inside `Run()` is reachable again via `DisableFlagParsing: true` on the `run` cobra command. A regression test (`TestRunCommand_DisablesFlagParsing`) guards against future removal of that knob.
+- Surfaced cobra's runtime errors to stderr in `cmd/cobra.go` (`Execute()`), guaranteeing that any future unknown-flag / wrong-arity error is at least actionable instead of leaving a single newline and exit code 1.
+
+### CI/CD
+
+- Rebuilt the GitHub Actions pipeline around a single `build.yml` orchestrator that runs the full `lint → test → build matrix → SBOM → cosign → GitHub Release` flow. Replaces nine reusable workflows plus five orchestrators with three files: `build.yml`, `e2e.yml`, `scheduled.yml`.
+- Pinned action versions to known-good majors (`actions/checkout@v4`, `actions/setup-go@v5`, `actions/upload-artifact@v4`, `anchore/sbom-action@v0`, `softprops/action-gh-release@v2`); dependabot now ignores semver-major bumps in `.github/dependabot.yml` so the pipeline does not silently flip to a breaking major.
+- `build.yml` runs `golangci-lint`, `go vet`, `govulncheck`, `shellcheck`, `scripts/sync-docs-version.sh --check`, and `bash scripts/audit.sh --strict` on every push and PR; the build matrix produces reproducible `linux/amd64` and `linux/arm64` artefacts with `-trimpath -buildid=`, sha256 sidecars, SPDX-JSON SBOM, optional `cosign` signing, and a GitHub Release on tag pushes.
+- `e2e.yml` (privileged) now always uploads a diagnostic bundle (`dck-e2e-diag-<run-id>`) with the captured stdout/stderr buffer, preflight dump of id / env / mount / cgroup / overlay / data-dir / df, and `if: always()` artifact upload so a future maintainer can post-mortem a failed run without re-executing it.
+- `scheduled.yml` runs daily govulncheck + gitleaks + `scripts/audit.sh`; dependabot.yml groups minor+patch bumps and ignores major version updates.
+
+### Documentation
+
+- Added `docs/COMMANDS.md` mapping every cobra-registered command to its runtime requirements (kernel feature, network, state) and verification path (`cobra`, `unit-test`, `e2e-linux`, `audit`, `audit-by-design`).
+- Expanded `SECURITY.md` with a deployment-checklist and a hardening section including: host-path blocklist (`internal/container/hostpath.go`), log-injection protection for line-delimiter / control-character payloads, registry allow-list, image authentication, and dangerous-capability gating (`--allow-dangerous-caps`, `--allow-root`).
+- Added `docs/AUDIT.md` summarising every change above with a per-feature rationale and the known design debt.
+- Added regression tests: Dockerfile parser fuzz (`internal/builder/fuzz_test.go`), `internal/image/allowlist_test.go`, `internal/log/logger_test.go`, `cmd/security_test.go`, OCI-layer traversal and hardlink/symlink-loop extraction.
+
+### Removed
+
+- Removed the unreachable `internal/ftp/` package (398 lines of plain-TCP FTP server with a single shared password). `SECURITY.md` records the decision; `scripts/audit.sh` carries a prevention check so future regressions are caught at audit time.
 
 ## 1.23.28 (2026-08-13)
 
