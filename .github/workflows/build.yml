@@ -233,8 +233,18 @@ jobs:
           echo "--- contents of dist/ ---"
           ls -la dist/
 
+      # GitHub Actions does not allow the `secrets` context inside
+      # `if:` expressions: only contexts such as `github`, `vars`,
+      # `needs`, `inputs`, `matrix`, `steps.*.outputs.*`, `runner`,
+      # `job`, and `env` are supported. The supported pattern is to
+      # surface the secret as an env var on the step and then guard
+      # the step on env-presence.
       - name: Install cosign (only when the maintainer signed a key)
-        if: ${{ secrets.COSIGN_PRIVATE_KEY }}
+        env:
+          # Empty string when the secret is unset; this is the value
+          # we use to gate the step below.
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+        if: env.COSIGN_PRIVATE_KEY != ''
         run: |
           curl -fsSL -o /tmp/cosign \
             "https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64"
@@ -242,10 +252,10 @@ jobs:
           cosign version
 
       - name: Sign SHA256SUMS.txt (cosign)
-        if: ${{ secrets.COSIGN_PRIVATE_KEY }}
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        if: env.COSIGN_PRIVATE_KEY != ''
         run: |
           cosign sign-blob --yes \
             --output-signature dist/SHA256SUMS.txt.sig \
