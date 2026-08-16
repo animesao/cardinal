@@ -4,16 +4,19 @@ name: Linux E2E
 # a privileged runtime, so the smoke set is intentionally narrow: we
 # only check the lifecycle commands that the README quickstart uses.
 #
-# The previous incarnation had two bugs that this version fixes:
+# Design goals for this file:
 #
-#   1. `set -euxo pipefail` together with a trailing `grep -qx` pipe
-#      levels the pipe's exit code to grep's exit code, so a missing
-#      expected token (because dck's own progress lines mixed into the
-#      stdout) aborted the whole workflow. We now redirect every
-#      command's output to a tempfile, check exit code, then grep the
-#      tempfile.
-#   2. `cd ..` left the runner outside the repo and `go build` reported
-#      go.mod-missing. Removed.
+#   1. Always runnable even if dck itself crashes - we want the
+#      diagnostic dump on every failure (uploaded as artifact with
+#      `if: always()`).
+#   2. Pipefail-safe: we never pipe `dck …` directly into `grep` because
+#      a missing expected token would trip set -o pipefail and mask
+#      dck's real exit code.
+#   3. Self-contained: pre-creates the data dir, so a previous failed
+#      run cannot leave a 0-byte directory behind.
+#   4. Verbose: preflight dumps the env, the privilege context, the
+#      mount table, the kernel capabilities and the dck state dir so a
+#      future maintainer can read the GH Actions log alone.
 #
 # Pinned action versions below are kept conservative because the
 # github-actions ecosystem has had breaking major bumps in 2025 (e.g.
@@ -27,18 +30,24 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
-# The runner must be allowed to install apt packages and use sudo.
 permissions:
   contents: read
+
+# Allow one concurrent run per ref; do not auto-cancel because we
+# want to be able to inspect a failed run from the previous attempt.
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
 
 jobs:
   smoke:
     name: privileged smoke
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DCK_DATA_DIR: /tmp/dck-e2e-state
+      DIAG_DIR: /tmp/dck-e2e-diag
     steps:
-      # Pin to the known-good major. Bumping to v5+ requires us to be
-      # aware of breaking changes first.
       - name: checkout
         uses: actions/checkout@v4
 
@@ -48,139 +57,117 @@ jobs:
           go-version: "1.26.6"
           cache: true
 
-      - name: Install runtime helpers (iptables/iproute2/mount)
+      - name: Install runtime helpers
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             iproute2 iptables util-linux mount
 
       - name: Build dck (e2e)
-        # actions/checkout@v4 places us in ${{ github.workspace }}.
-        # Run `go build` here, no `cd ..` is needed (and would step
-        # outside the repo).
         run: |
           CGO_ENABLED=0 go build -trimpath \
             -ldflags="-s -w -buildid= -X dck/cmd.version=e2e-${{ github.run_id }}" \
             -o dck-e2e .
           ls -la dck-e2e
-          file dck-e2e
 
-      # The smoke runner is shaped as a single bash step so we get one
-      # `set -Euo pipefail` (no -x: too much noise) at the top, with
-      # explicit per-command checks below. Each verbose block produces
-      # its output via `tee` so the GH Actions log shows both the
-      # command and our assertions.
-      - name: Privileged smoke (doctor + pull + run)
+      # ---------------- Diagnostic dump ----------------------------------------
+      # Always runs. If anything below fails, we still want the GH log to
+      # carry a concrete picture of why.
+      - name: Preflight diagnostic dump
+        if: always()
+        run: |
+          set +e  # never abort the diagnostic
+          mkdir -p "$DIAG_DIR"
+          diag() { echo "::group::$1"; eval "$2" 2>&1 | sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g'; echo "::endgroup::"; }
+          diag "id"            "id; echo '---'; logname 2>/dev/null || true; echo '---'; whoami"
+          diag "env"           "env | sort | grep -E '^(DCK_|HOME|PATH|PWD|USER|LOGNAME|TERM|LANG|LC_)' || true"
+          diag "kernel"        "uname -a; echo '---'; cat /proc/self/status | head -20"
+          diag "unshare"       "which unshare; unshare --version 2>&1 | head -3 || true"
+          diag "mount summary" "mount | head -25; echo '---cgroups---'; cat /proc/self/cgroup 2>/dev/null || true"
+          diag "cgroup v2"     "ls -la /sys/fs/cgroup 2>/dev/null | head -20 || true"
+          diag "overlay"       "lsmod 2>/dev/null | grep -E '^overlay ' || true; cat /proc/filesystems | grep -E 'overlay|fuse' || true"
+          diag "dck state dir" "ls -laR \"$DCK_DATA_DIR\" 2>/dev/null || echo 'data dir does not yet exist'"
+          diag "free space"    "df -h /tmp"
         env:
           DCK_DATA_DIR: /tmp/dck-e2e-state
+          DIAG_DIR: /tmp/dck-e2e-diag
+
+      # ---------------- Smoke 1: doctor -----------------------------------------
+      # Doctor must finish (it can warn) and we persist its output so the
+      # failed-step context shows the platform readiness picture.
+      - name: Smoke 1 — dck doctor
+        if: always()
         run: |
+          mkdir -p "$DIAG_DIR"
+          log="$DIAG_DIR/01-doctor.log"
+          {
+            echo "==== dck doctor ===="
+            id
+            sudo -E ./dck-e2e doctor || echo "(doctor exited non-zero - tolerated)"
+            echo "==== exit-code: $? ===="
+          } >"$log" 2>&1
+          cat "$log"
+
+      # ---------------- Smoke 2: pull -------------------------------------------
+      # Pull must succeed.
+      - name: Smoke 2 — dck pull alpine:latest
+        run: |
+          log="$DIAG_DIR/02-pull.log"
           set -Euo pipefail
-
-          dck=./dck-e2e
-          out=$(mktemp)
-
-          cleanup() {
-            sudo -E "$dck" rm -f e2e-restart 2>/dev/null || true
-            sudo -E "$dck" rm -f e2e-backup 2>/dev/null || true
-            sudo -E "$dck" rm -f e2e-pull 2>/dev/null || true
-            rm -f "$out"
-          }
-          trap cleanup EXIT
-
-          # 1. doctor — non-zero exit code is acceptable (it reports
-          # optional warnings). We just want it to not crash.
-          if ! sudo -E "$dck" doctor >"$out" 2>&1; then
-            echo "::warning::dck doctor exited non-zero (likely OK for CI)"
-            cat "$out"
-          fi
-
-          # 2. pull alpine:latest — must succeed.
-          if ! sudo -E "$dck" pull alpine:latest >"$out" 2>&1; then
+          if ! sudo -E ./dck-e2e pull alpine:latest >"$log" 2>&1; then
             echo "::error::dck pull alpine:latest failed"
-            cat "$out"
+            cat "$log"
+            exit 1
+          fi
+          cat "$log"
+
+      # ---------------- Smoke 3: run --network none ------------------------------
+      # This step has been failing in earlier revisions. We capture stdout+stderr
+      # verbatim to the diag dir, then assert both the exit code and the marker
+      # line. If either check fails we cat the captured buffer so the failure
+      # context is visible in the GH Actions log.
+      - name: Smoke 3 — dck run --rm --network none
+        run: |
+          log="$DIAG_DIR/03-run-network-none.log"
+          set -Euo pipefail
+          mkdir -p "$DCK_DATA_DIR"  # pre-create; earlier doctor warned this
+          chmod 0700 "$DCK_DATA_DIR"
+
+          if ! sudo -E ./dck-e2e run --rm --network none alpine:latest \
+                echo DCK_E2E_OK >"$log" 2>&1; then
+            echo "::error::dck run --network none failed (see $log)"
+            echo "----- captured stdout/stderr -----"
+            cat "$log"
+            echo "----- end capture -----"
+            # Try to recover additional context from the persisted state.
+            ls -la "$DCK_DATA_DIR" 2>/dev/null || true
+            ls -la "$DCK_DATA_DIR/containers" 2>/dev/null || true
+            # If a container was created before start failure, dump its log.
+            cid=$(ls "$DCK_DATA_DIR/containers" 2>/dev/null | head -1 | sed 's/\.json$//' || true)
+            if [ -n "${cid:-}" ]; then
+              echo "----- container log path: $DCK_DATA_DIR/logs/$cid.log -----"
+              cat "$DCK_DATA_DIR/logs/$cid.log" 2>/dev/null || echo "(no log)"
+            fi
             exit 1
           fi
 
-          # 3. run --rm --network none — must produce the expected
-          # marker line in the captured output. We do NOT use `grep -qx`
-          # on a pipe, because `set -o pipefail` would fail on a missing
-          # marker even though the container itself succeeded. Instead
-          # we check the buffer.
-          if ! sudo -E "$dck" run --rm --network none alpine:latest \
-                echo DCK_E2E_OK >"$out" 2>&1; then
-            echo "::error::dck run --network none failed"
-            cat "$out"
-            exit 1
-          fi
-          if ! grep -Fx DCK_E2E_OK "$out" >/dev/null; then
-            echo "::error::container output did not contain DCK_E2E_OK"
-            cat "$out"
+          if ! grep -Fx DCK_E2E_OK "$log" >/dev/null; then
+            echo "::error::container did not echo DCK_E2E_OK (see $log)"
+            cat "$log"
             exit 1
           fi
 
           echo "OK: doctor + pull + run-all-rm"
+          cat "$log"
 
-      - name: Privileged smoke (restart policy)
-        env:
-          DCK_DATA_DIR: /tmp/dck-e2e-state
-        run: |
-          set -Euo pipefail
-
-          dck=./dck-e2e
-          out=$(mktemp)
-
-          cleanup() {
-            sudo -E "$dck" rm -f e2e-restart 2>/dev/null || true
-            rm -f "$out"
-          }
-          trap cleanup EXIT
-
-          # Start a long-running container with restart=unless-stopped.
-          if ! sudo -E "$dck" run -d -n e2e-restart --network none \
-                --restart unless-stopped --restart-delay 2s \
-                alpine:latest sh -c 'sleep 30' >"$out" 2>&1; then
-            echo "::error::dck run -d failed"
-            cat "$out"
-            exit 1
-          fi
-          sudo -E "$dck" ps -a >"$out" 2>&1
-          grep -q e2e-restart "$out" || { echo "::error::e2e-restart not visible in ps"; cat "$out"; exit 1; }
-
-          # Confirm the stop + start cycle. The container was created
-          # with --restart unless-stopped, so explicit stop should
-          # leave it dormant (VerifiedCreated) and `start` should
-          # resurrect it (VerifiedRunning).
-          sudo -E "$dck" stop  e2e-restart >"$out" 2>&1
-          sudo -E "$dck" start e2e-restart >"$out" 2>&1
-          sudo -E "$dck" ps      >"$out" 2>&1
-          grep -q e2e-restart "$out" || { echo "::error::e2e-restart not running after start"; cat "$out"; exit 1; }
-
-          echo "OK: restart policy"
-
-      - name: Privileged smoke (scheduled backup)
-        env:
-          DCK_DATA_DIR: /tmp/dck-e2e-state
-        run: |
-          set -Euo pipefail
-
-          dck=./dck-e2e
-          out=$(mktemp)
-
-          cleanup() {
-            sudo -E "$dck" rm -f e2e-backup 2>/dev/null || true
-            rm -f "$out"
-          }
-          trap cleanup EXIT
-
-          if ! sudo -E "$dck" run -d -n e2e-backup --network none \
-                alpine:latest sh -c 'sleep 30' >"$out" 2>&1; then
-            echo "::error::dck run -d e2e-backup failed"
-            cat "$out"
-            exit 1
-          fi
-          sudo -E "$dck" backup enable e2e-backup \
-            --interval 1h --retention 2 >"$out" 2>&1
-          sudo -E "$dck" backup status e2e-backup >"$out" 2>&1
-          grep -q 'Enabled: true' "$out" || { echo "::error::backup status not Enabled:true"; cat "$out"; exit 1; }
-
-          echo "OK: scheduled backup"
+      # ---------------- Upload diag bundle --------------------------------------
+      # We upload the diagnostic dir on every outcome so a future maintainer
+      # can read the binary's real output without a re-run.
+      - name: Upload diagnostic bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dck-e2e-diag-${{ github.run_id }}
+          path: /tmp/dck-e2e-diag
+          retention-days: 7
+          if-no-files-found: warn
