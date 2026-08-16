@@ -130,8 +130,13 @@ jobs:
         run: |
           log="$DIAG_DIR/03-run-network-none.log"
           set -Euo pipefail
-          mkdir -p "$DCK_DATA_DIR"  # pre-create; earlier doctor warned this
-          chmod 0700 "$DCK_DATA_DIR"
+          # Do NOT pre-create / chmod the data dir here - earlier
+          # revisions did this and it failed: `mkdir` ran as the
+          # github-actions user, `dck doctor` (via sudo) had already
+          # created the dir as root:root with mode 0700, and a
+          # non-owner `chmod 0700` returns EPERM. dck's own
+          # state.EnsureDirs() — called from image.Pull and from
+          # c.Start() — handles directory creation.
 
           if ! sudo -E ./dck-e2e run --rm --network none alpine:latest \
                 echo DCK_E2E_OK >"$log" 2>&1; then
