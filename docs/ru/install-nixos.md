@@ -3,129 +3,136 @@
 **Project release:** `v1.24.15`
 <!-- dck-version:end -->
 
-# Установка dck на NixOS
+# Установка dck в Nix / NixOS
 
-## Вариант 1: Flake (Рекомендуется)
+`dck` поставляется в виде flake + классического Nix-выражения
+в каталоге [`contrib/nix/`](../../contrib/nix/). Оба дают одинаковый
+бинарник — берите тот, что подходит под ваш рабочий процесс.
 
-Добавьте dck как входную точку flake в конфигурацию NixOS:
+## Выбор стиля
 
-### В `flake.nix`
+| У вас | Используйте |
+|---|---|
+| Nix ≥ 2.4 с включёнными flakes | `contrib/nix/flake.nix` (канонично) |
+| Pre-flake Nix или `nix-build` / `nix-env` | `contrib/nix/default.nix` |
 
-```nix
-{
-  description = "Моя конфигурация NixOS";
+Оба собирают бинарник, идентичный upstream-артефакту goreleaser:
 
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    dck.url = "github:animesao/dck";
-  };
-
-  outputs = { self, nixpkgs, dck, ... }: {
-    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      modules = [
-        ./configuration.nix
-        dck.nixosModules.dck
-        {
-          services.dck = {
-            enable = true;
-            # apiToken = "your-secret-token";
-            # apiPort = 2375;
-            # dataDir = "/var/lib/dck";
-          };
-        }
-      ];
-    };
-  };
-}
+```
+CGO_ENABLED=0
+go build -trimpath -ldflags="-s -w -buildid= -X dck/cmd.version=${version}"
 ```
 
-### В `configuration.nix` (если не используете flake напрямую)
-
-```nix
-{ config, pkgs, ... }:
-{
-  services.dck = {
-    enable = true;
-    # apiToken = "your-secret-token";
-    # apiPort = 2375;
-    # dataDir = "/var/lib/dck";
-    # user = "dck";
-    # group = "dck";
-  };
-}
-```
-
-### Сборка и применение
+## Однострочник через flake
 
 ```bash
-sudo nixos-rebuild switch
-```
+# Однократный запуск, без глобальных изменений
+nix run github:animesao/dck -- --version
 
-## Вариант 2: Nix Profile (Пользовательская установка)
-
-Установите dck в профиль пользователя:
-
-```bash
+# Установка для текущего пользователя
 nix profile install github:animesao/dck
 ```
 
-## Вариант 3: Временное использование
+`nix run` запускает `dck ...` без изменения состояния системы;
+`nix profile install` — «постоянный» вариант на non-NixOS системе.
 
-Запустите dck без установки:
+## Включение в NixOS system configuration
 
-```bash
-nix run github:animesao/dck -- run --rm alpine echo "hello"
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    dck.url = "github:animesao/dck/v1.24.15";
+    dck.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs = { self, nixpkgs, dck, ... }:
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs { inherit system; };
+    in
+    {
+      nixosConfigurations.example = nixpkgs.lib.nixosSystem {
+        inherit system;
+        modules = [
+          ({ pkgs, ... }: {
+            environment.systemPackages = [
+              dck.packages.${system}.default
+            ];
+          })
+        ];
+      };
+    };
+}
 ```
 
-## Вариант 4: Сборка из исходников
+После `nixos-rebuild switch` команда `dck` окажется
+в `/run/current-system/sw/bin/dck` для всех пользователей системы.
 
-```bash
-# Клонировать и собрать
-git clone https://github.com/animesao/dck.git
-cd dck
-nix build .#packages.x86_64-linux.dck
+## В профиль Home Manager
 
-# Бинарник в ./result/bin/dck
-./result/bin/dck version
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    home-manager.url = "github:nix-community/home-manager";
+    dck.url = "github:animesao/dck/v1.24.15";
+  };
+
+  outputs = { self, nixpkgs, home-manager, dck, ... }:
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs { inherit system; };
+    in
+    {
+      homeConfigurations.example = home-manager.lib.homeManagerConfiguration {
+        inherit pkgs;
+        modules = [
+          ({ pkgs, ... }: {
+            home.packages = [ dck.packages.${system}.default ];
+          })
+        ];
+      };
+    };
+}
 ```
 
-## Что делает NixOS-модуль
+## Проверка требований к ядру
 
-Модуль `services.dck`:
-
-1. Создаёт системного пользователя и группу `dck`
-2. Настраивает systemd-сервис с усилением безопасности
-3. Конфигурирует директории данных в `/var/lib/dck`
-4. Включает модули ядра: `overlay`, `veth`, `br_netfilter`
-5. Применяет песочницу systemd (ProtectSystem, PrivateTmp и т.д.)
-
-## Проверка
+`dck` требует активную kernel-config. Запустите на хосте после
+установки:
 
 ```bash
-dck version
 dck doctor
-systemctl status dck
 ```
 
-## Удаление
+Полезные строки, на которые стоит обратить внимание:
 
-### Из NixOS-модуля
-
-Удалите `services.dck.enable = true` из конфигурации и пересоберите:
-
-```bash
-sudo nixos-rebuild switch
+```
+platform                       OK   Linux runtime
+user namespaces                OK   available
+cgroups                        OK   cgroups v2 detected
+overlayfs                      OK   available
 ```
 
-### Из nix profile
+Если что-то в режиме `WARN` или `FAIL` — нужно докрутить ядро.
+NixOS ≥ 22.11 по умолчанию включает user namespaces и cgroup v2 —
+на старых инсталляциях добавьте:
 
-```bash
-nix profile remove dck
+```nix
+boot.kernel.sysctl."kernel.unprivileged_userns_clone" = 1;
+boot.kernelFeatures.enable = [ "cgroup_namespaces" "userns" ];
 ```
 
-### Удалить данные
+## Q & A
 
-```bash
-sudo rm -rf /var/lib/dck
-```
+**В: При первом билде вылетает hash mismatch.**
+О: Это ожидаемо, если вы сделали форк и подняли `version` без
+пересчёта хэшей. Возьмите реальные хэши из лога сборки, впишите
+их в `flake.nix` и `default.nix`, пересоберите. Подробнее —
+см. `contrib/nix/README.md`.
+
+**В: Можно воспользоваться `nix shell`?**
+О: Да. `nix shell github:animesao/dck#devShells.<system>.default`
+откроет шелл с `go`, `golangci-lint`, `shellcheck` — теми же
+инструментами, что в upstream build-matrix.

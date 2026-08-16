@@ -3,129 +3,146 @@
 **Project release:** `v1.24.15`
 <!-- dck-version:end -->
 
-# Installing dck on NixOS
+# Installing dck on Nix / NixOS
 
-## Option 1: Flake (Recommended)
+`dck` ships native flake + classic Nix expressions under
+[`contrib/nix/`](../../contrib/nix/). Both produce the same
+binary; pick the one that matches your workflow.
 
-Add dck as a flake input in your NixOS configuration:
+## Pick your style
 
-### In `flake.nix`
+| You use | Pick |
+|---|---|
+| Nix ≥ 2.4 with flakes enabled | `contrib/nix/flake.nix` (canonical) |
+| Pre-flake Nix or `nix-build` / `nix-env` | `contrib/nix/default.nix` |
 
-```nix
-{
-  description = "My NixOS config";
+Both produce a binary identical to the upstream goreleaser
+artefact:
 
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    dck.url = "github:animesao/dck";
-  };
-
-  outputs = { self, nixpkgs, dck, ... }: {
-    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      modules = [
-        ./configuration.nix
-        dck.nixosModules.dck
-        {
-          services.dck = {
-            enable = true;
-            # apiToken = "your-secret-token";
-            # apiPort = 2375;
-            # dataDir = "/var/lib/dck";
-          };
-        }
-      ];
-    };
-  };
-}
+```
+CGO_ENABLED=0
+go build -trimpath -ldflags="-s -w -buildid= -X dck/cmd.version=${version}"
 ```
 
-### In `configuration.nix` (if not using flake directly)
-
-```nix
-{ config, pkgs, ... }:
-{
-  services.dck = {
-    enable = true;
-    # apiToken = "your-secret-token";
-    # apiPort = 2375;
-    # dataDir = "/var/lib/dck";
-    # user = "dck";
-    # group = "dck";
-  };
-}
-```
-
-### Build and switch
+## Flake one-liner
 
 ```bash
-sudo nixos-rebuild switch
-```
+# Try it (one-shot, no install required)
+nix run github:animesao/dck -- --version
 
-## Option 2: Nix Profile (User Install)
-
-Install dck into your user profile:
-
-```bash
+# Install for the current user (adds to ~/.nix-profile)
 nix profile install github:animesao/dck
 ```
 
-## Option 3: Temporary Usage
+`nix run` drops you into a `dck ...` invocation with no global
+state changes; `nix profile install` is the persistence equivalent
+on a non-NixOS system.
 
-Run dck without installing:
+## Add to a NixOS system configuration
 
-```bash
-nix run github:animesao/dck -- run --rm alpine echo "hello"
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    dck.url = "github:animesao/dck/v1.24.15";
+    dck.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs = { self, nixpkgs, dck, ... }:
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs { inherit system; };
+    in
+    {
+      nixosConfigurations.example = nixpkgs.lib.nixosSystem {
+        inherit system;
+        modules = [
+          ({ pkgs, ... }: {
+            environment.systemPackages = [
+              dck.packages.${system}.default
+            ];
+          })
+        ];
+      };
+    };
+}
 ```
 
-## Option 4: Build from Source
+After running `nixos-rebuild switch`, `dck` lands at
+`/run/current-system/sw/bin/dck` for every user on the system.
 
-```bash
-# Clone and build
-git clone https://github.com/animesao/dck.git
-cd dck
-nix build .#packages.x86_64-linux.dck
+## Add to a Home Manager user profile
 
-# The binary is in ./result/bin/dck
-./result/bin/dck version
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    home-manager.url = "github:nix-community/home-manager";
+    dck.url = "github:animesao/dck/v1.24.15";
+  };
+
+  outputs = { self, nixpkgs, home-manager, dck, ... }:
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs { inherit system; };
+    in
+    {
+      homeConfigurations.example = home-manager.lib.homeManagerConfiguration {
+        inherit pkgs;
+        modules = [
+          ({ pkgs, ... }: {
+            home.packages = [ dck.packages.${system}.default ];
+          })
+        ];
+      };
+    };
+}
 ```
 
-## What the NixOS Module Does
+## Verify kernel prerequisites
 
-The `services.dck` module:
-
-1. Creates a `dck` system user and group
-2. Sets up systemd service with security hardening
-3. Configures data directories in `/var/lib/dck`
-4. Enables kernel modules: `overlay`, `veth`, `br_netfilter`
-5. Applies systemd sandboxing (ProtectSystem, PrivateTmp, etc.)
-
-## Verify
+`dck` needs an active kernel configuration. Run on the host after
+install:
 
 ```bash
-dck version
 dck doctor
-systemctl status dck
 ```
 
-## Uninstall
+The output is structured: the same script decides whether `dck`
+can run `run`, `serve`, `network create`, etc. Useful lines to look
+at:
 
-### From NixOS module
-
-Remove `services.dck.enable = true` from your configuration and rebuild:
-
-```bash
-sudo nixos-rebuild switch
+```
+platform                       OK   Linux runtime
+user namespaces                OK   available
+cgroups                        OK   cgroups v2 detected
+overlayfs                      OK   available
 ```
 
-### From nix profile
+If any of those are `WARN` or `FAIL`, you have a kernel-config or
+kernel-version issue to fix first; `dck` will refuse to update the
+filesystem state on a kernel that can't honour the namespace
+guarantees it advertises.
 
-```bash
-nix profile remove dck
-```
+## Q & A
 
-### Remove data
+**Q: Can I use `nix shell` to enter a dev shell?**
+A: Yes. `nix shell github:animesao/dck#devShells.<system>.default`
+gives you a shell with `go`, `golangci-lint`, `shellcheck`,
+matching the upstream build matrix.
 
-```bash
-sudo rm -rf /var/lib/dck
+**Q: I'm getting a hash mismatch on first build.**
+A: That's expected if you forked and bumped `version` without
+re-fingerprinting both. Look at the build log, copy the printed
+hashes into `flake.nix` and `default.nix`, rebuild. See
+`contrib/nix/README.md` for the diagnostic flow.
+
+**Q: Does `dck` work on NixOS itself, or do I need a different
+kernel?** A: Both. NixOS uses the upstream kernel with user
+namespaces + cgroup v2 enabled by default since 22.11. Older
+NixOS installations need:
+
+```nix
+boot.kernel.sysctl."kernel.unprivileged_userns_clone" = 1;
+boot.kernelFeatures.enable = [ "cgroup_namespaces" "userns" ];
 ```

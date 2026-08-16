@@ -33,9 +33,59 @@ Contributions are welcome:
    go test ./... -count=1
    go vet ./...
    golangci-lint run ./...
+   bash scripts/audit.sh
+   bash scripts/sync-docs-version.sh
    ```
 
 5. Update the relevant English and Russian documentation when behavior or commands change.
 6. Open a pull request with a clear description of the change and its verification.
 
 Please do not add a person to this file without their permission. New contributors can be added after a merged contribution or by request.
+
+## Packaging for a Linux distribution we don't yet ship
+
+The [`.goreleaser.yaml`](.goreleaser.yaml) handles five formats out
+of the box: `.deb`, `.rpm`, `.apk`, `.pkg.tar.zst` (Arch Linux),
+plus the generic `.tar.gz`. These cover ~95% of active Linux
+installations.
+
+For distributions we do not yet ship a native package for —
+**NixOS / Nix**, **Gentoo / Funtoo**, **Void Linux**, Alpine
+derivatives, etc. — drop a tiny build descriptor under
+[`contrib/`](contrib/) that matches the upstream build matrix
+exactly:
+
+```
+contrib/
+├── nix/
+│   ├── flake.nix        # buildGoModule + lib.fakeHash
+│   └── default.nix      # legacy non-flake expression
+├── gentoo/
+│   └── dck-1.24.15.ebuild
+└── void/
+    └── template         # xbps-src / void-packages drop-in
+```
+
+Every existing contributor (under `contrib/`) is built with:
+
+```
+CGO_ENABLED=0
+go build -trimpath -ldflags="-s -w -buildid= -X dck/cmd.version=${version}"
+```
+
+That flag set is the upstream build matrix in entirety; matching
+it ensures the binary produced by your distribution's tooling is
+**byte-identical** to the goreleaser-produced `.deb`/`.rpm`/`.apk`
+artefact attached to the GitHub Release.
+
+Style guide for new `contrib/<distro>/` entries:
+
+- One-line filename conventions matching the host community
+  (e.g. ebuilds in `gentoo/`, `flake.nix` in `nix/`, `template`
+  for xbps).
+- Always include a `README.md` that documents `version` /
+  `replacement strategy` (so the next bump is a one-line patch).
+- A short walk-through in `docs/en/install-<distro>.md` plus the
+  Russian mirror in `docs/ru/install-<distro>.md`.
+- A pointer entry in [README.md](README.md) under the
+  Install Guides table.

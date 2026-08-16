@@ -884,6 +884,8 @@ Downloads the latest binary and replaces `/usr/local/bin/dck`. The download allo
 | [Arch Linux](docs/en/install-arch.md) | [Arch Linux](docs/ru/install-arch.md) |
 | [Alpine Linux](docs/en/install-alpine.md) | [Alpine Linux](docs/ru/install-alpine.md) |
 | [NixOS](docs/en/install-nixos.md) | [NixOS](docs/ru/install-nixos.md) |
+| [Gentoo / Funtoo](docs/en/install-gentoo.md) | [Gentoo / Funtoo](docs/ru/install-gentoo.md) |
+| [Void Linux](docs/en/install-void.md) | [Void Linux](docs/ru/install-void.md) |
 | [Snap](docs/en/install-snap.md) | [Snap](docs/ru/install-snap.md) |
 | [AppImage](docs/en/install-appimage.md) | [AppImage](docs/ru/install-appimage.md) |
 | [Manual Binary](docs/en/install-manual.md) | [Ручная установка](docs/ru/install-manual.md) |
