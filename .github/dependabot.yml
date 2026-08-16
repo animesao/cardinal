@@ -1,31 +1,52 @@
 version: 2
 
+# Dependabot configuration.
+#
+# The github-actions group is intentionally **minor-and-patch only**.
+# Major bump PRs have broken the workflows before (e.g. setup-go v7
+# changed its cache: interface), so we let a human review those by
+# keeping them off the auto-PR conveyor belt.
+
 updates:
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
+      time: "06:00"
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "go"
+    ignore:
+      # Major-module bumps often require coordinated refactors.
+      # Keep them off the auto-PR conveyor and require a hand review.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
-      major:
-        update-types: ["major"]
+        patterns: ["*"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+      time: "06:00"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "ci"
+    ignore:
+      # Block all major action upgrades; they tend to change syntax
+      # (setup-go v7 deprecated the cache: input, etc.) so the
+      # human-in-the-loop upgrade needs to land with code changes.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       actions-minor-and-patch:
         update-types: ["minor", "patch"]
+        patterns: ["*"]
 
   - package-ecosystem: "npm"
     directory: "/compose-examples"

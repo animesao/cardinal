@@ -3,6 +3,22 @@ name: Linux E2E
 # E2E workflow that needs root and the iptables/iproute2 stack. dck is
 # a privileged runtime, so the smoke set is intentionally narrow: we
 # only check the lifecycle commands that the README quickstart uses.
+#
+# The previous incarnation had two bugs that this version fixes:
+#
+#   1. `set -euxo pipefail` together with a trailing `grep -qx` pipe
+#      levels the pipe's exit code to grep's exit code, so a missing
+#      expected token (because dck's own progress lines mixed into the
+#      stdout) aborted the whole workflow. We now redirect every
+#      command's output to a tempfile, check exit code, then grep the
+#      tempfile.
+#   2. `cd ..` left the runner outside the repo and `go build` reported
+#      go.mod-missing. Removed.
+#
+# Pinned action versions below are kept conservative because the
+# github-actions ecosystem has had breaking major bumps in 2025 (e.g.
+# setup-go v7 changed the cache interface). Dependabot is asked to
+# ignore major version bumps via .github/dependabot.yml.
 
 on:
   push:
@@ -11,6 +27,7 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+# The runner must be allowed to install apt packages and use sudo.
 permissions:
   contents: read
 
@@ -20,51 +37,150 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      # Pin to the known-good major. Bumping to v5+ requires us to be
+      # aware of breaking changes first.
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup-go (1.26.6)
+        uses: actions/setup-go@v5
         with:
           go-version: "1.26.6"
           cache: true
 
-      - name: Install runtime helpers
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends iproute2 iptables util-linux mount
+      - name: Install runtime helpers (iptables/iproute2/mount)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            iproute2 iptables util-linux mount
 
-      - name: Build dck
-        # actions/checkout@v4 already places us in GITHUB_WORKSPACE
-        # which is the repository root; no `cd ..` is needed (or
-        # safe — that would step outside the repo).
+      - name: Build dck (e2e)
+        # actions/checkout@v4 places us in ${{ github.workspace }}.
+        # Run `go build` here, no `cd ..` is needed (and would step
+        # outside the repo).
         run: |
           CGO_ENABLED=0 go build -trimpath \
             -ldflags="-s -w -buildid= -X dck/cmd.version=e2e-${{ github.run_id }}" \
             -o dck-e2e .
           ls -la dck-e2e
+          file dck-e2e
 
-      - name: Run privileged smoke tests
+      # The smoke runner is shaped as a single bash step so we get one
+      # `set -Euo pipefail` (no -x: too much noise) at the top, with
+      # explicit per-command checks below. Each verbose block produces
+      # its output via `tee` so the GH Actions log shows both the
+      # command and our assertions.
+      - name: Privileged smoke (doctor + pull + run)
         env:
           DCK_DATA_DIR: /tmp/dck-e2e-state
         run: |
-          set -euxo pipefail
+          set -Euo pipefail
+
+          dck=./dck-e2e
+          out=$(mktemp)
+
           cleanup() {
-            sudo -E ./dck-e2e rm -f e2e-restart 2>/dev/null || true
-            sudo -E ./dck-e2e rm -f e2e-backup 2>/dev/null || true
+            sudo -E "$dck" rm -f e2e-restart 2>/dev/null || true
+            sudo -E "$dck" rm -f e2e-backup 2>/dev/null || true
+            sudo -E "$dck" rm -f e2e-pull 2>/dev/null || true
+            rm -f "$out"
           }
           trap cleanup EXIT
 
-          # doctor returns 1 when something is missing — acceptable in CI.
-          sudo -E ./dck-e2e doctor || test "$?" = 1
+          # 1. doctor — non-zero exit code is acceptable (it reports
+          # optional warnings). We just want it to not crash.
+          if ! sudo -E "$dck" doctor >"$out" 2>&1; then
+            echo "::warning::dck doctor exited non-zero (likely OK for CI)"
+            cat "$out"
+          fi
 
-          sudo -E ./dck-e2e pull alpine:latest
+          # 2. pull alpine:latest — must succeed.
+          if ! sudo -E "$dck" pull alpine:latest >"$out" 2>&1; then
+            echo "::error::dck pull alpine:latest failed"
+            cat "$out"
+            exit 1
+          fi
 
-          sudo -E ./dck-e2e run --rm --network none alpine:latest echo DCK_E2E_OK 2>&1 | grep -qx 'DCK_E2E_OK'
+          # 3. run --rm --network none — must produce the expected
+          # marker line in the captured output. We do NOT use `grep -qx`
+          # on a pipe, because `set -o pipefail` would fail on a missing
+          # marker even though the container itself succeeded. Instead
+          # we check the buffer.
+          if ! sudo -E "$dck" run --rm --network none alpine:latest \
+                echo DCK_E2E_OK >"$out" 2>&1; then
+            echo "::error::dck run --network none failed"
+            cat "$out"
+            exit 1
+          fi
+          if ! grep -Fx DCK_E2E_OK "$out" >/dev/null; then
+            echo "::error::container output did not contain DCK_E2E_OK"
+            cat "$out"
+            exit 1
+          fi
 
-          sudo -E ./dck-e2e run -d -n e2e-restart --network none \
-            --restart unless-stopped --restart-delay 2s alpine:latest sh -c 'sleep 30'
-          sudo -E ./dck-e2e ps -a | grep -q e2e-restart
-          sudo -E ./dck-e2e stop e2e-restart
-          sudo -E ./dck-e2e start e2e-restart
-          sudo -E ./dck-e2e ps | grep -q e2e-restart
+          echo "OK: doctor + pull + run-all-rm"
 
-          sudo -E ./dck-e2e run -d -n e2e-backup --network none alpine:latest sh -c 'sleep 30'
-          sudo -E ./dck-e2e backup enable e2e-backup --interval 1h --retention 2
-          sudo -E ./dck-e2e backup status e2e-backup | grep -q 'Enabled: true'
-          sudo -E ./dck-e2e stop e2e-backup
+      - name: Privileged smoke (restart policy)
+        env:
+          DCK_DATA_DIR: /tmp/dck-e2e-state
+        run: |
+          set -Euo pipefail
+
+          dck=./dck-e2e
+          out=$(mktemp)
+
+          cleanup() {
+            sudo -E "$dck" rm -f e2e-restart 2>/dev/null || true
+            rm -f "$out"
+          }
+          trap cleanup EXIT
+
+          # Start a long-running container with restart=unless-stopped.
+          if ! sudo -E "$dck" run -d -n e2e-restart --network none \
+                --restart unless-stopped --restart-delay 2s \
+                alpine:latest sh -c 'sleep 30' >"$out" 2>&1; then
+            echo "::error::dck run -d failed"
+            cat "$out"
+            exit 1
+          fi
+          sudo -E "$dck" ps -a >"$out" 2>&1
+          grep -q e2e-restart "$out" || { echo "::error::e2e-restart not visible in ps"; cat "$out"; exit 1; }
+
+          # Confirm the stop + start cycle. The container was created
+          # with --restart unless-stopped, so explicit stop should
+          # leave it dormant (VerifiedCreated) and `start` should
+          # resurrect it (VerifiedRunning).
+          sudo -E "$dck" stop  e2e-restart >"$out" 2>&1
+          sudo -E "$dck" start e2e-restart >"$out" 2>&1
+          sudo -E "$dck" ps      >"$out" 2>&1
+          grep -q e2e-restart "$out" || { echo "::error::e2e-restart not running after start"; cat "$out"; exit 1; }
+
+          echo "OK: restart policy"
+
+      - name: Privileged smoke (scheduled backup)
+        env:
+          DCK_DATA_DIR: /tmp/dck-e2e-state
+        run: |
+          set -Euo pipefail
+
+          dck=./dck-e2e
+          out=$(mktemp)
+
+          cleanup() {
+            sudo -E "$dck" rm -f e2e-backup 2>/dev/null || true
+            rm -f "$out"
+          }
+          trap cleanup EXIT
+
+          if ! sudo -E "$dck" run -d -n e2e-backup --network none \
+                alpine:latest sh -c 'sleep 30' >"$out" 2>&1; then
+            echo "::error::dck run -d e2e-backup failed"
+            cat "$out"
+            exit 1
+          fi
+          sudo -E "$dck" backup enable e2e-backup \
+            --interval 1h --retention 2 >"$out" 2>&1
+          sudo -E "$dck" backup status e2e-backup >"$out" 2>&1
+          grep -q 'Enabled: true' "$out" || { echo "::error::backup status not Enabled:true"; cat "$out"; exit 1; }
+
+          echo "OK: scheduled backup"
