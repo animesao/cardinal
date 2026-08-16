@@ -3,7 +3,9 @@
 package cmd
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -65,40 +67,37 @@ func Update(args []string) {
 		return
 	}
 
-	// Determine architecture for binary download
 	arch := runtime.GOARCH
 	goos := runtime.GOOS
-	binaryName := fmt.Sprintf("dck-%s-%s", goos, arch)
-	if goos == "windows" {
-		binaryName += ".exe"
-	}
-
 	releaseTag := "v" + latest
-	checksumURL := fmt.Sprintf("%s/releases/download/%s/%s.sha256", releaseURL, releaseTag, binaryName)
-	binaryURL := fmt.Sprintf("%s/releases/download/%s/%s", releaseURL, releaseTag, binaryName)
+	archiveBaseName := fmt.Sprintf("dck_%s_%s_%s", latest, goos, arch)
+	archiveName := archiveBaseName + ".tar.gz"
+	checksumFileName := fmt.Sprintf("dck_%s_checksums.txt", latest)
+	checksumURL := fmt.Sprintf("%s/releases/download/%s/%s", releaseURL, releaseTag, checksumFileName)
+	archiveURL := fmt.Sprintf("%s/releases/download/%s/%s", releaseURL, releaseTag, archiveName)
 
 	fmt.Println("Downloading update...")
-	expectedChecksum, err := fetchURL(checksumURL)
+	expectedChecksum, err := fetchChecksumForFile(checksumURL, archiveName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to fetch update checksum: %v\n", err)
 		os.Exit(1)
 	}
 
-	body, err := fetchURLBytes(binaryURL)
+	body, err := fetchURLBytes(archiveURL)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to download binary: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to download archive: %v\n", err)
 		os.Exit(1)
 	}
 
-	expectedHex, err := parseSHA256Checksum(expectedChecksum)
+	binaryData, err := extractBinaryFromTarGz(body, "dck")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid update checksum: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to extract binary from archive: %v\n", err)
 		os.Exit(1)
 	}
-	hash := sha256.Sum256(body)
-	actualHex := hex.EncodeToString(hash[:])
-	if !strings.EqualFold(actualHex, expectedHex) {
-		fmt.Fprintf(os.Stderr, "Checksum mismatch! Expected %s, got %s. Aborting update.\n", expectedHex, actualHex)
+
+	actualHex := fmt.Sprintf("%x", sha256.Sum256(binaryData))
+	if !strings.EqualFold(actualHex, expectedChecksum) {
+		fmt.Fprintf(os.Stderr, "Checksum mismatch! Expected %s, got %s. Aborting update.\n", expectedChecksum, actualHex)
 		os.Exit(1)
 	}
 	fmt.Println("Checksum verified.")
@@ -111,7 +110,7 @@ func Update(args []string) {
 		strings.EqualFold(os.Getenv("DCK_REQUIRE_SIGNATURE"), "true") {
 		sigURL := checksumURL + ".sig"
 		bundleURL := sigURL + ".bundle"
-		if err := verifyCosignSignature(releaseTag, binaryName, actualHex, sigURL, bundleURL); err != nil {
+		if err := verifyCosignSignature(releaseTag, archiveName, actualHex, sigURL, bundleURL); err != nil {
 			fmt.Fprintf(os.Stderr, "Signature verification failed: %v\n", err)
 			os.Exit(1)
 		}
@@ -132,7 +131,7 @@ func Update(args []string) {
 		os.Exit(1)
 	}
 	tmpPath := tmpFile.Name()
-	if _, err := tmpFile.Write(body); err != nil {
+	if _, err := tmpFile.Write(binaryData); err != nil {
 		closeErr := tmpFile.Close()
 		removeErr := os.Remove(tmpPath)
 		fmt.Fprintf(os.Stderr, "Failed to write temp file: %v", err)
@@ -494,4 +493,54 @@ func regexpQuoteMeta(s string) string {
 		b.WriteRune(r)
 	}
 	return b.String()
+}
+
+// fetchChecksumForFile downloads a multi-line checksums file and returns the
+// hex digest for the given filename. The file format is one entry per line:
+//
+//	<hex>  <filename>
+func fetchChecksumForFile(url, filename string) (string, error) {
+	contents, err := fetchURL(url)
+	if err != nil {
+		return "", err
+	}
+	for _, line := range strings.Split(contents, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && fields[1] == filename {
+			return strings.ToLower(fields[0]), nil
+		}
+	}
+	return "", fmt.Errorf("filename %s not found in checksums file at %s", filename, url)
+}
+
+// extractBinaryFromTarGz decompresses a .tar.gz archive and returns the
+// contents of the first file whose base name matches targetName.
+func extractBinaryFromTarGz(data []byte, targetName string) ([]byte, error) {
+	gz, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("gzip.NewReader: %w", err)
+	}
+	defer gz.Close()
+
+	tr := tar.NewReader(gz)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("tar.Next: %w", err)
+		}
+		base := strings.TrimPrefix(hdr.Name, "./")
+		base = strings.TrimPrefix(base, ".")
+		base = strings.TrimPrefix(base, "/")
+		if base == targetName || strings.HasSuffix("/"+base, "/"+targetName) {
+			return io.ReadAll(tr)
+		}
+	}
+	return nil, fmt.Errorf("target %q not found in archive", targetName)
 }
