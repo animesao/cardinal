@@ -252,21 +252,23 @@ jobs:
       # publishing step so softprops/action-gh-release@v2 stays in
       # charge of attaching files (we want to attach the SBOM and
       # cosign signatures alongside, not just goreleaser's outputs).
-      - name: Install goreleaser
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          go install github.com/goreleaser/goreleaser/v2@v2.4.5
-          goreleaser --version
-
+      # Use the official `goreleaser-action`. It downloads a
+      # precompiled goreleaser binary (~60 MiB) instead of going
+      # through `go install`, which on Go 1.26.6 fetches an
+      # enormous transitive dependency tree (AWS, Azure, GCP,
+      # gitea, gitlab, sigstore, OCI/, snap/, brew/, etc. — the
+      # latest log showed 250+ downloads before the step could
+      # even start). The action ships the binary directly so this
+      # step is reliable on cold runners, and pinning `version`
+      # keeps the major-bump-aware dependabot policy intact.
       - name: Run goreleaser release (skips publish+announce)
         if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          export VERSION="${GITHUB_REF_NAME#v}"
-          goreleaser release \
-            --clean \
-            --skip=publish \
-            --skip=announce \
-            --timeout 30m
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          # Tag pushes only — the goreleaser-action reads
+          # github.tag_name by default; keep the default behaviour.
+          version: v2.4.5
+          args: release --clean --skip=publish --skip=announce --timeout 30m
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
