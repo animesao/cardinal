@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.24.14`
-**Project release:** `v1.24.14`
+**Documentation version:** `1.24.15`
+**Project release:** `v1.24.15`
 <!-- dck-version:end -->
 
 <p align="center">
@@ -10,8 +10,14 @@
 # Changelog
 
 <!-- dck-current-release:start -->
-> Current release: **v1.24.14**. Detailed release notes below are maintained manually.
+> Current release: **v1.24.15**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
+
+## 1.24.15 (2026-08-16)
+
+### CI/CD
+
+- Patch release: same code body as v1.24.14 with a refreshed tag so consumers can pin a green build of the goreleaser v2 release pipeline.
 
 ## 1.24.14 (2026-08-16)
 
