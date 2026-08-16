@@ -51,3 +51,10 @@ func FuzzSplitShellWords(f *testing.F) {
 		}
 	})
 }
+
+func TestParseInstructionsLongContinuation(t *testing.T) {
+	content := "RUN " + strings.Repeat(string([]byte{'\\', '\n'}), 4096) + "echo done\n"
+	if _, err := ParseInstructions(content); err != nil {
+		t.Fatalf("long continuation should parse without error: %v", err)
+	}
+}

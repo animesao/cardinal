@@ -19,24 +19,30 @@ func ParseDockerfile(path string) ([]Instruction, error) {
 func ParseInstructions(content string) ([]Instruction, error) {
 	lines := strings.Split(content, "\n")
 	var insts []Instruction
-	var pending string
+	var pending strings.Builder
 	var lineCont bool
 
 	for i, raw := range lines {
 		line := strings.TrimRightFunc(raw, unicode.IsSpace)
 
-		// Handle line continuation (backslash at end of line)
+		// Handle line continuation (backslash at end of line). Use a builder
+		// here: repeated string concatenation made long continuation chains
+		// quadratic and allowed fuzz inputs to consume the whole test deadline.
 		if lineCont {
-			pending += " " + strings.TrimLeftFunc(line, unicode.IsSpace)
-			if strings.HasSuffix(line, "\\") {
-				pending = pending[:len(pending)-1]
+			continued := strings.HasSuffix(line, "\\")
+			if continued {
+				line = line[:len(line)-1]
+			}
+			pending.WriteByte(' ')
+			pending.WriteString(strings.TrimLeftFunc(line, unicode.IsSpace))
+			if continued {
 				continue
 			}
 			lineCont = false
-			line = pending
-			pending = ""
+			line = pending.String()
+			pending.Reset()
 		} else if strings.HasSuffix(line, "\\") {
-			pending = line[:len(line)-1]
+			pending.WriteString(line[:len(line)-1])
 			lineCont = true
 			continue
 		}

@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.24.16`
-**Project release:** `v1.24.16`
+**Documentation version:** `1.24.18`
+**Project release:** `v1.24.18`
 <!-- dck-version:end -->
 
 # Installing dck on Arch Linux

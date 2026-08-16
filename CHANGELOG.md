@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.24.16`
-**Project release:** `v1.24.16`
+**Documentation version:** `1.24.18`
+**Project release:** `v1.24.18`
 <!-- dck-version:end -->
 
 <p align="center">
@@ -10,8 +10,15 @@
 # Changelog
 
 <!-- dck-current-release:start -->
-> Current release: **v1.24.17**. Detailed release notes below are maintained manually.
+> Current release: **v1.24.18**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
+
+## 1.24.18 (2026-08-16)
+
+### Builder fixes
+
+- Parse long Dockerfile continuation chains in linear time, preventing fuzz smoke timeouts caused by repeated string concatenation.
+- Add a regression test covering thousands of continued lines.
 
 ## 1.24.17 (2026-08-16)
 
