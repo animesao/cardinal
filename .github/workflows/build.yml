@@ -234,7 +234,7 @@ jobs:
           ls -la dist/
 
       - name: Install cosign (only when the maintainer signed a key)
-        if: secrets.COSIGN_PRIVATE_KEY != ''
+        if: ${{ secrets.COSIGN_PRIVATE_KEY }}
         run: |
           curl -fsSL -o /tmp/cosign \
             "https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64"
@@ -242,7 +242,7 @@ jobs:
           cosign version
 
       - name: Sign SHA256SUMS.txt (cosign)
-        if: secrets.COSIGN_PRIVATE_KEY != ''
+        if: ${{ secrets.COSIGN_PRIVATE_KEY }}
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
