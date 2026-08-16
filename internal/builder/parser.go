@@ -133,39 +133,56 @@ func splitInstruction(line string) []string {
 }
 
 func SplitSpaceRespectingQuotes(s string) []string {
+	// Iterate byte-by-byte rather than rune-by-rune. Shell
+	// tokenisation is a byte-level operation (POSIX sh splits on
+	// whitespace and quote bytes; it does not interpret multi-byte
+	// UTF-8 sequences as semantic units). Iterating runes would also
+	// rewrite invalid UTF-8 bytes as U+FFFD (3 bytes), producing
+	// tokens that are LONGER than the input that produced them. That
+	// amplification is observable through FuzzSplitShellWords and a
+	// motivated attacker could send a 32 KiB blob of invalid UTF-8 to
+	// produce ~96 KiB of garbage in parser output. Bad. We therefore
+	// skip unicode.IsSpace entirely and inline the four ASCII space /
+	// tab / newline / carriage-return checks below; non-ASCII bytes
+	// are preserved verbatim so tokens stay exactly as long as the
+	// input contributes.
 	var parts []string
 	var current strings.Builder
 	var inSingle, inDouble bool
 	var escape bool
 
-	for _, r := range s {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
 		if escape {
-			current.WriteRune(r)
+			current.WriteByte(c)
 			escape = false
 			continue
 		}
-		if r == '\\' && inDouble {
+		if c == '\\' && inDouble {
 			escape = true
 			continue
 		}
-		if r == '\'' && !inDouble {
+		if c == '\'' && !inDouble {
 			inSingle = !inSingle
-			current.WriteRune(r)
+			current.WriteByte(c)
 			continue
 		}
-		if r == '"' && !inSingle {
+		if c == '"' && !inSingle {
 			inDouble = !inDouble
-			current.WriteRune(r)
+			current.WriteByte(c)
 			continue
 		}
-		if unicode.IsSpace(r) && !inSingle && !inDouble {
-			if current.Len() > 0 {
-				parts = append(parts, current.String())
-				current.Reset()
+		switch c {
+		case ' ', '\t', '\n', '\r', '\f', '\v':
+			if !inSingle && !inDouble {
+				if current.Len() > 0 {
+					parts = append(parts, current.String())
+					current.Reset()
+				}
+				continue
 			}
-			continue
 		}
-		current.WriteRune(r)
+		current.WriteByte(c)
 	}
 	if current.Len() > 0 {
 		parts = append(parts, current.String())
@@ -185,25 +202,26 @@ func parseJSONArray(s string) []string {
 	var inSingle, inDouble bool
 	var escape bool
 
-	for _, r := range s {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
 		if escape {
-			current.WriteRune(r)
+			current.WriteByte(c)
 			escape = false
 			continue
 		}
-		if r == '\\' && inDouble {
+		if c == '\\' && inDouble {
 			escape = true
 			continue
 		}
-		if r == '\'' && !inDouble {
+		if c == '\'' && !inDouble {
 			inSingle = !inSingle
 			continue
 		}
-		if r == '"' && !inSingle {
+		if c == '"' && !inSingle {
 			inDouble = !inDouble
 			continue
 		}
-		if r == ',' && !inSingle && !inDouble {
+		if c == ',' && !inSingle && !inDouble {
 			val := strings.TrimSpace(current.String())
 			val = strings.Trim(val, "\"'")
 			if val != "" {
@@ -212,7 +230,7 @@ func parseJSONArray(s string) []string {
 			current.Reset()
 			continue
 		}
-		current.WriteRune(r)
+		current.WriteByte(c)
 	}
 	val := strings.TrimSpace(current.String())
 	val = strings.Trim(val, "\"'")
@@ -222,6 +240,7 @@ func parseJSONArray(s string) []string {
 
 	return parts
 }
+
 
 // parseEnvArgs handles "ENV KEY=VAL KEY2=VAL2" and "ENV KEY VAL" formats
 func parseEnvArgs(s string) []string {
