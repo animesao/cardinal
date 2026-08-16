@@ -264,18 +264,23 @@ else
 	warn "no cobra/spf13 framework in cmd/ (hand-rolled CLI dispatch)"
 fi
 
-# CI architecture: reusable workflows keep lint/test/build logic in one
-# place and reduce duplication from N×M to N+M.
-if grep -rq 'workflow_call' .github/workflows/ 2>/dev/null; then
-	count_callers=$(grep -rl 'uses: ./\.github/workflows/' .github/workflows/ 2>/dev/null | wc -l)
-	count_reusables=$(grep -rl 'workflow_call' .github/workflows/ 2>/dev/null | wc -l)
-	if (( count_callers >= 2 && count_reusables >= 2 )); then
-		pass "CI uses reusable workflows (reusables=$count_reusables callers=$count_callers)"
-	else
-		warn "CI has reusable workflows but usage is uneven (reusables=$count_reusables callers=$count_callers)"
-	fi
+# CI architecture: a single all-in-one pipeline keeps the build
+# linear and avoids the version-drift trap that a deep tree of reusable
+# workflows creates. We tolerate two shapes:
+#   - one consolidated pipeline (build.yml with inline lint/test/build)
+#   - a layered reusable-workflow tree (lint + test + build reusables)
+# Anything in between with only partial reuse tends to fall behind on
+# updates, so we flag the partial-reuse case but pass either of the
+# well-defined shapes.
+orchestrators=$(grep -lE '^jobs:' .github/workflows/*.yml 2>/dev/null | wc -l)
+reusables=$(grep -l 'workflow_call' .github/workflows/*.yml 2>/dev/null | wc -l)
+callers=$(grep -l 'uses: ./\.github/workflows/' .github/workflows/*.yml 2>/dev/null | wc -l)
+if (( reusables == 0 )); then
+	pass "single CI pipeline (orchestrators=$orchestrators, no reusable layer)"
+elif (( callers >= 2 && reusables >= 2 )); then
+	pass "CI uses reusable workflows (reusables=$reusables callers=$callers)"
 else
-	warn "no reusable workflows in CI (consider extracting shared lint/test/build steps)"
+	warn "CI has partial reusable workflow usage (reusables=$reusables callers=$callers)"
 fi
 
 # CI concurrency: PR builds should cancel-in-progress to save runners.

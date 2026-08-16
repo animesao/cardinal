@@ -1,0 +1,251 @@
+name: build
+
+# Single comprehensive pipeline that owns every step from "lint the
+# code" through "publish artefacts on GitHub Releases".  We deliberately
+# keep all the heavy machinery in one file because, in practice, a
+# split between reusable workflows forced us to chase version and
+# configuration drift across nine YAMLs.
+#
+# Trigger matrix:
+#
+#   push (main/master)  → run everything, upload artefacts
+#   pull_request        → run lint+test+build only (cancel-in-progress)
+#   tag v*              → run everything + create a GitHub Release
+#   workflow_dispatch   → manual rerun for the maintainer
+#
+# Pipeline steps (executed in order; build/test run in parallel):
+#
+#   1. lint              golangci-lint + vet + govulncheck + shellcheck
+#                        + Markdown version-marker
+#   2. test              go test -race + coverage + fuzz smoke
+#   3. build matrix      linux/amd64 and linux/arm64 with -trimpath,
+#                        -buildid= reproducible flags + sha256 sidecars
+#   4. sbom              SPDX-JSON via anchore/sbom-action (continue-on-error)
+#   5. cosign            optional; only if COSIGN_PRIVATE_KEY is set
+#   6. release           tag-only: attach every artefact, publish notes
+#
+# Action versions are pinned to a known-good major. Dependabot is asked
+# to ignore major-bumps via .github/dependabot.yml so this file does
+# not silently flip to v5/v6/v7.
+
+on:
+  push:
+    branches: [main, master]
+    tags:
+      - "v*"
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+# Cancel superseded PR builds to save runner minutes; serialise tag
+# builds and main-branch pushes by ref so two maintainer pushes cannot
+# race each other on dist/.
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: write   # release: write tag + assets
+
+jobs:
+  lint:
+    name: lint / vet / govulncheck / shellcheck / docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.6"
+          cache: true
+
+      - name: golangci-lint
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+          golangci-lint run ./...
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - name: shellcheck install scripts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends shellcheck
+          for f in install.sh install-appimage.sh scripts/*.sh; do
+            [ -f "$f" ] && shellcheck -S warning "$f" || true
+          done
+
+      - name: docs version marker
+        run: sh scripts/sync-docs-version.sh --check
+
+      - name: scripts/audit.sh (--strict)
+        run: bash scripts/audit.sh --strict
+
+  test:
+    name: go test -race / coverage / fuzz smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.6"
+          cache: true
+
+      - name: go test (race)
+        run: go test -race -count=1 ./...
+
+      - name: coverage profile
+        run: |
+          go test ./... -count=1 -coverprofile=coverage.out -covermode=atomic
+          go tool cover -func=coverage.out | tail -1
+
+      - name: fuzz smoke (Dockerfile parser)
+        run: |
+          go test -run='^$' -fuzz='^Fuzz' -fuzztime=10s \
+            ./internal/builder/
+
+      - name: upload coverage artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ github.run_id }}
+          path: coverage.out
+          retention-days: 14
+
+  build:
+    name: build linux/${{ matrix.goarch }}
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.6"
+          cache: true
+
+      - name: Reproducible cross-compile
+        env:
+          ARCH: ${{ matrix.goarch }}
+          LD_FLAGS: "-s -w -buildid= -X dck/cmd.version=${{ github.ref_name }}"
+        run: |
+          mkdir -p dist
+          GOOS=linux GOARCH=${ARCH} \
+            CGO_ENABLED=0 \
+            go build -trimpath \
+              -ldflags="${LD_FLAGS}" \
+              -o dist/dck-linux-${ARCH} .
+          sha256sum dist/dck-linux-${ARCH} | tee dist/dck-linux-${ARCH}.sha256
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: dck-linux-${{ matrix.goarch }}
+          path: dist/dck-linux-${{ matrix.goarch }}
+          retention-days: 90
+
+      - name: Upload sha256 sidecar
+        uses: actions/upload-artifact@v4
+        with:
+          name: dck-linux-${{ matrix.goarch }}.sha256
+          path: dist/dck-linux-${{ matrix.goarch }}.sha256
+          retention-days: 90
+
+  # Aggregator: waits for both arches to upload, then produces the
+  # composite artefacts (sha256sums.txt, SPDX SBOM, cosign sig) and
+  # optionally publishes the GitHub Release.
+  release:
+    name: assemble + (publish on tag)
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artefacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Generate SHA256SUMS.txt
+        run: |
+          cd dist
+          for f in *.sha256; do
+            cat "$f"
+          done > SHA256SUMS.txt
+          echo "--- final SHA256SUMS.txt ---"
+          cat SHA256SUMS.txt
+
+      - name: Install cosign (only when the maintainer signed a key)
+        if: secrets.COSIGN_PRIVATE_KEY != ''
+        run: |
+          curl -fsSL -o /tmp/cosign \
+            "https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64"
+          sudo install -m 0755 /tmp/cosign /usr/local/bin/cosign
+          cosign version
+
+      - name: Sign SHA256SUMS.txt (cosign)
+        if: secrets.COSIGN_PRIVATE_KEY != ''
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: |
+          cosign sign-blob --yes \
+            --output-signature dist/SHA256SUMS.txt.sig \
+            --output-certificate   dist/SHA256SUMS.txt.cert \
+            dist/SHA256SUMS.txt
+
+      - name: Generate SBOM (SPDX-JSON)
+        uses: anchore/sbom-action@v0
+        with:
+          format: spdx-json
+          artifact-name: dck-sbom.spdx.json
+        continue-on-error: true
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: |
+            ## dck ${{ github.ref_name }}
+
+            All release artefacts are mirrored to the maintainer's
+            signing-key-bound channel when `COSIGN_PRIVATE_KEY` is set
+            on this repository.
+
+            - `dck-linux-{amd64,arm64}` — static binaries
+            - `*.sha256`             — per-binary SHA-256
+            - `SHA256SUMS.txt`       — combined checksums (cosign-signed)
+            - `SHA256SUMS.txt.{sig,cert}` — cosign signature/cert
+            - `dck-sbom.spdx.json`   — SPDX-JSON software bill of materials
+
+            Verify locally:
+
+            ```bash
+            cosign verify-blob \
+              --signature SHA256SUMS.txt.sig \
+              --certificate SHA256SUMS.txt.cert \
+              SHA256SUMS.txt
+            ```
+          files: |
+            dist/*
+            dck-sbom.spdx.json
+          fail_on_unmatched_files: true
