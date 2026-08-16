@@ -1,0 +1,22 @@
+# gitleaks config for dck — allow documented example placeholders.
+title = "dck gitleaks"
+
+[allowlist]
+  description = "Allow documented placeholders in docs and examples"
+  paths = [
+    '''(?i)docs/.*\.md$''',
+    '''(?i)compose\.example\.yaml$''',
+    '''(?i)\.env\.example$''',
+    '''SECURITY\.md$''',
+    '''CHANGELOG\.md$''',
+  ]
+  regexes = [
+    '''(?i)rootpass[^A-Za-z0-9_-]''',
+    '''(?i)change[_ ]?me[^A-Za-z0-9_-]''',
+    '''(?i)botpass[^A-Za-z0-9_-]''',
+    '''(?i)(password|secret|token)\s*[:=]\s*["{''<]?(REPLACE|CHANGE|EXAMPLE)\b''',
+  ]
+
+[extend]
+  # Use gitleaks' built-in rules on top of our allowlist.
+  useDefault = true
