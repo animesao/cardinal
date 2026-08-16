@@ -607,3 +607,40 @@ dck bootstrap --remove
 - Bind mount не копируется в backup контейнера. Host source нужно архивировать отдельно.
 
 Практические рецепты находятся в [Примерах команд](examples.md), установка и troubleshooting — в [Руководстве по запуску](running.md).
+
+## Дополнение командной строки (shell completion)
+
+dck использует [spf13/cobra](https://github.com/spf13/cobra), который автоматически
+формирует подкоманду `completion` для bash, zsh, fish и PowerShell.
+
+```bash
+# bash
+dck completion bash | sudo tee /etc/bash_completion.d/dck > /dev/null
+# для текущего пользователя
+dck completion bash > ~/.local/share/bash-completion/completions/dck
+
+# zsh (файл _dck нужно положить в любую директорию из $fpath)
+dck completion zsh > "${fpath[1]}/_dck"
+
+# fish
+dck completion fish > ~/.config/fish/completions/dck.fish
+
+# PowerShell
+dck completion powershell | Out-String | Invoke-Expression
+```
+
+После этого работает:
+
+- автодополнение по `Tab` для всех 60+ команд (`dck <TAB>` ⇒ `pull  push  run  ...`);
+- дополнение флагов для конкретной команды (`dck run --<TAB>` ⇒ `--restart-max-attempts --restart-delay ...`);
+- дополнение путей файлов для `-v` и `--seccomp-profile`.
+
+## Глобальные флаги
+
+`--json`, `--quiet`, `--log-level` принимаются всеми командами.
+
+| Флаг | По умолчанию | Описание |
+|---|---|---|
+| `--log-level debug\|info\|warn\|error` | `info` | Минимальный уровень лога, который попадает в stderr. |
+| `--json` | off | Логи в формате JSON-lines (для агрегаторов). |
+| `--quiet` | off | Эквивалентно `--log-level error`; подавляет информационные сообщения. |

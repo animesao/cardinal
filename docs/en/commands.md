@@ -607,3 +607,40 @@ Print the built-in command overview. Individual commands also print usage when r
 - A bind mount is not copied into a container backup. Archive the host source separately.
 
 For task-oriented recipes, see [Command Examples](examples.md). For installation and troubleshooting, see [Running dck](running.md).
+
+## Shell completion
+
+dck now uses [spf13/cobra](https://github.com/spf13/cobra) under the hood, which
+auto-generates a `completion` sub-command for bash, zsh, fish and PowerShell.
+
+```bash
+# bash
+dck completion bash | sudo tee /etc/bash_completion.d/dck > /dev/null
+# or for the current user only
+dck completion bash > ~/.local/share/bash-completion/completions/dck
+
+# zsh (place _dck anywhere in $fpath)
+dck completion zsh > "${fpath[1]}/_dck"
+
+# fish
+dck completion fish > ~/.config/fish/completions/dck.fish
+
+# PowerShell
+dck completion powershell | Out-String | Invoke-Expression
+```
+
+After sourcing the result you should get:
+
+- Tab completion for every top-level command (`dck <TAB>` → `pull  push  run  ...`).
+- Per-command flag completion (`dck run --<TAB>` → `--restart-max-attempts --restart-delay ...`).
+- File-name completion for mount sources.
+
+## Global flags
+
+`--json`, `--quiet`, and `--log-level` are accepted on every sub-command.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--log-level debug\|info\|warn\|error` | `info` | Minimum log level emitted to stderr. |
+| `--json` | off | Format logs as JSON-lines (useful for log aggregators). |
+| `--quiet` | off | Equivalent to `--log-level error`; suppresses informational output. |
