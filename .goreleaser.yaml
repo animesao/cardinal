@@ -5,9 +5,15 @@ builds:
   - binary: dck
     goos: [linux]
     goarch: [amd64, arm64]
+    # Reproducible builds: strip absolute paths and VCS info from the binary.
+    flags:
+      - -trimpath
     ldflags:
       - -s -w
+      - -buildid=
       - -X dck/cmd.version={{ .Version }}
+    env:
+      - CGO_ENABLED=0
 
 nfpms:
   - package_name: dck

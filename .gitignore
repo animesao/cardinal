@@ -1,7 +1,22 @@
+# Build artifacts
 /dck
 /dck.exe
 dck-linux
 *.test
 *.out
-
 dck-linux-*
+
+# Local state / secrets — never commit
+.env
+.env.*
+!.env.example
+*.dck-token
+.dck-token
+coverage.out
+dist/
+artifacts/
+
+# IDE / editor noise
+.vscode/
+.idea/
+*.swp

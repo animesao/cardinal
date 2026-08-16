@@ -1,3 +1,9 @@
+# dck compose example — development stack.
+#
+# Sensitive values (passwords, tokens) must be provided through a local .env file
+# (never commit real credentials; copy .env.example -> .env on your host).
+# This file is safe to commit.
+
 services:
   db:
     image: mysql:8
@@ -5,10 +11,10 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     environment:
-      MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_DATABASE: myapp
-      MYSQL_USER: bot
-      MYSQL_PASSWORD: botpass
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-myapp}
+      MYSQL_USER: ${MYSQL_USER:-bot}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -16,34 +22,34 @@ services:
 
   site:
     image: node:20
-    restart: always
+    restart: unless-stopped
     working_dir: /app
     volumes:
-      - ./site:/app
+      - ./site:/app:ro
     ports:
       - "3000:3000"
     command: sh -c "npm install && node index.js"
     environment:
       DB_HOST: db
-      DB_USER: bot
-      DB_PASSWORD: botpass
-      DB_NAME: myapp
+      DB_USER: ${MYSQL_USER:-bot}
+      DB_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+      DB_NAME: ${MYSQL_DATABASE:-myapp}
     depends_on:
       db:
         condition: service_healthy
 
   bot:
     image: python:3.11-slim
-    restart: always
+    restart: unless-stopped
     working_dir: /app
     volumes:
-      - ./bots:/app
+      - ./bots:/app:ro
     command: sh -c "pip install -r requirements.txt && python main.py"
     environment:
       DB_HOST: db
-      DB_USER: bot
-      DB_PASSWORD: botpass
-      DB_NAME: myapp
+      DB_USER: ${MYSQL_USER:-bot}
+      DB_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+      DB_NAME: ${MYSQL_DATABASE:-myapp}
     depends_on:
       db:
         condition: service_healthy
