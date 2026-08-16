@@ -386,3 +386,31 @@ jobs:
             dck-sbom.spdx.json
           fail_on_unmatched_files: false
         continue-on-error: true
+
+      # Belt-and-braces fallback: every nfpm package and archive
+      # goreleaser just wrote is uploaded here as a GH-Actions
+      # artefact so consumers always have a download path even if
+      # the softprops step above hiccups (network blip, GH API
+      # slowdown, glob mismatch on a partial rerun).
+      #
+      # Namespacing the artefact per `github.ref_name` keeps the
+      # tag-specific tarballs from clobbering one another across
+      # tag reruns. `if-no-files-found: error` would fail the step
+      # if goreleaser did not produce anything -- we relax to
+      # `warn` so a polluted-but-still-running goreleaser step
+      # does not poison the whole release-job status.
+      - name: Upload full release artefacts (npm/deb/rpm/apk/pkg.tar.zst)
+        if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+        uses: actions/upload-artifact@v4
+        with:
+          name: dck-release-${{ github.ref_name }}
+          path: |
+            dist/*.tar.gz
+            dist/*.deb
+            dist/*.rpm
+            dist/*.apk
+            dist/*.pkg.tar.zst
+            dist/SHA256SUMS.txt
+            dist/dck_*_checksums.txt
+          retention-days: 365
+          if-no-files-found: warn
