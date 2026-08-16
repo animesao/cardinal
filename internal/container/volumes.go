@@ -206,14 +206,11 @@ func validateBindSource(source string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("absolute bind source %q: %w", source, err)
 	}
-	for _, blocked := range []string{
-		"/", "/bin", "/boot", "/dev", "/etc", "/home", "/lib", "/lib64",
-		"/media", "/mnt", "/opt", "/proc", "/root", "/run", "/sbin", "/srv",
-		"/sys", "/usr", "/var", "/var/run",
-	} {
-		if resolved == blocked || strings.HasPrefix(resolved, blocked+string(filepath.Separator)) {
-			return "", fmt.Errorf("bind source %q is a protected host path", source)
-		}
+	// IsProtectedHostPath now owns the blocklist and the optional
+	// DCK_ALLOWED_HOST_PATHS allowlist so the same rule applies to
+	// COPY/ADD, build contexts and runtime mounts.
+	if IsProtectedHostPath(resolved) {
+		return "", fmt.Errorf("bind source %q is a protected host path", source)
 	}
 	info, err := os.Stat(resolved)
 	if err != nil {

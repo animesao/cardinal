@@ -1,6 +1,7 @@
 package log
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -67,10 +68,30 @@ func (l *Logger) log(level Level, format string, args ...interface{}) {
 	}
 
 	if l.jsonMode {
-		escaped := strings.ReplaceAll(msg, "\"", "\\\"")
-		_, _ = fmt.Fprintf(out, "{\"time\":\"%s\",\"level\":\"%s\",\"msg\":\"%s\"}\n", timestamp, levelNames[level], escaped)
+		// Proper JSON escaping for any control characters (including \n,
+		// \r, \t) prevents log-injection attacks that would otherwise be
+		// able to inject fake log records by putting newlines into fmt
+		// format strings. The previous implementation only escaped double
+		// quotes, silently breaking the assumption that one printf call
+		// equals one log line; see SECURITY.md "Audit log integrity".
+		payload, mErr := json.Marshal(struct {
+			Time  string `json:"time"`
+			Level string `json:"level"`
+			Msg   string `json:"msg"`
+		}{timestamp, levelNames[level], msg})
+		if mErr == nil {
+			out.Write(payload)
+			out.Write([]byte("\n"))
+		}
 	} else {
-		_, _ = fmt.Fprintf(out, "[%s] %-5s %s\n", timestamp, levelNames[level], msg)
+		// Non-JSON mode still escapes newlines so the human-readable log
+		// stream can't be split into multiple records by a single format
+		// string. We use the Unicode line-separator character, which is
+		// visually distinguishable on console while keeping records
+		// one-per-line for grep/awk pipelines.
+		escaped := strings.ReplaceAll(msg, "\n", "\u2028")
+		escaped = strings.ReplaceAll(escaped, "\r", "\u2029")
+		_, _ = fmt.Fprintf(out, "[%s] %-5s %s\n", timestamp, levelNames[level], escaped)
 	}
 }
 
@@ -83,3 +104,9 @@ func Debug(format string, args ...interface{}) { Default.log(LevelDebug, format,
 func Info(format string, args ...interface{})  { Default.log(LevelInfo, format, args...) }
 func Warn(format string, args ...interface{})  { Default.log(LevelWarn, format, args...) }
 func Error(format string, args ...interface{}) { Default.log(LevelError, format, args...) }
+
+// SetLevel changes the default logger's minimum level.
+func SetLevel(level Level) { Default.SetLevel(level) }
+
+// SetJSON toggles JSON-line output on the default logger.
+func SetJSON(enabled bool) { Default.SetJSON(enabled) }
