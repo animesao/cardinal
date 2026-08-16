@@ -290,7 +290,13 @@ jobs:
           echo "--- final SHA256SUMS.txt (merged) ---"
           cat SHA256SUMS.txt
           echo "--- contents of dist/ ---"
-          ls -la dist/
+          # We're already cd'd into dist/, so list `.` rather than
+          # another `dist/` (which doesn't exist and would make
+          # `ls` exit 2 under `set -e -- pipefail`, failing the
+          # step even though goreleaser itself succeeded). `|| true`
+          # is a belt-and-braces defensive net around any future
+          # file-system surprise (e.g. leftover mountpoint).
+          ls -la . || true
 
       # GitHub Actions does not allow the `secrets` context inside
       # `if:` expressions: only contexts such as `github`, `vars`,
