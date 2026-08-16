@@ -27,15 +27,30 @@ nfpms:
     contents:
       # `src` is the source path on the build host, NOT the install
       # path inside the package. goreleaser drops built binaries
-      # under `dist/<project>_<os>_<goarch>[_v<goarm>]/<project>`.
-      # The nfpm template context exposes BOTH .Arch (nfpm-flavoured:
-      # `amd64v1` etc., no underscore) and .GoArch/.GoArm (Go-flavoured:
-      # `amd64` and `1`, joined with `_v` on disk). Use the Go fields
-      # so the path matches the actual layout under dist/.
-      #   amd64 arm=1   -> ./dist/dck_linux_amd64_v1/dck
-      #   amd64 arm=7   -> ./dist/dck_linux_amd64_v7/dck
-      #   arm64 arm=8.0 -> ./dist/dck_linux_arm64_v8.0/dck
-      - src: ./dist/dck_linux_{{.GoArch}}{{ with .GoArm }}_v{{ . }}{{ end }}/dck
+      # under `dist/<project>_<os>_<arch>[/<variant>]/<project>`.
+      #
+      # For our two Go builds (linux/amd64 and linux/arm64) goreleaser
+      # materialises the architecture directory as:
+      #   dist/dck_linux_amd64_v1/dck
+      #   dist/dck_linux_arm64_v8.0/dck
+      #
+      # The nfpm template context only exposes `.Arch` (nfpm-flavoured
+      # arch string, no underscore: "amd64v1" / "arm64v8.0") and
+      # `.Mips`. There is no `.GoArch`, `.GoArm`, `.Os` or `.Binary`
+      # in this context, so we cannot split `.Arch` and rejoin.
+      #
+      # We therefore use sprig's `replace` to substitute the per-arch
+      # NFPM arch by inserting an underscore before each `v` token,
+      # which converts the NFPM arch (no underscore) to the goreleaser
+      # build-output path (with underscore):
+      #   amd64v1    -> amd64_v1
+      #   arm64v8.0  -> arm64_v8.0
+      #
+      # This is robust for every arch whose declared subarch uses the
+      # standard Go-style `v<int>` notation. The only architecture
+      # whose name contains a literal `v` (riscv64) does not have a
+      # subarch component, so we are not affected.
+      - src: './dist/dck_linux_{{ replace "v" "_v" .Arch }}/dck'
         dst: /usr/bin/dck
     scripts:
       postinstall: packaging/deb/DEBIAN/postinst
