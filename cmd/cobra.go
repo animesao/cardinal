@@ -37,7 +37,7 @@ func NewRoot() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "dck",
 		Short: "Lightweight Linux container runtime",
-		Long: `dck — Lightweight container runtime.
+		Long: `dck — Lightweight Linux container runtime.
 
 A daemonless, OCI-compatible runtime for Linux that uses namespaces,
 overlayfs, cgroups, capability dropping and seccomp filtering to isolate
