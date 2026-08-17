@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -54,14 +55,21 @@ func Cp(args []string) {
 			os.Exit(1)
 		}
 
-		inFile, err := os.Open(src)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+		var inReader io.Reader
+		if src == "-" {
+			// Read from stdin
+			inReader = os.Stdin
+		} else {
+			inFile, err := os.Open(src)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			defer func() { _ = inFile.Close() }()
+			inReader = inFile
 		}
-		defer func() { _ = inFile.Close() }()
 
-		if err := c.CopyToContainer(dstPath, inFile); err != nil {
+		if err := c.CopyToContainer(dstPath, inReader); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
