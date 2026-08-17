@@ -356,7 +356,11 @@ func AddPortForwarding(containerIP string, hostPort, containerPort int, protocol
 		"-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", containerIP, containerPort),
 	}
 	if err := exec.Command("iptables", dnat...).Run(); err != nil {
-		return fmt.Errorf("DNAT: %w", err)
+		// iptables DNAT failed — try socat fallback for port forwarding
+		if fwdErr := startSocatForward(hostPort, containerIP, containerPort, protocol); fwdErr != nil {
+			return fmt.Errorf("DNAT: %v; socat fallback: %v", err, fwdErr)
+		}
+		return nil
 	}
 
 	output := []string{
@@ -388,12 +392,103 @@ func AddPortForwarding(containerIP string, hostPort, containerPort int, protocol
 		return fmt.Errorf("FORWARD: %w", err)
 	}
 
+	// When Docker is running, its DOCKER-FORWARD chain drops packets before
+	// our FORWARD rule is evaluated. Insert into DOCKER-USER which Docker
+	// processes first — this is the intended hook for custom firewall rules.
+	ensureDockerUserRule(containerIP, containerPort, protocol)
+
 	ufwAllowPort(hostPort, protocol)
 
 	return nil
 }
 
+// ensureDockerUserRule inserts an ACCEPT rule into Docker's DOCKER-USER
+// chain so that Docker's own FORWARD-DROP doesn't block DCK container traffic.
+// DOCKER-USER is processed before any Docker chain, making it the correct
+// place for rules that should bypass Docker's default filtering.
+func ensureDockerUserRule(containerIP string, containerPort int, protocol string) {
+	// First, check if the DOCKER-USER chain exists (Docker installed)
+	check := exec.Command("iptables", "-L", "DOCKER-USER", "-n", "-v")
+	if check.Run() != nil {
+		// No Docker or no DOCKER-USER chain — nothing to do
+		return
+	}
+
+	// Check if a rule for this container IP already exists
+	checkStr := fmt.Sprintf("-d %s", containerIP)
+	list := exec.Command("iptables", "-L", "DOCKER-USER", "-n", "--line-numbers")
+	if out, err := list.Output(); err == nil {
+		if strings.Contains(string(out), checkStr) {
+			// Rule already exists
+			return
+		}
+	}
+
+	// Insert ACCEPT rule at position 1 (before Docker's DROP rules)
+	fwd := []string{
+		"-I", "DOCKER-USER", "1",
+		"-p", protocol,
+		"-d", containerIP,
+		"--dport", fmt.Sprintf("%d", containerPort),
+		"-j", "ACCEPT",
+	}
+	if err := exec.Command("iptables", fwd...).Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: DOCKER-USER insert: %v\n", err)
+	} else {
+		fmt.Fprintf(os.Stderr, "DOCKER-USER: ACCEPT %s %s:%d\n", protocol, containerIP, containerPort)
+	}
+}
+
+// removeDockerUserRule removes a specific DOCKER-USER rule for a container IP.
+func removeDockerUserRule(containerIP string, containerPort int, protocol string) {
+	fwd := []string{
+		"-D", "DOCKER-USER",
+		"-p", protocol,
+		"-d", containerIP,
+		"--dport", fmt.Sprintf("%d", containerPort),
+		"-j", "ACCEPT",
+	}
+	if err := exec.Command("iptables", fwd...).Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: DOCKER-USER delete: %v\n", err)
+	}
+}
+
+// socatProxies tracks running socat port-forwarding processes.
+var socatProxies = map[string]*exec.Cmd{}
+
+func startSocatForward(hostPort int, containerIP string, containerPort int, protocol string) error {
+	// Check if socat is available
+	if _, err := exec.LookPath("socat"); err != nil {
+		return fmt.Errorf("socat not found: install with: apt install socat")
+	}
+	key := fmt.Sprintf("%d:%s:%d:%s", hostPort, containerIP, containerPort, protocol)
+	// Kill existing proxy for this key if any
+	if existing, ok := socatProxies[key]; ok {
+		_ = existing.Process.Kill()
+		delete(socatProxies, key)
+	}
+	listenAddr := fmt.Sprintf("TCP-LISTEN:%d,fork,reuseaddr", hostPort)
+	connectAddr := fmt.Sprintf("TCP:%s:%d", containerIP, containerPort)
+	cmd := exec.Command("socat", listenAddr, connectAddr)
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("socat start: %w", err)
+	}
+	socatProxies[key] = cmd
+	// Detach — don't wait
+	go cmd.Wait()
+	fmt.Fprintf(os.Stderr, "socat: port %d -> %s:%d (%s)\n", hostPort, containerIP, containerPort, protocol)
+	return nil
+}
+
 func RemovePortForwarding(containerIP string, hostPort, containerPort int, protocol string) {
+	// Kill socat proxy if running for this port
+	key := fmt.Sprintf("%d:%s:%d:%s", hostPort, containerIP, containerPort, protocol)
+	if cmd, ok := socatProxies[key]; ok {
+		_ = cmd.Process.Kill()
+		delete(socatProxies, key)
+	}
 	if err := exec.Command("iptables", "-t", "nat", "-D", "PREROUTING",
 		"-p", protocol, "--dport", fmt.Sprintf("%d", hostPort),
 		"-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", containerIP, containerPort)).Run(); err != nil {
@@ -412,6 +507,9 @@ func RemovePortForwarding(containerIP string, hostPort, containerPort int, proto
 		"-j", "ACCEPT").Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: iptables delete FORWARD: %v\n", err)
 	}
+
+	// Also remove the DOCKER-USER rule
+	removeDockerUserRule(containerIP, containerPort, protocol)
 
 	ufwDenyPort(hostPort, protocol)
 }
