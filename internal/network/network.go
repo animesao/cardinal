@@ -477,7 +477,7 @@ func startSocatForward(hostPort int, containerIP string, containerPort int, prot
 	}
 	socatProxies[key] = cmd
 	// Detach — don't wait
-	go cmd.Wait()
+	go func() { _ = cmd.Wait() }()
 	fmt.Fprintf(os.Stderr, "socat: port %d -> %s:%d (%s)\n", hostPort, containerIP, containerPort, protocol)
 	return nil
 }
