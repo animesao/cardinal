@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=dck
+Comment=Lightweight Linux container runtime
+Exec=dck
+Icon=dck
+Type=Application
+Categories=Development;System;
+Terminal=true

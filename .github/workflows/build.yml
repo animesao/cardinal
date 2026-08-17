@@ -298,6 +298,60 @@ jobs:
           # file-system surprise (e.g. leftover mountpoint).
           ls -la . || true
 
+      - name: Build AppImage (amd64)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+
+          VERSION="${{ github.ref_name }}"
+          ARCH="amd64"
+          APPDIR="dist/appimage-build/AppDir"
+
+          # Locate the binary that the build job uploaded
+          BINARY=""
+          for candidate in \
+            "dist/dck-linux-${ARCH}" \
+            "dist/dck_${VERSION#v}_linux_${ARCH}/dck" \
+            "dist/dck_${VERSION}_linux_${ARCH}/dck"; do
+            if [ -f "$candidate" ]; then
+              BINARY="$candidate"
+              break
+            fi
+          done
+          if [ -z "$BINARY" ]; then
+            echo "ERROR: cannot find the linux/${ARCH} binary in dist/"
+            ls -la dist/
+            exit 1
+          fi
+          echo "Using binary: $BINARY"
+
+          mkdir -p "${APPDIR}/usr/bin"
+
+          install -D -m 0755 "$BINARY"         "${APPDIR}/usr/bin/dck"
+          install -D -m 0755 packaging/appimage/AppRun "${APPDIR}/AppRun"
+          install -D -m 0644 packaging/appimage/dck.desktop "${APPDIR}/usr/share/applications/dck.desktop"
+          install -D -m 0644 packaging/appimage/dck.desktop "${APPDIR}/dck.desktop"
+          install -D -m 0644 packaging/appimage/dck.png "${APPDIR}/dck.png" 2>/dev/null || true
+          install -D -m 0755 install-appimage.sh "${APPDIR}/usr/bin/install-appimage.sh"
+
+          chmod +x "${APPDIR}/AppRun"
+
+          curl -fsSL -o /tmp/appimagetool \
+            "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x /tmp/appimagetool
+
+          APPIMAGE_FILE="dist/dck_${VERSION#v}_${ARCH}.AppImage"
+          ARCH=amd64 /tmp/appimagetool "${APPDIR}" "${APPIMAGE_FILE}" --no-appstream 2>&1 || true
+
+          if [ ! -f "${APPIMAGE_FILE}" ]; then
+            echo "ERROR: appimagetool did not produce ${APPIMAGE_FILE}"
+            ls -la dist/
+            exit 1
+          fi
+
+          sha256sum "${APPIMAGE_FILE}" | tee "${APPIMAGE_FILE}.sha256"
+          echo "AppImage built: ${APPIMAGE_FILE} ($(du -h "${APPIMAGE_FILE}" | cut -f1))"
+
       # GitHub Actions does not allow the `secrets` context inside
       # `if:` expressions: only contexts such as `github`, `vars`,
       # `needs`, `inputs`, `matrix`, `steps.*.outputs.*`, `runner`,
@@ -381,6 +435,7 @@ jobs:
             dist/dck_*_arm64.apk
             dist/dck_*_amd64.pkg.tar.zst
             dist/dck_*_arm64.pkg.tar.zst
+            dist/dck_*_amd64.AppImage
             dist/SHA256SUMS.txt
             dist/dck_*_checksums.txt
             dck-sbom.spdx.json
@@ -410,6 +465,7 @@ jobs:
             dist/*.rpm
             dist/*.apk
             dist/*.pkg.tar.zst
+            dist/*.AppImage
             dist/SHA256SUMS.txt
             dist/dck_*_checksums.txt
           retention-days: 365
