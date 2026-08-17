@@ -478,8 +478,8 @@ func handleContainersCreate(w http.ResponseWriter, r *http.Request) {
 
 	if err := c.Start(); err != nil {
 		// Clean up the saved container file so it does not appear as a
-		// permanent ghost in the container list.
-		c.Remove(true)
+		// permanent ghost in the container list. Best-effort; ignore error.
+		_ = c.Remove(true)
 		writeError(w, 500, fmt.Sprintf("start container: %v", err))
 		return
 	}
