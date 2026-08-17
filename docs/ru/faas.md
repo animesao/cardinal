@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.24.18`
-**Project release:** `v1.24.18`
+**Documentation version:** `1.24.19`
+**Project release:** `v1.24.19`
 <!-- dck-version:end -->
 
 # FaaS / Serverless

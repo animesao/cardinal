@@ -360,9 +360,7 @@ func handleContainersCreate(w http.ResponseWriter, r *http.Request) {
 				})
 			}
 		}
-	}
-
-	// Parse volumes from HostConfig.Binds
+	}	// Parse volumes from HostConfig.Binds
 	var volumes []container.VolumeMount
 	if req.HostConfig != nil {
 		for _, bind := range req.HostConfig.Binds {
@@ -370,6 +368,10 @@ func handleContainersCreate(w http.ResponseWriter, r *http.Request) {
 			if parseErr != nil {
 				writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid bind %q: %v", bind, parseErr))
 				return
+			}
+			// Ensure the mount target is an absolute path.
+			if spec.Target != "" && !strings.HasPrefix(spec.Target, "/") {
+				spec.Target = "/" + spec.Target
 			}
 			volumes = append(volumes, container.VolumeMount{
 				Type:           spec.Type,
@@ -475,6 +477,9 @@ func handleContainersCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := c.Start(); err != nil {
+		// Clean up the saved container file so it does not appear as a
+		// permanent ghost in the container list.
+		c.Remove(true)
 		writeError(w, 500, fmt.Sprintf("start container: %v", err))
 		return
 	}
@@ -507,8 +512,21 @@ func handleContainersRouter(w http.ResponseWriter, r *http.Request) {
 
 	c, err := container.Load(id)
 	if err != nil {
-		writeError(w, 404, fmt.Sprintf("container %s not found", id))
-		return
+		// Fallback: scan the containers directory and try prefix + name match
+		allContainers, listErr := container.List(true)
+		if listErr == nil {
+			for _, candidate := range allContainers {
+				if candidate.ID == id || strings.HasPrefix(candidate.ID, id) || candidate.Name == id {
+					c = candidate
+					err = nil
+					break
+				}
+			}
+		}
+		if c == nil {
+			writeError(w, 404, fmt.Sprintf("container %s not found", id))
+			return
+		}
 	}
 
 	switch action {

@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.24.18`
-**Project release:** `v1.24.18`
+**Documentation version:** `1.24.19`
+**Project release:** `v1.24.19`
 <!-- dck-version:end -->
 
 <p align="center">
@@ -10,8 +10,16 @@
 # Changelog
 
 <!-- dck-current-release:start -->
-> Current release: **v1.24.18**. Detailed release notes below are maintained manually.
+> Current release: **v1.24.19**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
+
+## 1.24.19 (2026-08-17)
+
+### API fixes
+
+- Clean up ghost containers: if `container.Start()` fails after `container.Save()`, the container is now removed so it does not appear permanently in the container list.
+- Container lookup fallback: `containers/<id>` API now scans the full container list when the direct ID lookup fails, matching by prefix or name.
+- Auto-fix relative mount targets: volume bind targets that are not absolute (e.g. `app` instead of `/app`) are automatically prefixed with `/`.
 
 ## 1.24.18 (2026-08-16)
 
