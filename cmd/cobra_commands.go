@@ -185,7 +185,7 @@ Flags:
 
 Example:
   dck set myweb --ram 4g --cpu 2 --restart always`})
-	psCmd := register(commandSpec{"ps", "List containers", Ps, ""})
+	psCmd := register(commandSpec{"ps", "List containers", func(args []string) { Ps(args, false) }, ""})
 	psCmd.Flags().BoolP("all", "a", false, "Show all containers (running + stopped)")
 	psCmd.Run = func(c *cobra.Command, args []string) {
 		all, _ := c.Flags().GetBool("all")
