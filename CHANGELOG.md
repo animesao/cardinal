@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.24.19`
-**Project release:** `v1.24.19`
+**Documentation version:** `1.25.0`
+**Project release:** `v1.25.0`
 <!-- dck-version:end -->
 
 <p align="center">
@@ -10,10 +10,10 @@
 # Changelog
 
 <!-- dck-current-release:start -->
-> Current release: **v1.24.19**. Detailed release notes below are maintained manually.
+> Current release: **v1.25.0**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
 
-## 1.24.19 (2026-08-17)
+## 1.25.0 (2026-08-17)
 
 ### API fixes
 
