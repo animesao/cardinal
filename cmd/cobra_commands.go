@@ -66,7 +66,7 @@ func register(spec commandSpec) *cobra.Command {
 			spec.run(args)
 		},
 	}
-	if spec.use == "run" {
+	if spec.use == "run" || spec.use == "serve" {
 		// Skip cobra's unknown-flag detection. PersistentFlags such as
 		// --log-level / --json / --quiet cannot be applied to `run`
 		// through cobra any more; document the trade-off. The legacy
