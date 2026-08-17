@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.25.0`
-**Project release:** `v1.25.0`
+**Documentation version:** `1.25.2`
+**Project release:** `v1.25.2`
 <!-- dck-version:end -->
 
 # Usage & Commands

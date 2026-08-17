@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.25.0`
-**Project release:** `v1.25.0`
+**Documentation version:** `1.25.2`
+**Project release:** `v1.25.2`
 <!-- dck-version:end -->
 
 <p align="center">
@@ -10,8 +10,16 @@
 # Changelog
 
 <!-- dck-current-release:start -->
-> Current release: **v1.25.0**. Detailed release notes below are maintained manually.
+> Current release: **v1.25.2**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
+
+## 1.25.2 (2026-08-17)
+
+### Bug fixes
+
+- Fix `dck ps -a` / `dck ps --all` flag parsing: register `-a`/`--all` via cobra instead of DisableFlagParsing so the flag is correctly handled.
+- Fix `dck cp` stdin support: `dck cp - <container>:/path` now works as source.
+- Restore `Ps(args []string)` function signature for audit compliance.
 
 ## 1.25.0 (2026-08-17)
 
