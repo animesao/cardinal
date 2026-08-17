@@ -66,7 +66,7 @@ func register(spec commandSpec) *cobra.Command {
 			spec.run(args)
 		},
 	}
-	if spec.use == "run" || spec.use == "serve" || spec.use == "ps" {
+	if spec.use == "run" || spec.use == "serve" {
 		// Skip cobra's unknown-flag detection. PersistentFlags such as
 		// --log-level / --json / --quiet cannot be applied to `run`
 		// through cobra any more; document the trade-off. The legacy
@@ -185,7 +185,12 @@ Flags:
 
 Example:
   dck set myweb --ram 4g --cpu 2 --restart always`})
-	register(commandSpec{"ps", "List containers", Ps, ""})
+	psCmd := register(commandSpec{"ps", "List containers", Ps, ""})
+	psCmd.Flags().BoolP("all", "a", false, "Show all containers (running + stopped)")
+	psCmd.Run = func(c *cobra.Command, args []string) {
+		all, _ := c.Flags().GetBool("all")
+		Ps(args, all)
+	}
 	register(commandSpec{"inspect", "Inspect a container (JSON)", Inspect, ""})
 	register(commandSpec{"logs", "Show container logs", Logs, ""})
 	register(commandSpec{"stats", "Show CPU/memory/IO statistics", Stats, ""})
