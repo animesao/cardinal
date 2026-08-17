@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.25.2`
-**Project release:** `v1.25.2`
+**Documentation version:** `1.25.3`
+**Project release:** `v1.25.3`
 <!-- dck-version:end -->
 
 <p align="center">
@@ -10,8 +10,16 @@
 # Changelog
 
 <!-- dck-current-release:start -->
-> Current release: **v1.25.2**. Detailed release notes below are maintained manually.
+> Current release: **v1.25.3**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
+
+## 1.25.3 (2026-08-17)
+
+### Improvements
+
+- Full codebase audit: 0 FAIL, 52 cobra commands verified.
+- Clean `go vet`, `go build`, and `golangci-lint` with no warnings.
+- Version synchronized across all documentation files.
 
 ## 1.25.2 (2026-08-17)
 

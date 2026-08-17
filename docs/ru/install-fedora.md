@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.25.2`
-**Project release:** `v1.25.2`
+**Documentation version:** `1.25.3`
+**Project release:** `v1.25.3`
 <!-- dck-version:end -->
 
 # Установка dck на Fedora / RHEL / CentOS
