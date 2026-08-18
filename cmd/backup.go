@@ -856,7 +856,16 @@ func extractBackupToStage(stage, archivePath string) ([]byte, error) {
 			}
 			continue
 		}
-		if !strings.HasPrefix(h.Name, "data/") && !strings.HasPrefix(h.Name, "volumes/") && !strings.HasPrefix(h.Name, "binds/") {
+		// Backup archives contain explicit directory headers such as `data`
+		// before their child entries (`data/file`). Accept only these three
+		// archive namespaces, including their root directory headers. This keeps
+		// traversal and host-path protections intact while allowing empty data
+		// directories to be restored correctly.
+		entryName := strings.TrimSuffix(filepath.ToSlash(h.Name), "/")
+		allowedNamespace := func(namespace string) bool {
+			return entryName == namespace || strings.HasPrefix(entryName, namespace+"/")
+		}
+		if !allowedNamespace("data") && !allowedNamespace("volumes") && !allowedNamespace("binds") {
 			return nil, fmt.Errorf("unsafe backup entry %q", h.Name)
 		}
 		target, err := container.SafeBackupPath(stage, h.Name)

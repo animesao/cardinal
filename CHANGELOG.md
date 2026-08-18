@@ -1,7 +1,15 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.5`
-**Project release:** `v1.60.5`
+**Documentation version:** `1.60.6`
+**Project release:** `v1.60.6`
 <!-- dck-version:end -->
+
+## 1.60.6 (2026-08-18)
+
+### Backup restore safety
+
+- Accept the explicit root `data` directory entry produced by DCK backup archives during restore.
+- Keep archive namespace, traversal, absolute-path, and symlink safety checks enabled.
+- Add regression coverage for restoring a backup containing `data` and `data/...` entries.
 
 ## 1.60.5 (2026-08-18)
 
@@ -78,7 +86,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- dck-current-release:start -->
-> Current release: **v1.60.5**. Detailed release notes below are maintained manually.
+> Current release: **v1.60.6**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

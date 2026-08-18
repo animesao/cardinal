@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.5`
-**Project release:** `v1.60.5`
+**Documentation version:** `1.60.6`
+**Project release:** `v1.60.6`
 <!-- dck-version:end -->
 
 # Запуск контейнеров в dck
