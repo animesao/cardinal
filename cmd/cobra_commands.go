@@ -328,7 +328,6 @@ func attachBackupSubcommands() {
 	}{
 		{"create", "Create a backup archive of a stopped container"},
 		{"list", "List existing backups"},
-		{"restore", "Restore a stopped container from a backup"},
 		{"enable", "Enable scheduled backups for a container"},
 		{"disable", "Disable scheduled backups for a container"},
 		{"status", "Show scheduled backup status for a container"},
@@ -340,12 +339,23 @@ func attachBackupSubcommands() {
 			Use:   s.use,
 			Short: s.short,
 			Run: func(c *cobra.Command, args []string) {
-				// Legacy dispatch expects `backup <verb> ...`, so we
-				// re-join with the parent verb.
 				Backup(append([]string{s.use}, args...))
 			},
 		})
 	}
+
+	// Restore subcommand: DisableFlagParsing so --rebind and other
+	// legacy flags reach the Backup() dispatcher unchanged.
+	restoreCmd := &cobra.Command{
+		Use:   "restore",
+		Short: "Restore a stopped container from a backup",
+		Run: func(c *cobra.Command, args []string) {
+			Backup(append([]string{"restore"}, args...))
+		},
+	}
+	restoreCmd.DisableFlagParsing = true
+	restoreCmd.Args = cobra.ArbitraryArgs
+	backup.AddCommand(restoreCmd)
 }
 
 // attachSecuritySubcommands adds `dck security check` so users see the

@@ -1,7 +1,13 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.9`
-**Project release:** `v1.60.9`
+**Documentation version:** `1.60.10`
+**Project release:** `v1.60.10`
 <!-- dck-version:end -->
+
+## 1.60.10 (2026-08-18)
+
+### Backup restore
+
+- Fix `dck backup restore --rebind` flag parsing when invoked through Cobra subcommands.
 
 ## 1.60.9 (2026-08-18)
 
@@ -106,7 +112,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- dck-current-release:start -->
-> Current release: **v1.60.9**. Detailed release notes below are maintained manually.
+> Current release: **v1.60.10**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

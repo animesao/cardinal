@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.9`
-**Project release:** `v1.60.9`
+**Documentation version:** `1.60.10`
+**Project release:** `v1.60.10`
 <!-- dck-version:end -->
 
 # Installing dck on Linux (Universal)
