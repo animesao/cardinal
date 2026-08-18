@@ -111,20 +111,20 @@ func setNoNewPrivileges() error {
 // A completely empty default set breaks ordinary images (for example nginx
 // needs CAP_CHOWN during its entrypoint initialization).
 var defaultContainerCapabilities = map[string]bool{
-	"CHOWN":           true,
-	"DAC_OVERRIDE":   true,
-	"FOWNER":         true,
-	"FSETID":         true,
-	"KILL":           true,
-	"SETGID":         true,
-	"SETUID":         true,
-	"SETPCAP":        true,
+	"CHOWN":            true,
+	"DAC_OVERRIDE":     true,
+	"FOWNER":           true,
+	"FSETID":           true,
+	"KILL":             true,
+	"SETGID":           true,
+	"SETUID":           true,
+	"SETPCAP":          true,
 	"NET_BIND_SERVICE": true,
-	"NET_RAW":        true,
-	"SYS_CHROOT":     true,
-	"MKNOD":          true,
-	"AUDIT_WRITE":    true,
-	"SETFCAP":        true,
+	"NET_RAW":          true,
+	"SYS_CHROOT":       true,
+	"MKNOD":            true,
+	"AUDIT_WRITE":      true,
+	"SETFCAP":          true,
 }
 
 func requestedCapabilities(c *Container) (map[string]bool, error) {
@@ -310,6 +310,33 @@ func waitForNetworkSetup() error {
 	return nil
 }
 
+func startupMountedWorkingDir(c *Container, current string) string {
+	if c == nil || len(c.Volumes) == 0 {
+		return ""
+	}
+	for _, token := range strings.Fields(c.StartupScript) {
+		candidate := strings.Trim(token, "\\\"'`;,()[]{}")
+		if candidate == "" || strings.HasPrefix(candidate, "-") || strings.HasPrefix(candidate, "/") {
+			continue
+		}
+		if !strings.Contains(candidate, ".") && !strings.HasPrefix(candidate, "./") {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(current, candidate)); err == nil {
+			return ""
+		}
+		for _, volume := range c.Volumes {
+			if !strings.HasPrefix(volume.Target, "/") || volume.Target == "/" {
+				continue
+			}
+			if _, err := os.Stat(filepath.Join(volume.Target, candidate)); err == nil {
+				return volume.Target
+			}
+		}
+	}
+	return ""
+}
+
 func InitContainer(id, merged string) error {
 	if runtime.GOOS != "linux" {
 		return fmt.Errorf("container init only supported on Linux")
@@ -481,6 +508,16 @@ func InitContainer(id, merged string) error {
 	wd := cfg.Config.WorkingDir
 	if c.WorkingDir != "" {
 		wd = c.WorkingDir
+	}
+	// Containers created by older DCK versions may still contain the generic
+	// /home/container working directory even though their application files
+	// are mounted elsewhere. For the common relative-jar/script case, use the
+	// mounted directory when the referenced file exists there. This keeps old
+	// Minecraft/service containers startable without requiring recreation.
+	if wd == "/home/container" && c.StartupScript != "" {
+		if candidate := startupMountedWorkingDir(c, wd); candidate != "" {
+			wd = candidate
+		}
 	}
 	if wd != "" {
 		if err := os.MkdirAll(wd, 0755); err != nil {

@@ -31,7 +31,19 @@ func New(img *image.Image, opts CreateOpts) *Container {
 		if cfg, err := image.ReadConfig(img.Name, img.Tag); err == nil && cfg.Config.WorkingDir != "" {
 			workdir = cfg.Config.WorkingDir
 		} else {
-			workdir = "/home/container"
+			// When an image has no working directory, run application commands
+			// from the first mounted directory. This is the expected behavior for
+			// generic service containers (for example /server/server.jar) and
+			// avoids silently running relative commands from /home/container.
+			for _, volume := range opts.Volumes {
+				if strings.HasPrefix(volume.Target, "/") && volume.Target != "/" {
+					workdir = volume.Target
+					break
+				}
+			}
+			if workdir == "" {
+				workdir = "/home/container"
+			}
 		}
 	}
 	cmd := opts.Cmd

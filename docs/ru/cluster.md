@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.1`
-**Project release:** `v1.60.1`
+**Documentation version:** `1.60.2`
+**Project release:** `v1.60.2`
 <!-- dck-version:end -->
 
 # Кластерная оркестрация

@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.1`
-**Project release:** `v1.60.1`
+**Documentation version:** `1.60.2`
+**Project release:** `v1.60.2`
 <!-- dck-version:end -->
 
 <p align="center">
@@ -8,6 +8,14 @@
 </p>
 
 # Changelog
+
+## 1.60.2 (2026-08-18)
+
+### Container startup and file management fixes
+
+- Select the first mounted container directory as the default working directory when the image does not define one, so relative commands such as `java -jar server.jar` run from the application mount.
+- Recover older containers that still use `/home/container` by detecting referenced startup files in mounted directories.
+- Improve desktop binary uploads with remote-size verification, destination-size verification, cleanup, and bounded SSH/SFTP timeouts.
 
 ## 1.60.1 (2026-08-18)
 
@@ -47,7 +55,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- dck-current-release:start -->
-> Current release: **v1.60.1**. Detailed release notes below are maintained manually.
+> Current release: **v1.60.2**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
