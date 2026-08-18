@@ -15,6 +15,7 @@
 
 - Gate startup scripts behind network namespace setup so bridge containers always receive their veth, address, and route before application startup.
 - Add an init-to-supervisor network readiness handshake and regression coverage for its environment setup.
+- Check the network handshake gate close error so the release passes `errcheck` in CI.
 
 ## 1.60.0 (2026-08-18)
 

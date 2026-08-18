@@ -299,7 +299,7 @@ func waitForNetworkSetup() error {
 		return fmt.Errorf("signal network readiness: %w", err)
 	}
 	_ = ready.Close()
-	defer gate.Close()
+	defer func() { _ = gate.Close() }()
 	line, err := bufio.NewReader(gate).ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("wait for network setup: %w", err)
