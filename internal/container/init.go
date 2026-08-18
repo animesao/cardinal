@@ -372,11 +372,14 @@ func InitContainer(id, merged string) error {
 		log.Warn("chmod /tmp: %v", err)
 	}
 
-	// Bring up loopback interface (best-effort, iproute2 may not be in the image)
-	if err := exec.Command("ip", "link", "set", "lo", "up").Run(); err != nil {
-		if err2 := exec.Command("ifconfig", "lo", "up").Run(); err2 != nil {
-			log.Warn("could not bring up loopback: %v", err)
-		}
+	// Bring up loopback when the image contains a network utility. Minimal
+	// images such as eclipse-temurin do not ship iproute2; the host-side veth
+	// setup already enables loopback, so missing utilities are not a startup
+	// failure and should not generate a misleading warning.
+	if ipPath, lookErr := exec.LookPath("ip"); lookErr == nil {
+		_ = exec.Command(ipPath, "link", "set", "lo", "up").Run()
+	} else if ifconfigPath, lookErr := exec.LookPath("ifconfig"); lookErr == nil {
+		_ = exec.Command(ifconfigPath, "lo", "up").Run()
 	}
 
 	// Bring up the container's primary interface once the host-side veth setup
@@ -388,18 +391,23 @@ func InitContainer(id, merged string) error {
 	// take ~26s per cycle. The bounded wait also means a missing interface can
 	// never stall startup indefinitely.
 	if c.NetworkMode != "none" && c.NetworkMode != "host" {
-		for i := 0; i < 50; i++ {
-			out, _ := exec.Command("ip", "addr", "show", "eth0").Output()
-			if len(out) > 0 {
-				s := string(out)
-				if !strings.Contains(s, "NO-CARRIER") && strings.Contains(s, "inet ") {
-					if err := exec.Command("ip", "link", "set", "eth0", "up").Run(); err != nil {
-						log.Warn("enable eth0: %v", err)
+		// Minimal images may not contain iproute2. The host-side network setup
+		// has already configured the namespace in that case, so do not spend
+		// five seconds polling an unavailable command.
+		if _, ipErr := exec.LookPath("ip"); ipErr == nil {
+			for i := 0; i < 50; i++ {
+				out, _ := exec.Command("ip", "addr", "show", "eth0").Output()
+				if len(out) > 0 {
+					s := string(out)
+					if !strings.Contains(s, "NO-CARRIER") && strings.Contains(s, "inet ") {
+						if err := exec.Command("ip", "link", "set", "eth0", "up").Run(); err != nil {
+							log.Warn("enable eth0: %v", err)
+						}
+						break
 					}
-					break
 				}
+				time.Sleep(100 * time.Millisecond)
 			}
-			time.Sleep(100 * time.Millisecond)
 		}
 	}
 
@@ -537,6 +545,13 @@ func InitContainer(id, merged string) error {
 		}
 	}
 
+	// Apply device restrictions while the init process still has the mount
+	// capability. Applying these after capability dropping only produced noisy
+	// exit status 32 warnings and left the best-effort restrictions unapplied.
+	if err := ApplyDeviceRestrictions("/"); err != nil {
+		log.Warn("apply device restrictions: %v", err)
+	}
+
 	// Set the effective/permitted capability sets before switching away from root.
 	// The bounding-set drops below make these removals irreversible for children.
 	if err := applyCapabilities(c); err != nil {
@@ -568,11 +583,6 @@ func InitContainer(id, merged string) error {
 	// compatibility but cannot weaken the runtime policy.
 	if err := setNoNewPrivileges(); err != nil {
 		return fmt.Errorf("set no-new-privileges: %w", err)
-	}
-
-	// Apply device restrictions (/dev/shm, /dev/mqueue, /proc/sys, /sys)
-	if err := ApplyDeviceRestrictions("/"); err != nil {
-		log.Warn("apply device restrictions: %v", err)
 	}
 
 	// Apply readonly rootfs (remount / as readonly after /proc is mounted)
@@ -656,6 +666,11 @@ echo "  DCK_PORT_UDP_*     - Port mappings (UDP)"
 			return fmt.Errorf("write startup script: %w", err)
 		}
 		cmd := exec.Command("/bin/sh", scriptPath)
+		// Startup scripts must receive the image environment (JAVA_HOME, PATH,
+		// locale, etc.), not the host-side dck environment. Without this,
+		// eclipse-temurin images report `java: not found` even though Java exists
+		// under /opt/java/openjdk/bin.
+		cmd.Env = c.Env
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
