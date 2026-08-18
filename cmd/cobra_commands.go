@@ -63,6 +63,14 @@ func register(spec commandSpec) *cobra.Command {
 		// failures — this gives us uniform ExitCode behaviour for tests.
 		SilenceErrors: true,
 		Run: func(c *cobra.Command, args []string) {
+			// Commands that keep legacy flag parsing enabled (notably
+			// `run` and `serve`) never let cobra consume --help. Handle
+			// the long help form here before forwarding arguments to the
+			// stdlib FlagSet, whose default behaviour calls os.Exit(0).
+			if hasLongHelpArgument(args) {
+				_ = c.Help()
+				return
+			}
 			spec.run(args)
 		},
 	}
@@ -190,6 +198,10 @@ Example:
 	psCmd := register(commandSpec{"ps", "List containers", Ps, ""})
 	psCmd.Flags().BoolP("all", "a", false, "Show all containers (running + stopped)")
 	psCmd.Run = func(c *cobra.Command, args []string) {
+		if hasLongHelpArgument(args) {
+			_ = c.Help()
+			return
+		}
 		psShowAll, _ = c.Flags().GetBool("all")
 		Ps(args)
 	}
@@ -284,6 +296,15 @@ Examples:
 	// and the security command.
 	attachBackupSubcommands()
 	attachSecuritySubcommands()
+}
+
+func hasLongHelpArgument(args []string) bool {
+	for _, arg := range args {
+		if arg == "--help" {
+			return true
+		}
+	}
+	return false
 }
 
 // versionCommand is the cobra-shaped implementation of `dck version`.

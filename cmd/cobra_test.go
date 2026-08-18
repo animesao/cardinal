@@ -151,6 +151,26 @@ func TestRunCommand_DisablesFlagParsing(t *testing.T) {
 	}
 }
 
+func TestLegacyFlagCommands_LongHelpDoesNotExit(t *testing.T) {
+	for _, name := range []string{"run", "serve"} {
+		name := name
+		t.Run(name, func(t *testing.T) {
+			stream := &bytes.Buffer{}
+			root := NewRoot()
+			root.SetArgs([]string{name, "--help"})
+			root.SetOut(stream)
+			root.SetErr(stream)
+
+			if err := root.Execute(); err != nil {
+				t.Fatalf("%s --help returned an error: %v", name, err)
+			}
+			if !strings.Contains(stream.String(), name) {
+				t.Fatalf("%s --help did not include the command name: %q", name, stream.String())
+			}
+		})
+	}
+}
+
 func TestNewRoot_HelpStringContainsSubcommandSplash(t *testing.T) {
 	out := captureRun(t, []string{"--help"})
 	if !strings.Contains(out, "Lightweight Linux container runtime") {

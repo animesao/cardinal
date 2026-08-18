@@ -1,7 +1,15 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.6`
-**Project release:** `v1.60.6`
+**Documentation version:** `1.60.7`
+**Project release:** `v1.60.7`
 <!-- dck-version:end -->
+
+## 1.60.7 (2026-08-18)
+
+### CLI help and CI stability
+
+- Handle `dck run --help` and `dck serve --help` before forwarding arguments to legacy flag parsers.
+- Prevent the legacy flag parser from calling `os.Exit(0)` during Cobra smoke tests.
+- Add regression coverage for help handling on commands with disabled Cobra flag parsing.
 
 ## 1.60.6 (2026-08-18)
 
@@ -86,7 +94,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- dck-current-release:start -->
-> Current release: **v1.60.6**. Detailed release notes below are maintained manually.
+> Current release: **v1.60.7**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

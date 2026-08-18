@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.6`
-**Project release:** `v1.60.6`
+**Documentation version:** `1.60.7`
+**Project release:** `v1.60.7`
 <!-- dck-version:end -->
 
 # Installing dck on Debian / Ubuntu
