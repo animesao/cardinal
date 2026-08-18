@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.3`
-**Project release:** `v1.60.3`
+**Documentation version:** `1.60.4`
+**Project release:** `v1.60.4`
 <!-- dck-version:end -->
 
 # Развёртывание сайтов с dck

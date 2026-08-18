@@ -1,7 +1,14 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.3`
-**Project release:** `v1.60.3`
+**Documentation version:** `1.60.4`
+**Project release:** `v1.60.4`
 <!-- dck-version:end -->
+
+## 1.60.4 (2026-08-18)
+
+### Desktop integration
+
+- Document the current container inspection and mount metadata used by DCK Desktop to scope per-container SFTP access.
+- Keep the DCK API mount targets as the source of truth for integrations that expose container filesystems.
 
 <p align="center">
   <img src="img/dck.png" alt="dck logo" width="100">
@@ -62,7 +69,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- dck-current-release:start -->
-> Current release: **v1.60.3**. Detailed release notes below are maintained manually.
+> Current release: **v1.60.4**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
