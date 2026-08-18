@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.2`
-**Project release:** `v1.60.2`
+**Documentation version:** `1.60.3`
+**Project release:** `v1.60.3`
 <!-- dck-version:end -->
 
 <p align="center">
@@ -9,7 +9,7 @@
 
 <p align="center">
   <!-- dck-version-badge:start -->
-  <img src="https://img.shields.io/badge/version-v1.60.2-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-v1.60.3-blue?style=flat-square">
   <!-- dck-version-badge:end -->
   <img src="https://img.shields.io/badge/go-1.25%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square">
@@ -827,7 +827,7 @@ dck run -d
 ## Changelog
 
 <!-- dck-release:start -->
-**v1.60.2** — Documentation, installation, AppImage, update, and release automation are synchronized from the root `VERSION` file.
+**v1.60.3** — Documentation, installation, AppImage, update, and release automation are synchronized from the root `VERSION` file.
 <!-- dck-release:end -->
 
 **v1.24.0** — Major security hardening: seccomp profile (blocks 30+ dangerous syscalls), AppArmor profile, device restrictions (/dev/shm, /dev/mqueue, /proc/sys, /sys read-only), network segmentation (`--isolated`), backup encryption (AES-256-GCM with `--encrypt`), audit logging for container lifecycle events, new CLI flags (`--seccomp-profile`, `--apparmor-profile`, `--isolated`, `--encrypted-backup`, `--audit-log`).

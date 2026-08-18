@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.2`
-**Project release:** `v1.60.2`
+**Documentation version:** `1.60.3`
+**Project release:** `v1.60.3`
 <!-- dck-version:end -->
 
 <p align="center">
@@ -8,6 +8,13 @@
 </p>
 
 # Changelog
+
+## 1.60.3 (2026-08-18)
+
+### Interactive console fixes
+
+- Preserve the container stdin when running startup scripts, so Paper, Minecraft, and other interactive servers receive commands from `dck attach` and the desktop console.
+- Restore command responses such as `tps`, `pl`, and `help` instead of leaving the console with input-only output.
 
 ## 1.60.2 (2026-08-18)
 
@@ -55,7 +62,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- dck-current-release:start -->
-> Current release: **v1.60.2**. Detailed release notes below are maintained manually.
+> Current release: **v1.60.3**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

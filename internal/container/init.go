@@ -745,6 +745,11 @@ echo "  DCK_PORT_UDP_*     - Port mappings (UDP)"
 		// eclipse-temurin images report `java: not found` even though Java exists
 		// under /opt/java/openjdk/bin.
 		cmd.Env = c.Env
+		// Preserve the container stdin for startup processes. Without this,
+		// exec.Cmd uses the null device when Stdin is nil, so interactive
+		// servers such as Paper receive logs but never receive commands from
+		// dck attach or the desktop console.
+		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
