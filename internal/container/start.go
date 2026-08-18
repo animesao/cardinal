@@ -481,7 +481,7 @@ func findChildPID(ppid int) int {
 	for time.Now().Before(deadline) {
 		if data, err := os.ReadFile(fmt.Sprintf("/proc/%d/task/%d/children", ppid, ppid)); err == nil {
 			if fields := strings.Fields(string(data)); len(fields) > 0 {
-				if pid, err := strconv.Atoi(fields[0]); err == nil && pid > 0 {
+				if pid, err := strconv.Atoi(fields[0]); err == nil && pid > 0 && pidAlive(pid) {
 					return pid
 				}
 			}

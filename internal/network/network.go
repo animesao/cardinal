@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"dck/internal/state"
 )
@@ -257,7 +258,7 @@ func SetupVethOnBridge(containerID string, pid int, containerIP, bridge, gateway
 		}
 	}()
 
-	if err := exec.Command("ip", "link", "set", contIf, "netns", fmt.Sprintf("%d", pid)).Run(); err != nil {
+	if err := moveVethToNetns(contIf, pid); err != nil {
 		return fmt.Errorf("move veth to netns: %w", err)
 	}
 	if err := exec.Command("ip", "link", "set", hostIf, "master", bridge).Run(); err != nil {
@@ -286,6 +287,38 @@ func SetupVethOnBridge(containerID string, pid int, containerIP, bridge, gateway
 	flushBridgeNeighOnBridge(bridge, containerIP)
 	rollback = false
 	return nil
+}
+
+func moveVethToNetns(ifName string, pid int) error {
+	if pid <= 0 {
+		return fmt.Errorf("invalid target PID %d", pid)
+	}
+
+	var lastOutput []byte
+	var lastErr error
+	for attempt := 0; attempt < 50; attempt++ {
+		cmd := exec.Command("ip", "link", "set", ifName, "netns", fmt.Sprintf("%d", pid))
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			return nil
+		}
+		lastOutput = output
+		lastErr = err
+
+		// Namespace setup and process publication are racy on some kernels. A
+		// short retry window handles that race, while the namespace path check
+		// avoids waiting when the init process has already exited.
+		if _, statErr := os.Stat(fmt.Sprintf("/proc/%d/ns/net", pid)); statErr != nil {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	message := strings.TrimSpace(string(lastOutput))
+	if message != "" {
+		return fmt.Errorf("%s: %w", message, lastErr)
+	}
+	return lastErr
 }
 
 func flushBridgeNeighOnBridge(bridge, ip string) {

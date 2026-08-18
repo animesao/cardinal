@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.25.9`
-**Project release:** `v1.25.9`
+**Documentation version:** `1.60.0`
+**Project release:** `v1.60.0`
 <!-- dck-version:end -->
 
 <p align="center">
@@ -8,6 +8,14 @@
 </p>
 
 # Changelog
+
+## 1.60.0 (2026-08-18)
+
+### Runtime and networking fixes
+
+- Ignore exited or zombie init processes while resolving a container startup target.
+- Retry moving the veth peer into the container network namespace during namespace setup races.
+- Include the underlying `ip` error output so network startup failures are actionable.
 
 ## 1.25.9 (2026-08-18)
 
@@ -31,7 +39,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- dck-current-release:start -->
-> Current release: **v1.25.9**. Detailed release notes below are maintained manually.
+> Current release: **v1.60.0**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
