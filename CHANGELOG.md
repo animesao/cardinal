@@ -1,7 +1,16 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.4`
-**Project release:** `v1.60.4`
+**Documentation version:** `1.60.5`
+**Project release:** `v1.60.5`
 <!-- dck-version:end -->
+
+## 1.60.5 (2026-08-18)
+
+### Backup and transfer support
+
+- Add `dck backup restore --rebind` so verified backup data can be restored into a newly created container during cross-machine transfers.
+- Include persistent bind-mount data in backups under a target-scoped archive namespace while retaining symlink and host-path safety checks.
+- Add `dck backup remove` (with `rm` and `delete` aliases) for removing an archive and its checksum sidecar safely.
+- Support DCK Desktop backup management and container transfer with configuration, volumes, writable data, and lifecycle state preserved.
 
 ## 1.60.4 (2026-08-18)
 
@@ -69,7 +78,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- dck-current-release:start -->
-> Current release: **v1.60.4**. Detailed release notes below are maintained manually.
+> Current release: **v1.60.5**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

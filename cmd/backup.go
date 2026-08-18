@@ -42,6 +42,8 @@ func Backup(args []string) {
 		backupStatus(args[1:])
 	case "verify":
 		backupVerify(args[1:])
+	case "remove", "rm", "delete":
+		backupRemove(args[1:])
 	case "generate-key":
 		backupGenerateKey(args[1:])
 	default:
@@ -58,10 +60,12 @@ Commands:
   create <container> [-o file.tar.gz] [-e]  Archive container writable data and metadata
   list                                      List backups in the dck backup directory
   restore <container> <file.tar.gz>         Restore writable data into a stopped container
+  restore <container> <file.tar.gz> --rebind Restore data into a newly created container
   enable <container> [options]              Enable scheduled backups
   disable <container>                       Disable scheduled backups
   status <container>                        Show scheduled backup settings
   verify <file.tar.gz>                      Verify archive checksum
+  remove <file.tar.gz>                      Delete an archive and its checksum
   generate-key                              Generate a new encryption key
 
 Create options:
@@ -546,13 +550,31 @@ func createContainerBackup(c *container.Container, output string) (retErr error)
 		return fmt.Errorf("archive writable data: %w", err)
 	}
 	for _, volume := range c.Volumes {
-		if !strings.Contains(volume.Source, "/") && !strings.Contains(volume.Source, "\\") {
-			if err := addTreeToTar(tw, state.ResolveVolume(volume.Source), filepath.Join("volumes", volume.Source)); err != nil {
-				return fmt.Errorf("archive volume %s: %w", volume.Source, err)
+		if strings.Contains(volume.Source, "/") || strings.Contains(volume.Source, "\\") {
+			// Bind mounts are part of the container's persistent data and must
+			// travel with a container transfer. Keep their archive path based on
+			// the container target, never on an arbitrary host pathname.
+			if filepath.Clean(volume.Source) == string(filepath.Separator) {
+				return fmt.Errorf("refusing to archive host root bind mount")
 			}
+			if err := addTreeToTar(tw, volume.Source, backupBindPrefix(volume)); err != nil {
+				return fmt.Errorf("archive bind mount %s: %w", volume.Source, err)
+			}
+			continue
+		}
+		if err := addTreeToTar(tw, state.ResolveVolume(volume.Source), filepath.Join("volumes", volume.Source)); err != nil {
+			return fmt.Errorf("archive volume %s: %w", volume.Source, err)
 		}
 	}
 	return nil
+}
+
+func backupBindPrefix(volume container.VolumeMount) string {
+	target := strings.TrimPrefix(filepath.ToSlash(filepath.Clean(volume.Target)), "/")
+	if target == "" || target == "." {
+		target = "root"
+	}
+	return filepath.Join("binds", target)
 }
 
 func addTreeToTar(tw *tar.Writer, source, prefix string) error {
@@ -663,10 +685,67 @@ func backupVerify(args []string) {
 	fmt.Printf("Backup verified: %s\n", args[0])
 }
 
+func backupRemove(args []string) {
+	if len(args) < 1 {
+		fmt.Println("Usage: dck backup remove <file.tar.gz>")
+		os.Exit(1)
+	}
+	archivePath, err := validateBackupArchivePath(args[0])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: invalid backup archive: %v\n", err)
+		os.Exit(1)
+	}
+	if err := os.Remove(archivePath); err != nil {
+		if os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "Error: backup not found: %s\n", archivePath)
+		} else {
+			fmt.Fprintf(os.Stderr, "Error removing backup: %v\n", err)
+		}
+		os.Exit(1)
+	}
+	if err := os.Remove(backupChecksumPath(archivePath)); err != nil && !os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "Error removing backup checksum: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Removed backup: %s\n", archivePath)
+}
+
+func validateBackupArchivePath(path string) (string, error) {
+	if strings.TrimSpace(path) == "" {
+		return "", fmt.Errorf("archive path is empty")
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	absolute = filepath.Clean(absolute)
+	base := filepath.Base(absolute)
+	if base == ".lock" || (!strings.HasSuffix(base, ".tar.gz") && !strings.HasSuffix(base, ".tar.gz.enc")) {
+		return "", fmt.Errorf("expected a .tar.gz or .tar.gz.enc archive")
+	}
+	if _, err := validateBackupDirectory(filepath.Dir(absolute)); err != nil {
+		return "", err
+	}
+	info, err := os.Lstat(absolute)
+	if err != nil {
+		return "", err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return "", fmt.Errorf("archive is not a regular file")
+	}
+	return absolute, nil
+}
+
 func backupRestore(args []string) {
 	if len(args) < 2 {
-		fmt.Println("Usage: dck backup restore <container> <file.tar.gz>")
+		fmt.Println("Usage: dck backup restore <container> <file.tar.gz> [--rebind]")
 		os.Exit(1)
+	}
+	rebind := false
+	for _, arg := range args[2:] {
+		if arg == "--rebind" {
+			rebind = true
+		}
 	}
 	c, err := container.Load(args[0])
 	if err != nil {
@@ -677,14 +756,22 @@ func backupRestore(args []string) {
 		fmt.Fprintln(os.Stderr, "Error: stop the container before restoring a backup")
 		os.Exit(1)
 	}
-	if err := restoreContainerBackup(c, args[1]); err != nil {
+	if err := restoreContainerBackupWithOptions(c, args[1], rebind); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("Restored backup into %s\n", c.Name)
+	if rebind {
+		fmt.Printf("Rebound backup data into %s\n", c.Name)
+	} else {
+		fmt.Printf("Restored backup into %s\n", c.Name)
+	}
 }
 
 func restoreContainerBackup(c *container.Container, archivePath string) error {
+	return restoreContainerBackupWithOptions(c, archivePath, false)
+}
+
+func restoreContainerBackupWithOptions(c *container.Container, archivePath string, rebind bool) error {
 	if err := verifyBackupChecksum(archivePath); err != nil {
 		return fmt.Errorf("verify backup checksum: %w", err)
 	}
@@ -702,7 +789,7 @@ func restoreContainerBackup(c *container.Container, archivePath string) error {
 	if err := json.Unmarshal(metadata, &archived); err != nil {
 		return fmt.Errorf("invalid container metadata: %w", err)
 	}
-	if archived.ID == "" || archived.ID != c.ID {
+	if archived.ID == "" || (!rebind && archived.ID != c.ID) {
 		return fmt.Errorf("backup belongs to container %q, not %q", archived.ID, c.ID)
 	}
 
@@ -715,17 +802,22 @@ func restoreContainerBackup(c *container.Container, archivePath string) error {
 		return fmt.Errorf("restore writable data: %w", err)
 	}
 	for _, volume := range c.Volumes {
+		archiveRoot := filepath.Join("volumes", volume.Source)
+		destination := state.ResolveVolume(volume.Source)
+		hostVolume := false
 		if strings.Contains(volume.Source, "/") || strings.Contains(volume.Source, "\\") {
-			continue
+			archiveRoot = backupBindPrefix(volume)
+			destination = volume.Source
+			hostVolume = true
 		}
-		source := filepath.Join(stage, "volumes", volume.Source)
+		source := filepath.Join(stage, archiveRoot)
 		if _, err := os.Lstat(source); os.IsNotExist(err) {
 			continue
 		}
 		if err != nil {
 			return err
 		}
-		if err := applyBackupTree(source, state.ResolveVolume(volume.Source), true); err != nil {
+		if err := applyBackupTree(source, destination, hostVolume); err != nil {
 			return fmt.Errorf("restore volume %s: %w", volume.Source, err)
 		}
 	}
@@ -764,7 +856,7 @@ func extractBackupToStage(stage, archivePath string) ([]byte, error) {
 			}
 			continue
 		}
-		if !strings.HasPrefix(h.Name, "data/") && !strings.HasPrefix(h.Name, "volumes/") {
+		if !strings.HasPrefix(h.Name, "data/") && !strings.HasPrefix(h.Name, "volumes/") && !strings.HasPrefix(h.Name, "binds/") {
 			return nil, fmt.Errorf("unsafe backup entry %q", h.Name)
 		}
 		target, err := container.SafeBackupPath(stage, h.Name)
@@ -792,7 +884,7 @@ func extractBackupToStage(stage, archivePath string) ([]byte, error) {
 			continue
 		}
 		if h.FileInfo().Mode()&os.ModeSymlink != 0 {
-			if err := validateBackupLink(h.Name, h.Linkname, false); err != nil {
+			if err := validateBackupLink(h.Name, h.Linkname, strings.HasPrefix(h.Name, "binds/")); err != nil {
 				return nil, err
 			}
 			if err := os.MkdirAll(filepath.Dir(target), 0700); err != nil {

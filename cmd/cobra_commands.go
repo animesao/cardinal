@@ -312,6 +312,7 @@ func attachBackupSubcommands() {
 		{"disable", "Disable scheduled backups for a container"},
 		{"status", "Show scheduled backup status for a container"},
 		{"verify", "Verify the SHA-256 checksum of a backup archive"},
+		{"remove", "Delete a backup archive and its checksum"},
 	} {
 		s := sub
 		backup.AddCommand(&cobra.Command{

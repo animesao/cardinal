@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.4`
-**Project release:** `v1.60.4`
+**Documentation version:** `1.60.5`
+**Project release:** `v1.60.5`
 <!-- dck-version:end -->
 
 # dck — Continuous audit
