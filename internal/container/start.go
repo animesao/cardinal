@@ -3,6 +3,7 @@
 package container
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -83,6 +84,43 @@ func (c *Container) startInternal() error {
 		return err
 	}
 
+	// A bridge network must be attached before the image startup script runs.
+	// Otherwise a fast-failing command can destroy the init process before the
+	// host has moved the veth into its namespace, while a long-running startup
+	// script can block the network setup indefinitely. The init process signals
+	// readiness through inherited file descriptors and waits for the parent to
+	// release it after networking is complete.
+	networkHandshake := c.NeedsNetwork()
+	var networkReadyR, networkReadyW, networkGoR, networkGoW *os.File
+	if networkHandshake {
+		networkReadyR, networkReadyW, err = os.Pipe()
+		if err != nil {
+			if cleanupIO != nil {
+				cleanupIO()
+			}
+			return fmt.Errorf("network ready pipe: %w", err)
+		}
+		networkGoR, networkGoW, err = os.Pipe()
+		if err != nil {
+			_ = networkReadyR.Close()
+			_ = networkReadyW.Close()
+			if cleanupIO != nil {
+				cleanupIO()
+			}
+			return fmt.Errorf("network release pipe: %w", err)
+		}
+		cmd.ExtraFiles = append(cmd.ExtraFiles, networkReadyW, networkGoR)
+		cmd.Env = initNetworkEnvironment(os.Environ())
+	}
+	closeNetworkParentFiles := func() {
+		for _, file := range []*os.File{networkReadyR, networkReadyW, networkGoR, networkGoW} {
+			if file != nil {
+				_ = file.Close()
+			}
+		}
+	}
+	defer closeNetworkParentFiles()
+
 	if err := cmd.Start(); err != nil {
 		if cleanupIO != nil {
 			cleanupIO()
@@ -92,6 +130,18 @@ func (c *Container) startInternal() error {
 	if cleanupIO != nil {
 		defer cleanupIO()
 	}
+	if networkHandshake {
+		// The child owns these ends after exec. Close the parent copies so EOF
+		// and pipe readiness remain unambiguous.
+		_ = networkReadyW.Close()
+		networkReadyW = nil
+		_ = networkGoR.Close()
+		networkGoR = nil
+		if err := awaitInitNetworkReady(networkReadyR); err != nil {
+			c.abortStart(cmd)
+			return fmt.Errorf("container init network handshake: %w", err)
+		}
+	}
 
 	childPID := c.resolveChildPID(cmd.Process.Pid)
 	if childPID <= 0 {
@@ -99,8 +149,17 @@ func (c *Container) startInternal() error {
 		return fmt.Errorf("could not determine the container init process")
 	}
 	if err := c.setupContainerResources(childPID); err != nil {
+		if networkHandshake {
+			_ = releaseInitNetwork(networkGoW, false)
+		}
 		c.abortStart(cmd)
 		return fmt.Errorf("configure container resources: %w", err)
+	}
+	if networkHandshake {
+		if err := releaseInitNetwork(networkGoW, true); err != nil {
+			c.abortStart(cmd)
+			return fmt.Errorf("release container init after network setup: %w", err)
+		}
 	}
 
 	if c.IP != "" {
@@ -152,6 +211,54 @@ func (c *Container) startInternal() error {
 	}
 
 	return c.runForeground(cmd)
+}
+
+func initNetworkEnvironment(env []string) []string {
+	filtered := make([]string, 0, len(env)+2)
+	for _, entry := range env {
+		if strings.HasPrefix(entry, "DCK_INIT_READY_FD=") || strings.HasPrefix(entry, "DCK_INIT_GO_FD=") {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	return append(filtered, "DCK_INIT_READY_FD=3", "DCK_INIT_GO_FD=4")
+}
+
+func awaitInitNetworkReady(ready *os.File) error {
+	if ready == nil {
+		return fmt.Errorf("network readiness pipe is unavailable")
+	}
+	result := make(chan error, 1)
+	go func() {
+		line, err := bufio.NewReader(ready).ReadString('\n')
+		if err != nil {
+			result <- fmt.Errorf("init exited before signaling readiness: %w", err)
+			return
+		}
+		if strings.TrimSpace(line) != "ready" {
+			result <- fmt.Errorf("unexpected init readiness message %q", strings.TrimSpace(line))
+			return
+		}
+		result <- nil
+	}()
+	select {
+	case err := <-result:
+		return err
+	case <-time.After(5 * time.Second):
+		return fmt.Errorf("timed out waiting for init readiness")
+	}
+}
+
+func releaseInitNetwork(gate *os.File, allow bool) error {
+	if gate == nil {
+		return fmt.Errorf("network release pipe is unavailable")
+	}
+	message := "abort\n"
+	if allow {
+		message = "go\n"
+	}
+	_, err := gate.WriteString(message)
+	return err
 }
 
 func (c *Container) setupFilesystem() (merged string, err error) {

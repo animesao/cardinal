@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.0`
-**Project release:** `v1.60.0`
+**Documentation version:** `1.60.1`
+**Project release:** `v1.60.1`
 <!-- dck-version:end -->
 
 <p align="center">
@@ -8,6 +8,13 @@
 </p>
 
 # Changelog
+
+## 1.60.1 (2026-08-18)
+
+### Runtime and networking fixes
+
+- Gate startup scripts behind network namespace setup so bridge containers always receive their veth, address, and route before application startup.
+- Add an init-to-supervisor network readiness handshake and regression coverage for its environment setup.
 
 ## 1.60.0 (2026-08-18)
 
@@ -39,7 +46,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- dck-current-release:start -->
-> Current release: **v1.60.0**. Detailed release notes below are maintained manually.
+> Current release: **v1.60.1**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

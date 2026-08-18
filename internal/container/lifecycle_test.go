@@ -90,6 +90,17 @@ func TestContainerInitCommandline(t *testing.T) {
 	}
 }
 
+func TestInitNetworkEnvironment(t *testing.T) {
+	env := initNetworkEnvironment([]string{
+		"PATH=/usr/bin",
+		"DCK_INIT_READY_FD=99",
+		"DCK_INIT_GO_FD=100",
+	})
+	if len(env) != 3 || env[0] != "PATH=/usr/bin" || env[1] != "DCK_INIT_READY_FD=3" || env[2] != "DCK_INIT_GO_FD=4" {
+		t.Fatalf("unexpected network handshake environment: %#v", env)
+	}
+}
+
 // TestContainerProcessAlive verifies the supervisor's exit-detection heuristic,
 // including the PID-reuse guard for the unshare PID.
 func TestContainerProcessAlive(t *testing.T) {

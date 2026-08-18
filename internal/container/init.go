@@ -3,6 +3,7 @@
 package container
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -276,6 +277,39 @@ func allowedContainerSysctl(name string) bool {
 	return true
 }
 
+func waitForNetworkSetup() error {
+	readyValue := strings.TrimSpace(os.Getenv("DCK_INIT_READY_FD"))
+	goValue := strings.TrimSpace(os.Getenv("DCK_INIT_GO_FD"))
+	if readyValue == "" && goValue == "" {
+		return nil
+	}
+	readyFD, readyErr := strconv.Atoi(readyValue)
+	goFD, goErr := strconv.Atoi(goValue)
+	if readyErr != nil || goErr != nil || readyFD < 0 || goFD < 0 {
+		return fmt.Errorf("invalid network handshake file descriptors")
+	}
+	ready := os.NewFile(uintptr(readyFD), "dck-network-ready")
+	gate := os.NewFile(uintptr(goFD), "dck-network-release")
+	if ready == nil || gate == nil {
+		return fmt.Errorf("network handshake file descriptors are unavailable")
+	}
+	if _, err := ready.WriteString("ready\n"); err != nil {
+		_ = ready.Close()
+		_ = gate.Close()
+		return fmt.Errorf("signal network readiness: %w", err)
+	}
+	_ = ready.Close()
+	defer gate.Close()
+	line, err := bufio.NewReader(gate).ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("wait for network setup: %w", err)
+	}
+	if strings.TrimSpace(line) != "go" {
+		return fmt.Errorf("network setup was not released")
+	}
+	return nil
+}
+
 func InitContainer(id, merged string) error {
 	if runtime.GOOS != "linux" {
 		return fmt.Errorf("container init only supported on Linux")
@@ -283,6 +317,9 @@ func InitContainer(id, merged string) error {
 
 	c, err := Load(id)
 	if err != nil {
+		return err
+	}
+	if err := waitForNetworkSetup(); err != nil {
 		return err
 	}
 
