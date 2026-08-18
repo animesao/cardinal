@@ -980,9 +980,9 @@ func applyBackupTree(source, destination string, hostVolume bool) error {
 		target := destination
 		if rel != "." {
 			target = filepath.Join(destination, rel)
-		}
-		if err := container.RejectBackupSymlinkAncestors(destination, filepath.Dir(target)); err != nil {
-			return err
+			if err := container.RejectBackupSymlinkAncestors(destination, filepath.Dir(target)); err != nil {
+				return err
+			}
 		}
 		if sourceInfo.IsDir() {
 			if err := os.MkdirAll(target, 0700); err != nil {
