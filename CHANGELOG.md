@@ -1,7 +1,13 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.7`
-**Project release:** `v1.60.7`
+**Documentation version:** `1.60.8`
+**Project release:** `v1.60.8`
 <!-- dck-version:end -->
+
+## 1.60.8 (2026-08-18)
+
+### Test fix
+
+- Fix backup restore regression test to correctly mark the root `data` directory entry as a tar directory type.
 
 ## 1.60.7 (2026-08-18)
 
@@ -94,7 +100,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- dck-current-release:start -->
-> Current release: **v1.60.7**. Detailed release notes below are maintained manually.
+> Current release: **v1.60.8**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

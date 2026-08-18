@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.7`
-**Project release:** `v1.60.7`
+**Documentation version:** `1.60.8`
+**Project release:** `v1.60.8`
 <!-- dck-version:end -->
 
 # Installing dck — Manual Binary

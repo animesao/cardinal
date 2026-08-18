@@ -20,9 +20,13 @@ func TestExtractBackupAllowsRootDataDirectory(t *testing.T) {
 	gzipWriter := gzip.NewWriter(file)
 	tarWriter := tar.NewWriter(gzipWriter)
 
-	writeEntry := func(name string, mode int64, data []byte) {
+	writeFile := func(name string, mode int64, data []byte) {
 		t.Helper()
-		if err := tarWriter.WriteHeader(&tar.Header{Name: name, Mode: mode, Size: int64(len(data))}); err != nil {
+		hdr := &tar.Header{Name: name, Mode: mode, Size: int64(len(data))}
+		if len(data) == 0 {
+			hdr.Typeflag = tar.TypeDir
+		}
+		if err := tarWriter.WriteHeader(hdr); err != nil {
 			t.Fatal(err)
 		}
 		if len(data) > 0 {
@@ -32,9 +36,9 @@ func TestExtractBackupAllowsRootDataDirectory(t *testing.T) {
 		}
 	}
 
-	writeEntry("container.json", 0600, []byte(`{"id":"test-container"}`))
-	writeEntry("data", 0700, nil)
-	writeEntry("data/example.txt", 0600, []byte("restored"))
+	writeFile("container.json", 0600, []byte(`{"id":"test-container"}`))
+	writeFile("data", 0700, nil)
+	writeFile("data/example.txt", 0600, []byte("restored"))
 	if err := tarWriter.Close(); err != nil {
 		t.Fatal(err)
 	}
