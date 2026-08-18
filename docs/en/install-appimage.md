@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.25.8`
-**Project release:** `v1.25.8`
+**Documentation version:** `1.25.9`
+**Project release:** `v1.25.9`
 <!-- dck-version:end -->
 
 # Installing dck via AppImage

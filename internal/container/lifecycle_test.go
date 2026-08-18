@@ -75,6 +75,21 @@ func TestFindChildPIDResolvesDirectChild(t *testing.T) {
 	}
 }
 
+// TestContainerInitCommandline verifies that the fallback only accepts the
+// exact internal dck init command for the requested container.
+func TestContainerInitCommandline(t *testing.T) {
+	want := []byte("/usr/local/bin/dck\x00init\x00container-123\x00/var/lib/dck/overlay/merged\x00")
+	if !isContainerInitCommandline(want, "container-123") {
+		t.Fatal("valid dck init command line was not recognized")
+	}
+	if isContainerInitCommandline(want, "other-container") {
+		t.Fatal("command line for another container was accepted")
+	}
+	if isContainerInitCommandline([]byte("/usr/local/bin/dck\\x00start\\x00container-123\\x00"), "container-123") {
+		t.Fatal("non-init command line was accepted")
+	}
+}
+
 // TestContainerProcessAlive verifies the supervisor's exit-detection heuristic,
 // including the PID-reuse guard for the unshare PID.
 func TestContainerProcessAlive(t *testing.T) {

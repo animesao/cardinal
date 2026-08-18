@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.25.8`
-**Project release:** `v1.25.8`
+**Documentation version:** `1.25.9`
+**Project release:** `v1.25.9`
 <!-- dck-version:end -->
 
 <p align="center">
@@ -8,6 +8,13 @@
 </p>
 
 # Changelog
+
+## 1.25.9 (2026-08-18)
+
+### Runtime fixes
+
+- Resolve the container init process through `/proc` process metadata and an exact `dck init` command-line fallback, preventing valid stopped containers from failing to start on some kernels.
+- Add regression coverage for safe init-process matching.
 
 ## 1.25.8 (2026-08-18)
 
@@ -24,7 +31,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- dck-current-release:start -->
-> Current release: **v1.25.8**. Detailed release notes below are maintained manually.
+> Current release: **v1.25.9**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

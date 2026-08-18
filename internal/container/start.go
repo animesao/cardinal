@@ -300,7 +300,91 @@ func (c *Container) abortStart(cmd *exec.Cmd) {
 }
 
 func (c *Container) resolveChildPID(unsharePID int) int {
-	return findChildPID(unsharePID)
+	if pid := findChildPID(unsharePID); pid > 0 {
+		return pid
+	}
+
+	// On some kernels/util-linux combinations the process created by
+	// `unshare --fork` is no longer reported in /proc/<pid>/task/<pid>/children
+	// by the time the parent is inspected. This is especially common when the
+	// init process immediately pivots its root or execs the image command.
+	// First inspect /proc process metadata directly. This still works after the
+	// init process has exec'd Java, nginx, or another application and avoids
+	// depending on pgrep being installed.
+	if pid := findProcChildPID(unsharePID); pid > 0 {
+		return pid
+	}
+
+	// Finally locate the exact internal command line. This covers kernels where
+	// the parent relationship is briefly hidden during namespace setup; never
+	// guess from PID arithmetic or an unrelated process.
+	return findContainerInitPID(unsharePID, c.ID)
+}
+
+func findProcChildPID(ppid int) int {
+	entries, err := os.ReadDir("/proc")
+	if err != nil {
+		return 0
+	}
+	for _, entry := range entries {
+		pid, err := strconv.Atoi(entry.Name())
+		if err != nil || pid <= 0 || pid == ppid {
+			continue
+		}
+		stat, err := os.ReadFile(filepath.Join("/proc", entry.Name(), "stat"))
+		if err != nil {
+			continue
+		}
+		closing := strings.LastIndexByte(string(stat), ')')
+		if closing < 0 {
+			continue
+		}
+		fields := strings.Fields(string(stat[closing+1:]))
+		if len(fields) < 2 {
+			continue
+		}
+		parent, err := strconv.Atoi(fields[1])
+		if err == nil && parent == ppid && pidAlive(pid) {
+			return pid
+		}
+	}
+	return 0
+}
+
+func findContainerInitPID(unsharePID int, containerID string) int {
+	if containerID == "" {
+		return 0
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		entries, err := os.ReadDir("/proc")
+		if err == nil {
+			for _, entry := range entries {
+				pid, err := strconv.Atoi(entry.Name())
+				if err != nil || pid <= 0 || pid == unsharePID {
+					continue
+				}
+				cmdline, err := os.ReadFile(filepath.Join("/proc", entry.Name(), "cmdline"))
+				if err != nil {
+					continue
+				}
+				if isContainerInitCommandline(cmdline, containerID) && pidAlive(pid) {
+					return pid
+				}
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return 0
+}
+
+func isContainerInitCommandline(cmdline []byte, containerID string) bool {
+	if containerID == "" {
+		return false
+	}
+	args := strings.Split(string(cmdline), "\x00")
+	return len(args) >= 3 && args[1] == "init" && args[2] == containerID
 }
 
 func (c *Container) setupContainerResources(childPID int) error {
