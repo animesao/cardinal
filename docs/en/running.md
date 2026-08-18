@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.60.8`
-**Project release:** `v1.60.8`
+**Documentation version:** `1.60.9`
+**Project release:** `v1.60.9`
 <!-- dck-version:end -->
 
 # Running dck Containers

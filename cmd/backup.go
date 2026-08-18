@@ -905,7 +905,10 @@ func extractBackupToStage(stage, archivePath string) ([]byte, error) {
 			continue
 		}
 		if !h.FileInfo().Mode().IsRegular() {
-			return nil, fmt.Errorf("unsupported backup entry %q", h.Name)
+			// Skip overlayfs whiteout files (.wh.*), character/block
+			// devices, fifos, and sockets — these are runtime artifacts
+			// that cannot be meaningfully restored.
+			continue
 		}
 		if err := os.MkdirAll(filepath.Dir(target), 0700); err != nil {
 			return nil, err
