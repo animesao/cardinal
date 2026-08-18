@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.25.3`
-**Project release:** `v1.25.3`
+**Documentation version:** `1.25.7`
+**Project release:** `v1.25.7`
 <!-- dck-version:end -->
 
 # Установка dck в Void Linux

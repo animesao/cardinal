@@ -1,6 +1,6 @@
 <!-- dck-version:start -->
-**Documentation version:** `1.25.3`
-**Project release:** `v1.25.3`
+**Documentation version:** `1.25.7`
+**Project release:** `v1.25.7`
 <!-- dck-version:end -->
 
 <p align="center">
@@ -9,8 +9,16 @@
 
 # Changelog
 
+## 1.25.7 (2026-08-18)
+
+### API and CLI
+
+- Add container startup-command updates through `POST /containers/<id>/update`.
+- Add `dck set <container> --startup` with inline and `@file` script support.
+- Accept canonical and compatibility JSON field names for startup scripts.
+
 <!-- dck-current-release:start -->
-> Current release: **v1.25.3**. Detailed release notes below are maintained manually.
+> Current release: **v1.25.7**. Detailed release notes below are maintained manually.
 <!-- dck-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

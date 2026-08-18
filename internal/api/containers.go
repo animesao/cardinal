@@ -217,8 +217,9 @@ func containerToInspect(c *container.Container) *ContainerInspect {
 		Image:        imageName,
 		WorkingDir:   c.WorkingDir,
 		Entrypoint:   nil,
-		Labels:       c.Labels,
-		Volumes:      make(map[string]struct{}),
+		Labels:        c.Labels,
+		Volumes:       make(map[string]struct{}),
+		StartupScript: c.StartupScript,
 	}
 	for _, v := range c.Volumes {
 		config.Volumes[v.Target] = struct{}{}
@@ -467,7 +468,8 @@ func handleContainersCreate(w http.ResponseWriter, r *http.Request) {
 		Entrypoint:  entrypoint,
 		WorkingDir:  workdir,
 		DNS:         dns,
-		User:        req.User,
+		User:          req.User,
+		StartupScript: req.StartupScript,
 	}
 
 	c := container.New(img, opts)
@@ -550,6 +552,8 @@ func handleContainersRouter(w http.ResponseWriter, r *http.Request) {
 		handleContainerStats(w, r, c)
 	case "rename":
 		handleContainerRename(w, r, c)
+	case "update":
+		handleContainerUpdate(w, r, c)
 	case "exec":
 		handleContainerExec(w, r, c)
 	case "wait":
@@ -645,6 +649,48 @@ func handleContainerRemove(w http.ResponseWriter, r *http.Request, c *container.
 		return
 	}
 	writeJSON(w, 204, nil)
+}
+
+func handleContainerUpdate(w http.ResponseWriter, r *http.Request, c *container.Container) {
+	if r.Method != "POST" {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	var req struct {
+		StartupScript      *string `json:"StartupScript"`
+		StartupScriptLower *string `json:"startupScript"`
+		StartupScriptSnake *string `json:"startup_script"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid JSON: %v", err))
+		return
+	}
+	startupScript := req.StartupScript
+	if startupScript == nil {
+		startupScript = req.StartupScriptLower
+	}
+	if startupScript == nil {
+		startupScript = req.StartupScriptSnake
+	}
+	if startupScript == nil {
+		writeError(w, http.StatusBadRequest, "no supported changes supplied")
+		return
+	}
+	if len(*startupScript) > 1024*1024 {
+		writeError(w, http.StatusRequestEntityTooLarge, "startup script is too large")
+		return
+	}
+
+	c.StartupScript = *startupScript
+	if err := c.Save(); err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("save container: %v", err))
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"ok": true,
+		"restartRequired": c.Status == container.Running,
+	})
 }
 
 func handleContainerLogs(w http.ResponseWriter, r *http.Request, c *container.Container) {

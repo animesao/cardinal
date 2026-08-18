@@ -93,6 +93,7 @@ type ContainerConfig struct {
 	Labels       map[string]string   `json:"Labels,omitempty"`
 	StopSignal   string              `json:"StopSignal,omitempty"`
 	Healthcheck  interface{}         `json:"Healthcheck,omitempty"`
+	StartupScript string              `json:"StartupScript,omitempty"`
 }
 
 type HostConfig struct {
@@ -226,6 +227,7 @@ type CreateContainerRequest struct {
 	Labels       map[string]string   `json:"Labels,omitempty"`
 	HostConfig   *CreateHostConfig   `json:"HostConfig,omitempty"`
 	Healthcheck  interface{}         `json:"Healthcheck,omitempty"`
+	StartupScript string              `json:"StartupScript,omitempty"`
 }
 
 type CreateHostConfig struct {

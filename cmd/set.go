@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"dck/internal/container"
@@ -29,6 +30,7 @@ func Set(args []string) {
 		fmt.Println("  --no-new-privs  Disable privilege escalation")
 		fmt.Println("  -h <name>       Hostname")
 		fmt.Println("  --network <m>   Network mode")
+		fmt.Println("  --startup <s>   Startup script or @filepath")
 		os.Exit(1)
 	}
 
@@ -52,6 +54,7 @@ func Set(args []string) {
 	noNewPrivs := fs.Bool("no-new-privs", false, "Disable acquiring new privileges")
 	hostname := fs.String("h", "", "Container hostname")
 	networkMode := fs.String("network", "", "Network mode (bridge/none/host)")
+	startup := fs.String("startup", "", "Startup script (inline or @filepath)")
 
 	if err := fs.Parse(flagArgs); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing set options: %v\n", err)
@@ -150,6 +153,25 @@ func Set(args []string) {
 
 	if *networkMode != "" {
 		c.NetworkMode = *networkMode
+		changed = true
+	}
+
+	if *startup != "" {
+		startupValue := *startup
+		if strings.HasPrefix(startupValue, "@") {
+			path := strings.TrimPrefix(startupValue, "@")
+			data, err := os.ReadFile(path)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error reading startup script file %q: %v\n", path, err)
+				os.Exit(1)
+			}
+			startupValue = string(data)
+		}
+		if len(startupValue) > 1024*1024 {
+			fmt.Fprintln(os.Stderr, "Error: startup script is too large (maximum 1 MiB)")
+			os.Exit(1)
+		}
+		c.StartupScript = startupValue
 		changed = true
 	}
 

@@ -182,9 +182,11 @@ Flags:
   --no-new-privs           Block privilege escalation
   -h string                Hostname
   --network string         Network mode (bridge/none/host)
+  --startup string          Startup script or @filepath
 
 Example:
-  dck set myweb --ram 4g --cpu 2 --restart always`})
+  dck set myweb --ram 4g --cpu 2 --restart always
+  dck set myweb --startup @/opt/my-startup.sh`})
 	psCmd := register(commandSpec{"ps", "List containers", Ps, ""})
 	psCmd.Flags().BoolP("all", "a", false, "Show all containers (running + stopped)")
 	psCmd.Run = func(c *cobra.Command, args []string) {
