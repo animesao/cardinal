@@ -1,7 +1,15 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.1`
-**Project release:** `v2.0.1`
+**Documentation version:** `2.0.2`
+**Project release:** `v2.0.2`
 <!-- cardinal-version:end -->
+
+## 2.0.2 (2026-08-25)
+
+### Blueprint registry fixes
+
+- Fix `cardinal blueprint ls/list` `official: parse error` — `fetchURL` now uses `curl -fsSL` with timeouts and proper HTTP error propagation instead of silent HTML return.
+- Improve `fetchBlueprintRegistry` diagnostics: include real `json.Unmarshal` error, 300-char preview, and hint for HTML/empty response; add hint to final error about `cardinal blueprint repo list` and `raw.githubusercontent.com` connectivity.
+- Auto-migrate legacy blueprint repository URLs (`dck-organization/dck-blueprints`, `animesao/dck-blueprints` → `cardinal-organization/cardinal-blueprints`) and normalize URLs on load; fix corrupted/empty `~/.cardinal/blueprint-repos.json` handling.
 
 ## 1.60.11 (2026-08-18)
 
@@ -118,7 +126,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.0.1**. Detailed release notes below are maintained manually.
+> Current release: **v2.0.2**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

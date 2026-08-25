@@ -757,7 +757,18 @@ func fetchBlueprintRegistry() (*blueprintRegistry, error) {
 
 		var reg blueprintRegistry
 		if err := json.Unmarshal([]byte(data), &reg); err != nil {
-			errs = append(errs, fmt.Sprintf("%s: parse error", repo.Name))
+			preview := strings.TrimSpace(data)
+			if len(preview) > 300 {
+				preview = preview[:300] + "..."
+			}
+			hint := ""
+			lower := strings.ToLower(preview)
+			if strings.HasPrefix(lower, "<!doctype") || strings.HasPrefix(lower, "<html") {
+				hint = " (received HTML instead of JSON — check repository URL, network/proxy or GitHub rate limit)"
+			} else if preview == "" {
+				hint = " (empty response)"
+			}
+			errs = append(errs, fmt.Sprintf("%s: parse error: %v%s; preview: %q", repo.Name, err, hint, preview))
 			continue
 		}
 
@@ -780,7 +791,7 @@ func fetchBlueprintRegistry() (*blueprintRegistry, error) {
 	}
 
 	if len(merged.Blueprints) == 0 && len(errs) > 0 {
-		return nil, fmt.Errorf("failed to fetch from all repositories:\n  %s", strings.Join(errs, "\n  "))
+		return nil, fmt.Errorf("failed to fetch from all repositories:\n  %s\nHint: check 'cardinal blueprint repo list' and network connectivity to raw.githubusercontent.com", strings.Join(errs, "\n  "))
 	}
 
 	for _, e := range errs {

@@ -329,7 +329,7 @@ func fetchURLWithWgetBytes(url string) ([]byte, error) {
 
 func fetchURLWithCurl(url string) (string, error) {
 	var stderr bytes.Buffer
-	cmd := exec.Command("curl", "-sL", url)
+	cmd := exec.Command("curl", "-fsSL", "--connect-timeout", "10", "--max-time", "30", url)
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
@@ -340,7 +340,7 @@ func fetchURLWithCurl(url string) (string, error) {
 
 func fetchURLWithWget(url string) (string, error) {
 	var stderr bytes.Buffer
-	cmd := exec.Command("wget", "-qO-", url)
+	cmd := exec.Command("wget", "-qO-", "--timeout=20", "--tries=3", url)
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {

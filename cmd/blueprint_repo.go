@@ -38,6 +38,23 @@ func blueprintReposPath() string {
 	return filepath.Join(home, ".cardinal", "blueprint-repos.json")
 }
 
+func migrateLegacyRepoURL(url string) (string, bool) {
+	original := url
+	// Legacy renames: dck -> cardinal
+	if strings.Contains(url, "dck-blueprints") {
+		url = strings.ReplaceAll(url, "dck-blueprints", "cardinal-blueprints")
+	}
+	if strings.Contains(url, "dck-organization") {
+		url = strings.ReplaceAll(url, "dck-organization", "cardinal-organization")
+	}
+	// Old personal fork animesao/dck-blueprints or animesao/cardinal-blueprints -> official
+	if strings.Contains(url, "animesao/") && strings.Contains(url, "blueprints") {
+		url = "https://raw.githubusercontent.com/cardinal-organization/cardinal-blueprints"
+	}
+	url = strings.TrimSuffix(url, "/")
+	return url, url != original
+}
+
 func loadBlueprintRepos() *blueprintRepoConfig {
 	path := blueprintReposPath()
 	data, err := os.ReadFile(path)
@@ -53,10 +70,43 @@ func loadBlueprintRepos() *blueprintRepoConfig {
 
 	var cfg blueprintRepoConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: corrupted blueprint repository config %s: %v — resetting to default\n", path, err)
 		cfg = blueprintRepoConfig{Repos: []blueprintRepo{defaultBlueprintRepo()}}
+		if err := saveBlueprintRepos(&cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Error saving default blueprint repository config: %v\n", err)
+		}
+		return &cfg
 	}
 	if len(cfg.Repos) == 0 {
 		cfg.Repos = []blueprintRepo{defaultBlueprintRepo()}
+		if err := saveBlueprintRepos(&cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Error saving default blueprint repository config: %v\n", err)
+		}
+		return &cfg
+	}
+	// Auto-migrate legacy repository URLs (dck -> cardinal renames)
+	migrated := false
+	for i, r := range cfg.Repos {
+		if newURL, changed := migrateLegacyRepoURL(r.URL); changed {
+			fmt.Fprintf(os.Stderr, "Migrating blueprint repository %q: %s -> %s\n", r.Name, r.URL, newURL)
+			cfg.Repos[i].URL = newURL
+			migrated = true
+		}
+		// Normalize URL format
+		normalized := normalizeRepoURL(cfg.Repos[i].URL)
+		if normalized != cfg.Repos[i].URL {
+			cfg.Repos[i].URL = normalized
+			migrated = true
+		}
+		if cfg.Repos[i].Branch == "" {
+			cfg.Repos[i].Branch = "main"
+			migrated = true
+		}
+	}
+	if migrated {
+		if err := saveBlueprintRepos(&cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Error saving migrated blueprint repository config: %v\n", err)
+		}
 	}
 	return &cfg
 }
