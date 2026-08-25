@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `1.61.1`
-**Project release:** `v1.61.1`
+**Documentation version:** `2.0.1`
+**Project release:** `v2.0.1`
 <!-- cardinal-version:end -->
 
 # Installing cardinal on Debian / Ubuntu
