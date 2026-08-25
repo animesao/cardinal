@@ -11,5 +11,5 @@ package cmd
 var (
 	repoURL          = "https://raw.githubusercontent.com/animesao/cardinal"
 	releaseURL       = "https://github.com/animesao/cardinal"
-	blueprintRepoURL = "https://raw.githubusercontent.com/dck-organization/dck-blueprints"
+	blueprintRepoURL = "https://raw.githubusercontent.com/animesao/cardinal-blueprints"
 )

@@ -13,23 +13,23 @@ rm -rf /tmp/cardinal-update
 echo "cardinal updated: $(cardinal version)"
 
 echo ""
-echo "=== Updating dck-panel ==="
-cd /opt/dck-panel
+echo "=== Updating cardinal-panel ==="
+cd /opt/cardinal-panel
 git fetch origin
 git reset --hard origin/main
-cd /opt/dck-panel/server
+cd /opt/cardinal-panel/server
 CGO_ENABLED=0 go build -ldflags="-s -w" -o /usr/local/bin/cardinal-server .
 
-mkdir -p /root/.dck-panel /root/.cardinal
+mkdir -p /root/.cardinal-panel /root/.cardinal
 
-cat > /etc/systemd/system/dck-panel.service << 'SYSTEMD'
+cat > /etc/systemd/system/cardinal-panel.service << 'SYSTEMD'
 [Unit]
 Description=cardinal Panel
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/cardinal-server --port 80 --sftp-port 2222 --data-dir /root/.dck-panel
+ExecStart=/usr/local/bin/cardinal-server --port 80 --sftp-port 2222 --data-dir /root/.cardinal-panel
 Restart=always
 RestartSec=5
 Environment=HOME=/root
@@ -42,16 +42,16 @@ SYSTEMD
 
 systemctl daemon-reload
 
-if systemctl is-active --quiet dck-panel 2>/dev/null; then
-  systemctl restart dck-panel
-  echo "dck-panel restarted via systemd"
+if systemctl is-active --quiet cardinal-panel 2>/dev/null; then
+  systemctl restart cardinal-panel
+  echo "cardinal-panel restarted via systemd"
 elif systemctl is-active --quiet cardinal-server 2>/dev/null; then
   systemctl stop cardinal-server 2>/dev/null || true
-  systemctl enable --now dck-panel
-  echo "migrated from cardinal-server to dck-panel service"
+  systemctl enable --now cardinal-panel
+  echo "migrated from cardinal-server to cardinal-panel service"
 else
-  systemctl enable --now dck-panel
-  echo "dck-panel started via systemd"
+  systemctl enable --now cardinal-panel
+  echo "cardinal-panel started via systemd"
 fi
 
 echo ""

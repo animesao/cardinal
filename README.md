@@ -46,8 +46,8 @@ curl -fsSL https://raw.githubusercontent.com/animesao/cardinal/main/install.sh |
 # Debian/Ubuntu APT repository installer (optional)
 curl -fsSL https://raw.githubusercontent.com/animesao/cardinal/main/scripts/install-apt.sh | sudo bash
 
-# dck-client
-curl -sSL https://raw.githubusercontent.com/animesao/dck-client/main/install.sh | sudo bash
+# cardinal-client
+curl -sSL https://raw.githubusercontent.com/animesao/cardinal-client/main/install.sh | sudo bash
 
 # Pull & run
 cardinal pull nginx:alpine
@@ -666,18 +666,18 @@ Packages install into the overlay and persist across restarts.
 
 ---
 
-## dck-wings — Container Management Agent
+## cardinal-wings — Container Management Agent
 
-[dck-wings](https://github.com/animesao/dck-wings) is a REST API daemon for managing containers remotely. It runs as a systemd service and allows frontends (like dck-panel) to control containers over HTTP.
+[cardinal-wings](https://github.com/animesao/cardinal-wings) is a REST API daemon for managing containers remotely. It runs as a systemd service and allows frontends (like cardinal-panel) to control containers over HTTP.
 
 ```bash
 # Install
-bash <(curl -sfL https://raw.githubusercontent.com/animesao/dck-wings/main/install.sh)
+bash <(curl -sfL https://raw.githubusercontent.com/animesao/cardinal-wings/main/install.sh)
 
 # Start
-systemctl enable --now dck-wings
+systemctl enable --now cardinal-wings
 
-# API (auth via Bearer token from /etc/dck-wings/config.toml)
+# API (auth via Bearer token from /etc/cardinal-wings/config.toml)
 curl -H "Authorization: Bearer <api_key>" http://localhost:8080/api/containers
 ```
 

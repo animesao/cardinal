@@ -421,7 +421,7 @@
 - **State tests**: 12 unit-тестов для `internal/state` (пути, JSON, FileExists)
 
 ### Bug Fixes
-- **dck-wings**: Исправлен баг валидации container ID — `/` блокировал все action-запросы (start/stop/restart)
+- **cardinal-wings**: Исправлен баг валидации container ID — `/` блокировал все action-запросы (start/stop/restart)
 
 ## 1.15.0 (2026-06-13)
 
