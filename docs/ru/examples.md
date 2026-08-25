@@ -428,7 +428,87 @@ cardinal fn call hello --data '{"name":"cardinal"}'
 cardinal fn rm hello
 ```
 
-## 17. Обслуживание и recovery после reboot
+## 17. Запуск через `--image` / `--cmd` / `--workdir`
+
+Вместо позиционных аргументов можно передать образ, команду и рабочую директорию через флаги. Это удобно для длинных команд и скриптов:
+
+```text
+cardinal run -d \
+  --image ОБРАЗ \
+  --cmd "КОМАНДА" \
+  --workdir /path \
+  --restart always \
+  -n ИМЯ -p ПОРТ \
+  -v SRC:DST --memory 4G --cpus 4 \
+  --network host
+```
+
+### Minecraft Paper:
+
+```bash
+cardinal run -d --restart always \
+  -n mc-paper -p 25565:25565 \
+  -v $PWD:/data --memory 4G --cpus 4 \
+  -workdir /data \
+  -image eclipse-temurin:21-jdk \
+  -cmd "java -Xmx3500M -jar paper-1.21.11-116.jar nogui"
+```
+
+### Discord-бот:
+
+```bash
+cardinal run -d --restart always \
+  -n discord-bot \
+  -v /data/bot:/bot --workdir /bot \
+  -e BOT_TOKEN=your_token \
+  -image python:3.12 \
+  -cmd "sh -c 'pip install -r /bot/requirements.txt && exec python /bot/bot.py'"
+```
+
+### Telegram-бот:
+
+```bash
+cardinal run -d --restart always \
+  -n tg-bot \
+  -v /data/tg-bot:/bot --workdir /bot \
+  -e BOT_TOKEN=your_token \
+  -image python:3.12 \
+  -cmd "sh -c 'pip install -r /bot/requirements.txt && exec python /bot/bot.py'"
+```
+
+### PostgreSQL:
+
+```bash
+cardinal run -d --restart always \
+  -n postgres -p 5432:5432 \
+  -v pg_data:/var/lib/postgresql/data \
+  -e POSTGRES_DB=myapp -e POSTGRES_PASSWORD=secret \
+  -image postgres:16
+```
+
+### Redis:
+
+```bash
+cardinal run -d --restart always \
+  -n redis -p 6379:6379 \
+  -v redis_data:/data \
+  -image redis:7 \
+  -cmd "redis-server --appendonly yes"
+```
+
+### Nginx (статический сайт):
+
+```bash
+cardinal run -d --restart always \
+  -n web -p 8080:80 \
+  -v /data/site:/usr/share/nginx/html \
+  -network host \
+  -image nginx:alpine
+```
+
+> **Сетевой доступ:** если приложению нужен интернет (DNS), добавьте `-network host`. Без этого bridge-контейнеры не резолвят внешние хосты.
+
+## 18. Обслуживание и recovery после reboot
 
 ```bash
 cardinal info
