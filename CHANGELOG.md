@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `1.61.0`
-**Project release:** `v1.61.0`
+**Documentation version:** `1.61.1`
+**Project release:** `v1.61.1`
 <!-- cardinal-version:end -->
 
 ## 1.60.11 (2026-08-18)
@@ -118,7 +118,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v1.61.0**. Detailed release notes below are maintained manually.
+> Current release: **v1.61.1**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
