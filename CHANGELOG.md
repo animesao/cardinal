@@ -1,7 +1,17 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.2`
-**Project release:** `v2.0.2`
+**Documentation version:** `2.0.3`
+**Project release:** `v2.0.3`
 <!-- cardinal-version:end -->
+
+## 2.0.3 (2026-08-25)
+
+### All commands restored after cobra migration
+
+- Fix cobra migration regression where 90% of flags were broken with `unknown flag` — legacy `flag.NewFlagSet` commands (`stop --all`, `rm -f`, `logs -f`, `exec -it`, `up -f`, `down -a`, `update --check`, `doctor --strict`, `pull --platform`, `push -u/-p`, `login -u/-p`, `volume -d`, `network --subnet`, `events --since`, etc.) now use `DisableFlagParsing` so raw args reach legacy parsers, plus `stripGlobalFlags` for `--json`/`--quiet`/`--log-level` handling in both `cardinal --json <cmd>` and `cardinal <cmd> --json` positions.
+- Add `cardinal rm -r` as alias for `-f`/`--force` (with `ContinueOnError`, combined handling, updated usage `[-f] [-r] [--force]`) to satisfy `cardinal rm -r <container>` expectation.
+- Fix `cardinal exec -it` and `cardinal run -it` combined shorthands (`-it`/`-ti`/`-dit`/`-tid` etc.) via normalization before flag parse — stdlib `flag` does not support combined bools like `pflag`, fixes Docker-style `exec -it` and `run -it` regressions.
+- Improve help handling for disabled commands (`--help`/`-h`/`help` via `hasLongHelpArgument`) and backup/security subcommands (`backup create/enable/etc.` now `DisableFlagParsing` with proper help).
+- Verification: `go vet ./cmd/...` ok, `go test ./cmd/... -run TestNewRoot` ok, manual flag matrix for all 52 commands no longer reports `unknown flag` / `flag provided but not defined`; global opts work in both positions.
 
 ## 2.0.2 (2026-08-25)
 
@@ -126,7 +136,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.0.2**. Detailed release notes below are maintained manually.
+> Current release: **v2.0.3**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
