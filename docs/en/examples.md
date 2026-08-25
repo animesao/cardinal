@@ -240,6 +240,7 @@ cardinal run -d \
   --restart-delay 1m \
   --vol "$PWD:/data" \
   --workdir /data \
+  --network host \
   --memory 4g \
   --cpus 4 \
   eclipse-temurin:21 \

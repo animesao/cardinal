@@ -523,15 +523,19 @@ echo "🚀 Starting Paper 1.21.11 (build 116) server..."
 exec "$JAVA_CMD" -XX:MaxRAMPercentage="$MAX_PERCENT" -XX:InitialRAMPercentage="$INIT_PERCENT" -jar "$SERVER_JAR" nogui
 ```
 
-Запуск:
+Простой запуск (Java уже в образе, jar на сервере):
 
 ```bash
 cardinal run -d --restart always \
   -n mc-paper -p 25565:25565 \
-  -v mc_data:/data --memory 4G --cpus 4 \
-  --startup @mc-startup.sh \
-  eclipse-temurin:21-jdk
+  -v $PWD:/data --memory 4G --cpus 4 \
+  -workdir /data \
+  -network host \
+  eclipse-temurin:21-jdk \
+  java -Xmx3500M -jar paper-1.21.11-116.jar nogui
 ```
+
+> **DNS в контейнере:** если скрипт или приложение need доступ в интернет, добавьте `-network host` — тогда контейнер использует сеть хоста включая DNS. Без этого bridge-контейнеры могут не резолвить внешние хосты.
 
 More Minecraft examples (modded servers, custom JARs, backups) → [docs/en/websites.md](docs/en/websites.md#minecraft-server)
 

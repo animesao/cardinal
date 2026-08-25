@@ -408,11 +408,12 @@ cardinal run -d \
   --restart unless-stopped \
   --vol /data/minecraft:/test \
   --workdir /test \
+  --network host \
   eclipse-temurin:21 \
   java -jar server.jar nogui
 ```
 
-The server must listen on `0.0.0.0:25565`, not only on `127.0.0.1`.
+Use `--network host` when the server or plugins need to resolve external hostnames (DNS). The server must listen on `0.0.0.0:25565`, not only on `127.0.0.1`.
 
 Check it:
 
@@ -432,6 +433,7 @@ cardinal run -d \
   --restart unless-stopped \
   --vol minecraft-data:/data \
   --workdir /data \
+  --network host \
   eclipse-temurin:21 \
   java -jar server.jar nogui
 ```

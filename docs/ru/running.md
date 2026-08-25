@@ -411,11 +411,12 @@ cardinal run -d \
   --restart unless-stopped \
   --vol /data/minecraft:/test \
   --workdir /test \
+  --network host \
   eclipse-temurin:21 \
   java -jar server.jar nogui
 ```
 
-Сервер должен слушать `0.0.0.0:25565`, а не только `127.0.0.1`.
+Используйте `--network host`, если серверу или плагинам нужен доступ в интернет (DNS). Сервер должен слушать `0.0.0.0:25565`, а не только `127.0.0.1`.
 
 Проверка:
 
@@ -435,6 +436,7 @@ cardinal run -d \
   --restart unless-stopped \
   --vol minecraft-data:/data \
   --workdir /data \
+  --network host \
   eclipse-temurin:21 \
   java -jar server.jar nogui
 ```
