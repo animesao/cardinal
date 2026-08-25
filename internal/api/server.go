@@ -242,14 +242,9 @@ func rateLimiter(next http.Handler) http.Handler {
 		clients = map[string]*rateBucket{}
 	)
 	prune := func(maxAge time.Duration) {
-		cutoff := time.Now().Add(-maxAge)
 		mu.Lock()
 		defer mu.Unlock()
-		for k, v := range clients {
-			if v.last.Before(cutoff) {
-				delete(clients, k)
-			}
-		}
+		pruneLocked(clients, maxAge)
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host, _, err := net.SplitHostPort(r.RemoteAddr)
@@ -265,7 +260,7 @@ func rateLimiter(next http.Handler) http.Handler {
 		if !ok {
 			// Evict stale entries before admitting a new client when at capacity.
 			if len(clients) >= maxClients {
-				pruneLocked(10 * time.Minute)
+				pruneLocked(clients, 10*time.Minute)
 			}
 			state = &rateBucket{tokens: bucket, last: time.Now()}
 			clients[host] = state
@@ -293,7 +288,7 @@ func rateLimiter(next http.Handler) http.Handler {
 }
 
 // pruneLocked removes stale entries while the mutex is already held.
-func pruneLocked(maxAge time.Duration) {
+func pruneLocked(clients map[string]*rateBucket, maxAge time.Duration) {
 	cutoff := time.Now().Add(-maxAge)
 	for k, v := range clients {
 		if v.last.Before(cutoff) {
