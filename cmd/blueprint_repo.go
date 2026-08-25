@@ -24,7 +24,7 @@ type blueprintRepoConfig struct {
 func defaultBlueprintRepo() blueprintRepo {
 	return blueprintRepo{
 		Name:    "official",
-		URL:     "https://raw.githubusercontent.com/animesao/cardinal-blueprints",
+		URL:     "https://raw.githubusercontent.com/cardinal-organization/cardinal-blueprints",
 		Branch:  "main",
 		Enabled: true,
 	}
