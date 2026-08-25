@@ -9,8 +9,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"dck/internal/api"
-	"dck/internal/orchestrator"
+	"cardinal/internal/api"
+	"cardinal/internal/orchestrator"
 )
 
 func Cluster(args []string) {
@@ -47,7 +47,7 @@ func Cluster(args []string) {
 }
 
 func printClusterUsage() {
-	fmt.Println(`Usage: dck cluster COMMAND
+	fmt.Println(`Usage: cardinal cluster COMMAND
 
 Manage clusters
 
@@ -69,13 +69,13 @@ func clusterInit(args []string) {
 	port := fs.Int("port", 7946, "Cluster port")
 	apiPort := fs.Int("api-port", 2375, "API server port (for remote replica requests)")
 	startAPI := fs.Bool("serve", false, "Start API server after init")
-	token := fs.String("token", "", "API authentication token (or DCK_TOKEN env)")
+	token := fs.String("token", "", "API authentication token (or CARDINAL_TOKEN env)")
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing cluster options: %v\n", err)
 		os.Exit(1)
 	}
 	if *token == "" {
-		*token = os.Getenv("DCK_TOKEN")
+		*token = os.Getenv("CARDINAL_TOKEN")
 	}
 	api.SetAuthToken(*token)
 	api.SetServerVersion(version)
@@ -106,7 +106,7 @@ func clusterInit(args []string) {
 
 func clusterJoin(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck cluster join <peer_addr>")
+		fmt.Println("Usage: cardinal cluster join <peer_addr>")
 		os.Exit(1)
 	}
 
@@ -120,13 +120,13 @@ func clusterJoin(args []string) {
 	fs.StringVar(&bind, "bind", "127.0.0.1", "Bind address")
 	fs.IntVar(&port, "port", 2375, "API port")
 	fs.BoolVar(&startAPI, "serve", false, "Start API server after join")
-	fs.StringVar(&token, "token", "", "API authentication token (or DCK_TOKEN env)")
+	fs.StringVar(&token, "token", "", "API authentication token (or CARDINAL_TOKEN env)")
 	if err := fs.Parse(args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing cluster join options: %v\n", err)
 		os.Exit(1)
 	}
 	if token == "" {
-		token = os.Getenv("DCK_TOKEN")
+		token = os.Getenv("CARDINAL_TOKEN")
 	}
 	api.SetAuthToken(token)
 	api.SetServerVersion(version)
@@ -171,7 +171,7 @@ func clusterJoinToken(args []string) {
 
 	fmt.Printf("Cluster: %s (%s)\n", info.ClusterName, shortID(info.ClusterID))
 	fmt.Printf("Join token:\n")
-	fmt.Printf("  dck cluster join %s:%d\n", node.Address, node.APIPort)
+	fmt.Printf("  cardinal cluster join %s:%d\n", node.Address, node.APIPort)
 }
 
 func clusterInfo(args []string) {
@@ -223,7 +223,7 @@ func clusterInfo(args []string) {
 
 func clusterNode(args []string) {
 	if len(args) < 1 {
-		fmt.Println(`Usage: dck cluster node COMMAND
+		fmt.Println(`Usage: cardinal cluster node COMMAND
 
 Manage cluster nodes
 
@@ -290,7 +290,7 @@ func clusterNodeList(args []string) {
 
 func clusterNodeInspect(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck cluster node inspect <id>")
+		fmt.Println("Usage: cardinal cluster node inspect <id>")
 		os.Exit(1)
 	}
 
@@ -373,14 +373,14 @@ func shortID(id string) string {
 func clusterServe(args []string) {
 	fs := flag.NewFlagSet("cluster serve", flag.ExitOnError)
 	port := fs.Int("p", 2375, "API port")
-	host := fs.String("H", "127.0.0.1", "API host (external addresses require --token or DCK_TOKEN)")
-	token := fs.String("token", "", "API authentication token (or DCK_TOKEN env)")
+	host := fs.String("H", "127.0.0.1", "API host (external addresses require --token or CARDINAL_TOKEN)")
+	token := fs.String("token", "", "API authentication token (or CARDINAL_TOKEN env)")
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing cluster options: %v\n", err)
 		os.Exit(1)
 	}
 	if *token == "" {
-		*token = os.Getenv("DCK_TOKEN")
+		*token = os.Getenv("CARDINAL_TOKEN")
 	}
 	api.SetAuthToken(*token)
 	api.SetServerVersion(version)

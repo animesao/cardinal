@@ -10,7 +10,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"dck/internal/orchestrator"
+	"cardinal/internal/orchestrator"
 )
 
 func Service(args []string) {
@@ -41,7 +41,7 @@ func Service(args []string) {
 }
 
 func printServiceUsage() {
-	fmt.Println(`Usage: dck service COMMAND
+	fmt.Println(`Usage: cardinal service COMMAND
 
 Manage services
 
@@ -106,7 +106,7 @@ func serviceCreate(args []string) {
 	}
 
 	if name == "" || image == "" {
-		fmt.Println("Usage: dck service create --name <name> [--replicas N] [--port P:T] <image>")
+		fmt.Println("Usage: cardinal service create --name <name> [--replicas N] [--port P:T] <image>")
 		os.Exit(1)
 	}
 
@@ -161,7 +161,7 @@ func serviceList(args []string) {
 
 func serviceRemove(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck service rm <name>")
+		fmt.Println("Usage: cardinal service rm <name>")
 		os.Exit(1)
 	}
 
@@ -176,7 +176,7 @@ func serviceRemove(args []string) {
 
 func serviceScale(args []string) {
 	if len(args) < 2 {
-		fmt.Println("Usage: dck service scale <name> <replicas>")
+		fmt.Println("Usage: cardinal service scale <name> <replicas>")
 		os.Exit(1)
 	}
 
@@ -222,7 +222,7 @@ func serviceUpdate(args []string) {
 	}
 
 	if name == "" || image == "" {
-		fmt.Println("Usage: dck service update <name> --image <new_image>")
+		fmt.Println("Usage: cardinal service update <name> --image <new_image>")
 		os.Exit(1)
 	}
 

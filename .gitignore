@@ -1,17 +1,17 @@
 # Build artifacts
-/dck
-/dck.exe
-dck-linux
+/cardinal
+/cardinal.exe
+cardinal-linux
 *.test
 *.out
-dck-linux-*
+cardinal-linux-*
 
 # Local state / secrets — never commit
 .env
 .env.*
 !.env.example
-*.dck-token
-.dck-token
+*.cardinal-token
+.cardinal-token
 coverage.out
 dist/
 artifacts/

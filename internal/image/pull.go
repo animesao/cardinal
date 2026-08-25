@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"dck/internal/overlayutil"
-	"dck/internal/state"
+	"cardinal/internal/overlayutil"
+	"cardinal/internal/state"
 )
 
 const (
@@ -131,7 +131,7 @@ func PullWithPlatformContext(ctx context.Context, ref, platformOS, platformArch 
 		return nil, fmt.Errorf("save config: %w", err)
 	}
 
-	// Save the OCI/Docker manifest separately from dck's internal image.json metadata.
+	// Save the OCI/Docker manifest separately from cardinal's internal image.json metadata.
 	manifestData, err := json.Marshal(manifest)
 	if err != nil {
 		return nil, fmt.Errorf("marshal manifest: %w", err)
@@ -325,7 +325,7 @@ func downloadBlobToFile(repo, digest, token, dest string, onProgress progressFn)
 
 	contentLength := resp.ContentLength
 
-	tmp, err := os.CreateTemp(filepath.Dir(dest), ".dck-layer-*")
+	tmp, err := os.CreateTemp(filepath.Dir(dest), ".cardinal-layer-*")
 	if err != nil {
 		return err
 	}

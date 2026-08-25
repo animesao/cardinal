@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 func EnsureSysctl() {
@@ -23,7 +23,7 @@ func EnsureSysctl() {
 	}
 
 	_ = os.MkdirAll("/etc/sysctl.d", 0755)
-	confPath := "/etc/sysctl.d/99-dck.conf"
+	confPath := "/etc/sysctl.d/99-cardinal.conf"
 	var entries []string
 	data, err := os.ReadFile(confPath)
 	if err == nil {
@@ -50,7 +50,7 @@ func EnsureSysctl() {
 	if write {
 		f, err := os.OpenFile(confPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err == nil {
-			_, _ = f.WriteString("# dck: container networking sysctls\n")
+			_, _ = f.WriteString("# cardinal: container networking sysctls\n")
 			for _, e := range entries {
 				if e != "" {
 					_, _ = f.WriteString(e + "\n")
@@ -80,7 +80,7 @@ func EnsureNetBase() {
 }
 
 const (
-	BridgeName = "dck0"
+	BridgeName = "cardinal0"
 	BridgeCIDR = "10.0.2.0/24"
 	BridgeIP   = "10.0.2.1"
 )
@@ -436,7 +436,7 @@ func AddPortForwarding(containerIP string, hostPort, containerPort int, protocol
 }
 
 // ensureDockerUserRule inserts an ACCEPT rule into Docker's DOCKER-USER
-// chain so that Docker's own FORWARD-DROP doesn't block DCK container traffic.
+// chain so that Docker's own FORWARD-DROP doesn't block CARDINAL container traffic.
 // DOCKER-USER is processed before any Docker chain, making it the correct
 // place for rules that should bypass Docker's default filtering.
 func ensureDockerUserRule(containerIP string, containerPort int, protocol string) {

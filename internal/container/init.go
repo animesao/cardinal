@@ -17,8 +17,8 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"dck/internal/log"
-	"dck/internal/state"
+	"cardinal/internal/log"
+	"cardinal/internal/state"
 )
 
 var capMap = map[string]uintptr{
@@ -278,8 +278,8 @@ func allowedContainerSysctl(name string) bool {
 }
 
 func waitForNetworkSetup() error {
-	readyValue := strings.TrimSpace(os.Getenv("DCK_INIT_READY_FD"))
-	goValue := strings.TrimSpace(os.Getenv("DCK_INIT_GO_FD"))
+	readyValue := strings.TrimSpace(os.Getenv("CARDINAL_INIT_READY_FD"))
+	goValue := strings.TrimSpace(os.Getenv("CARDINAL_INIT_GO_FD"))
 	if readyValue == "" && goValue == "" {
 		return nil
 	}
@@ -288,8 +288,8 @@ func waitForNetworkSetup() error {
 	if readyErr != nil || goErr != nil || readyFD < 0 || goFD < 0 {
 		return fmt.Errorf("invalid network handshake file descriptors")
 	}
-	ready := os.NewFile(uintptr(readyFD), "dck-network-ready")
-	gate := os.NewFile(uintptr(goFD), "dck-network-release")
+	ready := os.NewFile(uintptr(readyFD), "cardinal-network-ready")
+	gate := os.NewFile(uintptr(goFD), "cardinal-network-release")
 	if ready == nil || gate == nil {
 		return fmt.Errorf("network handshake file descriptors are unavailable")
 	}
@@ -509,7 +509,7 @@ func InitContainer(id, merged string) error {
 	if c.WorkingDir != "" {
 		wd = c.WorkingDir
 	}
-	// Containers created by older DCK versions may still contain the generic
+	// Containers created by older CARDINAL versions may still contain the generic
 	// /home/container working directory even though their application files
 	// are mounted elsewhere. For the common relative-jar/script case, use the
 	// mounted directory when the referenced file exists there. This keeps old
@@ -671,65 +671,65 @@ func InitContainer(id, merged string) error {
 		applyUlimits(c.Ulimits)
 	}
 
-	// Inject dck environment variables for startup scripts
+	// Inject cardinal environment variables for startup scripts
 	c.Env = append(c.Env,
-		"DCK_CONTAINER_ID="+c.ID,
-		"DCK_CONTAINER_NAME="+c.Name,
-		"DCK_IMAGE_NAME="+c.ImageName,
-		"DCK_IMAGE_TAG="+c.ImageTag,
-		"DCK_HOSTNAME="+c.Hostname,
-		"DCK_MEMORY="+strconv.FormatInt(c.MemoryLimit, 10),
-		"DCK_CPU="+strconv.FormatFloat(c.CPUCount, 'f', -1, 64),
-		"DCK_IP="+c.IP,
-		"DCK_RESTART="+c.Restart,
+		"CARDINAL_CONTAINER_ID="+c.ID,
+		"CARDINAL_CONTAINER_NAME="+c.Name,
+		"CARDINAL_IMAGE_NAME="+c.ImageName,
+		"CARDINAL_IMAGE_TAG="+c.ImageTag,
+		"CARDINAL_HOSTNAME="+c.Hostname,
+		"CARDINAL_MEMORY="+strconv.FormatInt(c.MemoryLimit, 10),
+		"CARDINAL_CPU="+strconv.FormatFloat(c.CPUCount, 'f', -1, 64),
+		"CARDINAL_IP="+c.IP,
+		"CARDINAL_RESTART="+c.Restart,
 	)
 	for _, p := range c.Ports {
-		key := fmt.Sprintf("DCK_PORT_%s_%d", strings.ToUpper(p.Protocol), p.HostPort)
+		key := fmt.Sprintf("CARDINAL_PORT_%s_%d", strings.ToUpper(p.Protocol), p.HostPort)
 		c.Env = append(c.Env, key+"="+strconv.Itoa(p.ContainerPort))
 	}
 
-	// Create /dck utility scripts inside container
-	os.MkdirAll("/dck", 0755)
-	dckScripts := map[string]string{
+	// Create /cardinal utility scripts inside container
+	os.MkdirAll("/cardinal", 0755)
+	cardinalScripts := map[string]string{
 		"info": `#!/bin/sh
 echo "=== Container Info ==="
-echo "ID:       $DCK_CONTAINER_ID"
-echo "Name:     $DCK_CONTAINER_NAME"
-echo "Image:    $DCK_IMAGE_NAME:$DCK_IMAGE_TAG"
-echo "Hostname: $DCK_HOSTNAME"
-echo "IP:       $DCK_IP"
-echo "Memory:   $DCK_MEMORY"
-echo "CPU:      $DCK_CPU"
-echo "Restart:  $DCK_RESTART"
+echo "ID:       $CARDINAL_CONTAINER_ID"
+echo "Name:     $CARDINAL_CONTAINER_NAME"
+echo "Image:    $CARDINAL_IMAGE_NAME:$CARDINAL_IMAGE_TAG"
+echo "Hostname: $CARDINAL_HOSTNAME"
+echo "IP:       $CARDINAL_IP"
+echo "Memory:   $CARDINAL_MEMORY"
+echo "CPU:      $CARDINAL_CPU"
+echo "Restart:  $CARDINAL_RESTART"
 echo "Ports:"
-env | grep ^DCK_PORT_ | while IFS='=' read -r k v; do echo "  $k=$v"; done
+env | grep ^CARDINAL_PORT_ | while IFS='=' read -r k v; do echo "  $k=$v"; done
 `,
 		"env": `#!/bin/sh
-env | grep ^DCK_ | sort | while IFS='=' read -r k v; do echo "$k=$v"; done
+env | grep ^CARDINAL_ | sort | while IFS='=' read -r k v; do echo "$k=$v"; done
 `,
 		"help": `#!/bin/sh
-echo "Available dck utility scripts:"
-echo "  /dck/info  - Show container information"
-echo "  /dck/env   - Show dck environment variables"
-echo "  /dck/help  - Show this help"
+echo "Available cardinal utility scripts:"
+echo "  /cardinal/info  - Show container information"
+echo "  /cardinal/env   - Show cardinal environment variables"
+echo "  /cardinal/help  - Show this help"
 echo ""
 echo "Environment variables available:"
-echo "  DCK_CONTAINER_ID   - Container ID"
-echo "  DCK_CONTAINER_NAME - Container name"
-echo "  DCK_IMAGE_NAME     - Image name"
-echo "  DCK_IMAGE_TAG      - Image tag"
-echo "  DCK_HOSTNAME       - Container hostname"
-echo "  DCK_IP             - Container IP address"
-echo "  DCK_MEMORY         - Memory limit (bytes)"
-echo "  DCK_CPU            - CPU limit (cores)"
-echo "  DCK_RESTART        - Restart policy"
-echo "  DCK_PORT_TCP_*     - Port mappings (TCP)"
-echo "  DCK_PORT_UDP_*     - Port mappings (UDP)"
+echo "  CARDINAL_CONTAINER_ID   - Container ID"
+echo "  CARDINAL_CONTAINER_NAME - Container name"
+echo "  CARDINAL_IMAGE_NAME     - Image name"
+echo "  CARDINAL_IMAGE_TAG      - Image tag"
+echo "  CARDINAL_HOSTNAME       - Container hostname"
+echo "  CARDINAL_IP             - Container IP address"
+echo "  CARDINAL_MEMORY         - Memory limit (bytes)"
+echo "  CARDINAL_CPU            - CPU limit (cores)"
+echo "  CARDINAL_RESTART        - Restart policy"
+echo "  CARDINAL_PORT_TCP_*     - Port mappings (TCP)"
+echo "  CARDINAL_PORT_UDP_*     - Port mappings (UDP)"
 `,
 	}
-	for name, content := range dckScripts {
-		if err := os.WriteFile("/dck/"+name, []byte(content), 0755); err != nil {
-			return fmt.Errorf("write /dck/%s: %w", name, err)
+	for name, content := range cardinalScripts {
+		if err := os.WriteFile("/cardinal/"+name, []byte(content), 0755); err != nil {
+			return fmt.Errorf("write /cardinal/%s: %w", name, err)
 		}
 	}
 
@@ -741,14 +741,14 @@ echo "  DCK_PORT_UDP_*     - Port mappings (UDP)"
 		}
 		cmd := exec.Command("/bin/sh", scriptPath)
 		// Startup scripts must receive the image environment (JAVA_HOME, PATH,
-		// locale, etc.), not the host-side dck environment. Without this,
+		// locale, etc.), not the host-side cardinal environment. Without this,
 		// eclipse-temurin images report `java: not found` even though Java exists
 		// under /opt/java/openjdk/bin.
 		cmd.Env = c.Env
 		// Preserve the container stdin for startup processes. Without this,
 		// exec.Cmd uses the null device when Stdin is nil, so interactive
 		// servers such as Paper receive logs but never receive commands from
-		// dck attach or the desktop console.
+		// cardinal attach or the desktop console.
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr

@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"dck/internal/overlayutil"
-	"dck/internal/state"
+	"cardinal/internal/overlayutil"
+	"cardinal/internal/state"
 )
 
 // VerifyReference verifies an image config digest and every locally stored

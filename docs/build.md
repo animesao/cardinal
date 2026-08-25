@@ -1,14 +1,14 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
 # Build, CI & Versioning
 
 ## Requirements
 
 - Go 1.25+ (the module targets `go 1.25.0`; CI and release tooling pin the latest patched Go release, currently 1.26.6)
-- Linux runtime checks: `dck doctor` and `dck security check`
+- Linux runtime checks: `cardinal doctor` and `cardinal security check`
 - Linux for container execution features
 - Optional: `git` for version injection and release metadata
 
@@ -17,7 +17,7 @@
 Build a static Linux binary without glibc dependencies:
 
 ```bash
-CGO_ENABLED=0 go build -tags netgo -ldflags="-s -w" -o dck .
+CGO_ENABLED=0 go build -tags netgo -ldflags="-s -w" -o cardinal .
 ```
 
 The resulting binary is suitable for Linux hosts with the required namespace,
@@ -30,13 +30,13 @@ not be executed on the host unless the host has a compatible CPU or emulator.
 
 ```bash
 # Linux amd64
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags netgo -ldflags="-s -w" -o dck-linux-amd64 .
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags netgo -ldflags="-s -w" -o cardinal-linux-amd64 .
 
 # Linux arm64
-CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags netgo -ldflags="-s -w" -o dck-linux-arm64 .
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags netgo -ldflags="-s -w" -o cardinal-linux-arm64 .
 
 # Linux armv6
-CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=6 go build -tags netgo -ldflags="-s -w" -o dck-linux-armv6 .
+CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=6 go build -tags netgo -ldflags="-s -w" -o cardinal-linux-armv6 .
 ```
 
 The Makefile builds the regular Linux artifacts (`amd64` and `arm64`):
@@ -65,8 +65,8 @@ go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ./...
 CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./...
 git diff --check
-dck doctor
-dck security check --strict
+cardinal doctor
+cardinal security check --strict
 ```
 
 Go tests execute compiled test binaries. Do not run `GOARCH=arm64 go test` on a
@@ -80,8 +80,8 @@ The root `VERSION` file is the single source of truth:
 
 ```bash
 VERSION=$(tr -d ' \n' < VERSION)
-go build -ldflags="-X dck/cmd.version=$VERSION" -o dck .
-dck version
+go build -ldflags="-X cardinal/cmd.version=$VERSION" -o cardinal .
+cardinal version
 ```
 
 A build without `-X` reports the development fallback version. Edit only the
@@ -124,7 +124,7 @@ release notes remain manually maintained so historical entries are not overwritt
 ## Goreleaser
 
 Goreleaser uses the Git tag through `{{ .Version }}`. Keep the tag, root
-`VERSION`, and injected `dck/cmd.version` aligned when publishing manually.
+`VERSION`, and injected `cardinal/cmd.version` aligned when publishing manually.
 
 ## Binary size
 
@@ -135,15 +135,15 @@ Goreleaser uses the Git tag through `{{ .Version }}`. Keep the tag, root
 | `-ldflags="-s -w"` + UPX | ~1.2 MB |
 
 ```bash
-go build -ldflags="-s -w" -o dck .
-upx --best dck
+go build -ldflags="-s -w" -o cardinal .
+upx --best cardinal
 ```
 
 ## Verify a build
 
 ```bash
-./dck version
-./dck info
+./cardinal version
+./cardinal info
 ```
 
 For a Linux binary, perform the runtime test on a matching Linux host. For cross-built arm64/armv6 artifacts, verify checksums and transfer them to the
@@ -153,6 +153,6 @@ amd64 and arm64; use the raw binary or `.tar.gz` on true ARMv6 hosts.
 ## Update check
 
 ```bash
-dck update --check
-dck update
+cardinal update --check
+cardinal update
 ```

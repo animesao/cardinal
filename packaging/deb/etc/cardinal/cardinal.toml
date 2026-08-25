@@ -1,5 +1,5 @@
-# dck multi-container config
-# See: https://github.com/animesao/dck
+# cardinal multi-container config
+# See: https://github.com/animesao/cardinal
 #
 # Example:
 # [container.web]

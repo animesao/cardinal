@@ -2,7 +2,7 @@
 
 package main
 
-import "dck/cmd"
+import "cardinal/cmd"
 
 func main() {
 	cmd.Execute()

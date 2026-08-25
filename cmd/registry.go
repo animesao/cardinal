@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"os"
 
-	"dck/internal/image"
+	"cardinal/internal/image"
 )
 
-// Registry handles "dck registry ..." subcommands.
+// Registry handles "cardinal registry ..." subcommands.
 //
 // We deliberately reuse the existing Login/Logout plumbing from cmd/login.go
 // for credential management; the registry allowlist is a new concept that
@@ -17,7 +17,7 @@ import (
 // only has to learn one name.
 func Registry(args []string) {
 	// Default to "allowlist list" so a bare run prints the configured
-	// registries, mirroring how `dck network` behaves.
+	// registries, mirroring how `cardinal network` behaves.
 	if len(args) == 0 {
 		listAllowlist()
 		return
@@ -33,7 +33,7 @@ func Registry(args []string) {
 		listAllowlist()
 	case "add":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "Usage: dck registry add <hostname>")
+			fmt.Fprintln(os.Stderr, "Usage: cardinal registry add <hostname>")
 			os.Exit(2)
 		}
 		if err := image.AddToAllowlist(args[1]); err != nil {
@@ -41,10 +41,10 @@ func Registry(args []string) {
 			os.Exit(1)
 		}
 		fmt.Printf("Added %s to the registry allowlist\n", args[1])
-		fmt.Println("Strict allowlist is enforced only when DCK_REGISTRY_STRICT=1 is set.")
+		fmt.Println("Strict allowlist is enforced only when CARDINAL_REGISTRY_STRICT=1 is set.")
 	case "remove", "rm":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "Usage: dck registry remove <hostname>")
+			fmt.Fprintln(os.Stderr, "Usage: cardinal registry remove <hostname>")
 			os.Exit(2)
 		}
 		if err := image.RemoveFromAllowlist(args[1]); err != nil {
@@ -58,7 +58,7 @@ func Registry(args []string) {
 		Logout(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown registry subcommand: %s\n", args[0])
-		fmt.Fprintln(os.Stderr, "Usage: dck registry [allowlist|add|remove|login|logout]")
+		fmt.Fprintln(os.Stderr, "Usage: cardinal registry [allowlist|add|remove|login|logout]")
 		os.Exit(2)
 	}
 }
@@ -69,15 +69,15 @@ func listAllowlist() {
 	}
 	hosts := image.AllowlistSnapshot()
 	if len(hosts) == 0 {
-		fmt.Println("No registries in the allowlist. Use 'dck registry add <host>' to add one.")
+		fmt.Println("No registries in the allowlist. Use 'cardinal registry add <host>' to add one.")
 		return
 	}
 	fmt.Println("Allowed registries:")
 	for _, h := range hosts {
 		fmt.Printf("  %s\n", h)
 	}
-	mode := "permissive (allowlist ignored unless DCK_REGISTRY_STRICT=1)"
-	if os.Getenv("DCK_REGISTRY_STRICT") == "1" {
+	mode := "permissive (allowlist ignored unless CARDINAL_REGISTRY_STRICT=1)"
+	if os.Getenv("CARDINAL_REGISTRY_STRICT") == "1" {
 		mode = "STRICT (allowlist enforced)"
 	}
 	fmt.Printf("\nMode: %s\n", mode)

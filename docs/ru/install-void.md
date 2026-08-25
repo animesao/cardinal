@@ -1,14 +1,14 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Установка dck в Void Linux
+# Установка cardinal в Void Linux
 
 Void использует **xbps** (`xbps-install` и семейство) и
 поддерживаемое сообществом дерево исходников
 [`void-packages`](https://github.com/void-linux/void-packages).
-Канонический drop-in для `dck` лежит в каталоге
+Канонический drop-in для `cardinal` лежит в каталоге
 [`contrib/void/`](../../contrib/void/); вы копируете файл
 `template` в свой локальный форк `void-packages` и собираете там.
 
@@ -20,44 +20,44 @@ git clone https://github.com/void-linux/void-packages
 cd void-packages
 
 # 2. template на каноническое место для xbps-src
-mkdir -p srcpkgs/dck
-cp path/to/dck/contrib/void/template srcpkgs/dck/template
+mkdir -p srcpkgs/cardinal
+cp path/to/cardinal/contrib/void/template srcpkgs/cardinal/template
 
 # 3. Пересчитать SHA distfile (заполнит строку `checksum=` в template)
-./xbps-src update-sums dck
+./xbps-src update-sums cardinal
 
 # 4. Собрать (зависимости подтянутся из дерева void-packages)
-./xbps-src pkg dck
-#   Получится: hostdir/binpkgs/dck-1.24.15_1.x86_64.xbps
+./xbps-src pkg cardinal
+#   Получится: hostdir/binpkgs/cardinal-1.24.15_1.x86_64.xbps
 
 # 5. (Локально) установить пакет
-sudo xbps-install --repository=hostdir/binpkgs dck
+sudo xbps-install --repository=hostdir/binpkgs cardinal
 
 # 6. Проверка
-dck version
-sudo dck doctor
+cardinal version
+sudo cardinal doctor
 ```
 
 ## Важно: подменить SHA256-placeholder
 
 `template` идёт с `checksum="sha256-PLACEHOLDER-..."` — при первом
-`./xbps-src pkg dck` он корректно сломается с «bad checksum», а
-`./xbps-src update-sums dck` сам исправит строку на корректный
+`./xbps-src pkg cardinal` он корректно сломается с «bad checksum», а
+`./xbps-src update-sums cardinal` сам исправит строку на корректный
 `sha256-...` digest. Не править руками — всегда через `update-sums`
 (учитывает tarball и вендорные проверки), чтобы вы ничего не
 пропустили.
 
 ## Сборка под musl
 
-Void выпускает и glibc, и musl. dck — pure-Go бинарник, работает
+Void выпускает и glibc, и musl. cardinal — pure-Go бинарник, работает
 на обоих, но нужно выбрать архитектуру:
 
 ```bash
 # glibc (по умолчанию на x86_64)
-./xbps-src pkg dck
+./xbps-src pkg cardinal
 
 # musl
-./xbps-src -a x86_64-musl pkg dck
+./xbps-src -a x86_64-musl pkg cardinal
 ```
 
 Поскольку в upstream зашито `CGO_ENABLED=0`, один и тот же `.xbps`
@@ -66,10 +66,10 @@ Void выпускает и glibc, и musl. dck — pure-Go бинарник, р�
 ## Требования к ядру
 
 ```bash
-dck doctor
+cardinal doctor
 ```
 
-Если `dck doctor` показывает `WARN` на `user namespaces`:
+Если `cardinal doctor` показывает `WARN` на `user namespaces`:
 
 ```
 # /boot/grub/grub.cfg добавить в строку linux:
@@ -86,24 +86,24 @@ none /sys/fs/cgroup cgroup2 defaults 0 0
 
 ## Отправить в void-packages
 
-Когда `./xbps-src pkg dck` собирается зелёным на матрицах
+Когда `./xbps-src pkg cardinal` собирается зелёным на матрицах
 `x86_64-glibc`, `x86_64-musl` и `aarch64-*`:
 
 1. Форкните https://github.com/void-linux/void-packages
 2. Сначала отправьте `maintainers.md` (однострочный PR о
    вступлении в maintainers)
-3. Затем отправьте `srcpkgs/dck/template` с посчитанным
+3. Затем отправьте `srcpkgs/cardinal/template` с посчитанным
    checksum'ом
 
 Строка `maintainers.md`:
 
 ```
-animesao <animesao@users.noreply.github.com> dck
+animesao <animesao@users.noreply.github.com> cardinal
 ```
 
 ## Редкий случай: pivot_root в контейнерах на Void
 
-`runit` не нуждается в полноценном init-демоне — `dck run` прозрачно
+`runit` не нуждается в полноценном init-демоне — `cardinal run` прозрачно
 запускает entrypoint и работает на Void. Если в контейнере вылетит
 pivot_root, используйте флаг `--no-pivot` в `cmd/run` — он
 переключает на `chroot`-семантику, поддерживаемую в Void из коробки.

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"dck/internal/image"
+	"cardinal/internal/image"
 )
 
 func Login(args []string) {
@@ -22,7 +22,7 @@ func Login(args []string) {
 
 	freeArgs := fs.Args()
 	if len(freeArgs) < 1 {
-		fmt.Println("Usage: dck login <registry> [-u username] [-p password]")
+		fmt.Println("Usage: cardinal login <registry> [-u username] [-p password]")
 		os.Exit(1)
 	}
 
@@ -53,7 +53,7 @@ func Login(args []string) {
 
 func Logout(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck logout <registry>")
+		fmt.Println("Usage: cardinal logout <registry>")
 		os.Exit(1)
 	}
 

@@ -25,20 +25,20 @@ func TestDiagnosticsFailed(t *testing.T) {
 }
 
 func TestCheckAPIConfiguration(t *testing.T) {
-	oldHost, oldToken := getenv("DCK_HOST"), getenv("DCK_TOKEN")
+	oldHost, oldToken := getenv("CARDINAL_HOST"), getenv("CARDINAL_TOKEN")
 	t.Cleanup(func() {
-		setenv("DCK_HOST", oldHost)
-		setenv("DCK_TOKEN", oldToken)
+		setenv("CARDINAL_HOST", oldHost)
+		setenv("CARDINAL_TOKEN", oldToken)
 	})
 
-	setenv("DCK_HOST", "0.0.0.0:2375")
-	setenv("DCK_TOKEN", "")
+	setenv("CARDINAL_HOST", "0.0.0.0:2375")
+	setenv("CARDINAL_TOKEN", "")
 	checks := checkAPIConfiguration()
 	if len(checks) != 1 || checks[0].status != diagnosticFail {
 		t.Fatalf("external API without token = %#v, want one failure", checks)
 	}
 
-	setenv("DCK_TOKEN", "test-token")
+	setenv("CARDINAL_TOKEN", "test-token")
 	checks = checkAPIConfiguration()
 	if len(checks) != 1 || checks[0].status != diagnosticOK {
 		t.Fatalf("external API with token = %#v, want one success", checks)

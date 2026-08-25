@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func Exec(args []string) {
@@ -21,7 +21,7 @@ func Exec(args []string) {
 
 	remaining := fs.Args()
 	if len(remaining) < 2 {
-		fmt.Println("Usage: dck exec [-i] [-t] <container> <cmd> [args...]")
+		fmt.Println("Usage: cardinal exec [-i] [-t] <container> <cmd> [args...]")
 		os.Exit(1)
 	}
 

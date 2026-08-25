@@ -1,13 +1,13 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# dck: Руководство по бэкапам
+# cardinal: Руководство по бэкапам
 
 Полное руководство по автоматическим и ручным бэкапам, восстановлению, скачиванию архивов на локальный компьютер и гарантиям безопасности.
 
-> **Ключевой момент:** бэкапы dck архивируют **слой записи контейнера** и **именованные volume**. Они **НЕ** архивируют хостовые bind-монты (например, `-v /data/app:/app`). Если ваши данные находятся в bind-монте, архивируйте их отдельно (см. [Раздел 6](#6-обход-bind-монтов)).
+> **Ключевой момент:** бэкапы cardinal архивируют **слой записи контейнера** и **именованные volume**. Они **НЕ** архивируют хостовые bind-монты (например, `-v /data/app:/app`). Если ваши данные находятся в bind-монте, архивируйте их отдельно (см. [Раздел 6](#6-обход-bind-монтов)).
 
 ---
 
@@ -37,11 +37,11 @@
 | Метаданные контейнера (порты, env, политика рестартов и т.д.) | Состояние контейнера (PID, cgroup) |
 | SHA-256 чексумма (файл `.sha256`) | — |
 
-**Почему bind-монты не архивируются:** bind-монты указывают на существующие хостовые директории, которые управляются вне жизненного цикла контейнера dck. Архивирование может незаметно захватить устаревшие или частично записанные данные. Для данных в bind-монтах используйте подход с cron из [Раздела 6](#6-обход-bind-монтов).
+**Почему bind-монты не архивируются:** bind-монты указывают на существующие хостовые директории, которые управляются вне жизненного цикла контейнера cardinal. Архивирование может незаметно захватить устаревшие или частично записанные данные. Для данных в bind-монтах используйте подход с cron из [Раздела 6](#6-обход-bind-монтов).
 
 **Что это значит на практике:**
 
-| Сценарий | Где данные | Архивируется dck? |
+| Сценарий | Где данные | Архивируется cardinal? |
 |----------|------------|-------------------|
 | База PostgreSQL | Named volume `postgres-data:/var/lib/postgresql/data` | ✅ Да |
 | Redis с AOF | Named volume `redis-data:/data` | ✅ Да |
@@ -55,17 +55,17 @@
 
 ### 2.1 Предварительные требования
 
-Планировщик бэкапов работает внутри systemd-юнита `dck-bootstrap.service`. Убедитесь, что он установлен и запущен:
+Планировщик бэкапов работает внутри systemd-юнита `cardinal-bootstrap.service`. Убедитесь, что он установлен и запущен:
 
 ```bash
-dck bootstrap --install
-systemctl status dck-bootstrap
+cardinal bootstrap --install
+systemctl status cardinal-bootstrap
 ```
 
 ### 2.2 Включение автоматических бэкапов
 
 ```bash
-dck backup enable <контейнер> [ОПЦИИ]
+cardinal backup enable <контейнер> [ОПЦИИ]
 ```
 
 **Опции:**
@@ -74,22 +74,22 @@ dck backup enable <контейнер> [ОПЦИИ]
 |-------|-------------|----------|
 | `--interval ДЛИТЕЛЬНОСТЬ` | `24h` | Как часто создавать бэкап. Go-длительности: `6h`, `30m`, `1h30m`, `7d` |
 | `--retention N` | `7` | Сколько архивов хранить (1–1000). Старые удаляются автоматически |
-| `--dir ПУТЬ` | `~/.dck/backups/<контейнер>` | Пользовательская директория. Защищённые хостовые пути и симлинки отвергаются |
+| `--dir ПУТЬ` | `~/.cardinal/backups/<контейнер>` | Пользовательская директория. Защищённые хостовые пути и симлинки отвергаются |
 
 **Примеры:**
 
 ```bash
 # База данных: бэкап каждые 6 часов, хранить 14 копий
-dck backup enable postgres --interval 6h --retention 14
+cardinal backup enable postgres --interval 6h --retention 14
 
 # Бот: ежедневный бэкап, хранить 7 копий
-dck backup enable bot --interval 24h --retention 7
+cardinal backup enable bot --interval 24h --retention 7
 
 # Minecraft (слой записи): бэкап каждые 12 часов, хранить 30 копий, своя папка
-dck backup enable minecraft --interval 12h --retention 30 --dir /data/backups/minecraft
+cardinal backup enable minecraft --interval 12h --retention 30 --dir /data/backups/minecraft
 
 # Минимально: настройки по умолчанию (каждые 24ч, хранить 7)
-dck backup enable webapp
+cardinal backup enable webapp
 ```
 
 ### 2.3 Как работают автоматические бэкапы
@@ -111,7 +111,7 @@ dck backup enable webapp
 ### 2.4 Проверка статуса бэкапов
 
 ```bash
-dck backup status <контейнер>
+cardinal backup status <контейнер>
 ```
 
 Пример вывода:
@@ -121,7 +121,7 @@ Container: postgres
   Enabled: true
   Interval: 6h0m0s
   Retention: 14
-  Directory: /root/.dck/backups/postgres
+  Directory: /root/.cardinal/backups/postgres
   Last successful backup: 2026-08-12T04:00:00+03:00
   Next retry after: 0001-01-01T00:00:00Z
 ```
@@ -131,8 +131,8 @@ Container: postgres
 ### 2.5 Просмотр всех бэкапов
 
 ```bash
-dck backup list                           # список по умолчанию
-dck backup list /data/custom-backups      # пользовательская директория
+cardinal backup list                           # список по умолчанию
+cardinal backup list /data/custom-backups      # пользовательская директория
 ```
 
 Пример вывода:
@@ -146,7 +146,7 @@ postgres-20260811-160000.tar.gz      1945600 bytes  2026-08-11T16:00:00+03:00
 ### 2.6 Проверка целостности архива
 
 ```bash
-dck backup verify /путь/к/файлу.tar.gz
+cardinal backup verify /путь/к/файлу.tar.gz
 ```
 
 Ожидаемый вывод:
@@ -164,7 +164,7 @@ Backup is valid but unverified (no checksum sidecar): /путь/к/файлу.ta
 ### 2.7 Отключение автоматических бэкапов
 
 ```bash
-dck backup disable <контейнер>
+cardinal backup disable <контейнер>
 ```
 
 Будущие запланированные бэкапы прекращаются. Существующие архивы не удаляются. Флаг `auto_backup` в состоянии контейнера устанавливается в `false`.
@@ -178,19 +178,19 @@ dck backup disable <контейнер>
 Контейнер **должен быть остановлен** перед созданием ручного бэкапа. Это обеспечивает согласованность данных.
 
 ```bash
-dck stop <контейнер>
-dck backup create <контейнер>                              # автоматическое имя файла
-dck backup create <контейнер> -o /путь/к/файлу.tar.gz     # пользовательский путь
-dck start <контейнер>
+cardinal stop <контейнер>
+cardinal backup create <контейнер>                              # автоматическое имя файла
+cardinal backup create <контейнер> -o /путь/к/файлу.tar.gz     # пользовательский путь
+cardinal start <контейнер>
 ```
 
 **Пример — бэкап перед рискованной операцией:**
 
 ```bash
 # Остановить, сделать бэкап, затем выполнить операцию
-dck stop postgres
-dck backup create postgres -o /data/backups/postgres-pre-upgrade.tar.gz
-dck start postgres
+cardinal stop postgres
+cardinal backup create postgres -o /data/backups/postgres-pre-upgrade.tar.gz
+cardinal start postgres
 
 # ... выполнить обновление ...
 ```
@@ -198,10 +198,10 @@ dck start postgres
 **Пример — бэкап с автоматическим именем:**
 
 ```bash
-dck stop webapp
-dck backup create webapp
-# Создаётся: ~/.dck/backups/webapp/webapp-20260812-150000.tar.gz
-dck start webapp
+cardinal stop webapp
+cardinal backup create webapp
+# Создаётся: ~/.cardinal/backups/webapp/webapp-20260812-150000.tar.gz
+cardinal start webapp
 ```
 
 ### 3.2 Проверка ручного бэкапа
@@ -209,22 +209,22 @@ dck start webapp
 Всегда проверяйте сразу после создания:
 
 ```bash
-dck backup verify /data/backups/postgres-pre-upgrade.tar.gz
+cardinal backup verify /data/backups/postgres-pre-upgrade.tar.gz
 ```
 
 ### 3.3 Проверка выходного пути
 
-dck отвергает выходные пути бэкапов, которые:
+cardinal отвергает выходные пути бэкапов, которые:
 
 - Защищённые хостовые директории (`/root`, `/etc`, `/var`, `/usr`, `/opt`, `/run`, `/bin`, `/sbin`, `/lib`, `/lib64`, `/boot`, `/dev`, `/proc`, `/sys`, `/home`, `/media`, `/mnt`, `/srv`)
-- Находятся внутри директории данных dck (защита от рекурсивного архивирования)
+- Находятся внутри директории данных cardinal (защита от рекурсивного архивирования)
 - Содержат компоненты-симлинки (защита от path traversal атак)
 
 Для бэкапов в нестандартное место создайте отдельную директорию в `/data`:
 
 ```bash
 mkdir -p /data/backups
-dck backup create webapp -o /data/backups/webapp-manual.tar.gz
+cardinal backup create webapp -o /data/backups/webapp-manual.tar.gz
 ```
 
 ---
@@ -237,25 +237,25 @@ dck backup create webapp -o /data/backups/webapp-manual.tar.gz
 
 ```bash
 # Шаг 1: Проверить целостность бэкапа
-dck backup verify /путь/к/файлу.tar.gz
+cardinal backup verify /путь/к/файлу.tar.gz
 
 # Шаг 2: Остановить контейнер
-dck stop <контейнер>
+cardinal stop <контейнер>
 
 # Шаг 3: Восстановить
-dck backup restore <контейнер> /путь/к/файлу.tar.gz
+cardinal backup restore <контейнер> /путь/к/файлу.tar.gz
 
 # Шаг 4: Запустить контейнер
-dck start <контейнер>
+cardinal start <контейнер>
 ```
 
 **Полный пример:**
 
 ```bash
-dck backup verify /root/.dck/backups/postgres/postgres-20260812-040000.tar.gz
-dck stop postgres
-dck backup restore postgres /root/.dck/backups/postgres/postgres-20260812-040000.tar.gz
-dck start postgres
+cardinal backup verify /root/.cardinal/backups/postgres/postgres-20260812-040000.tar.gz
+cardinal stop postgres
+cardinal backup restore postgres /root/.cardinal/backups/postgres/postgres-20260812-040000.tar.gz
+cardinal start postgres
 ```
 
 ### 4.2 Что восстанавливается
@@ -272,7 +272,7 @@ dck start postgres
 
 ```bash
 # Пересоздать контейнер с теми же настройками
-dck run -d -n postgres \
+cardinal run -d -n postgres \
   --restart unless-stopped \
   -p 5432:5432 \
   -v postgres-data:/var/lib/postgresql/data \
@@ -282,14 +282,14 @@ dck run -d -n postgres \
   postgres:16
 
 # Остановить, восстановить, запустить
-dck stop postgres
-dck backup restore postgres /root/.dck/backups/postgres/postgres-20260812-040000.tar.gz
-dck start postgres
+cardinal stop postgres
+cardinal backup restore postgres /root/.cardinal/backups/postgres/postgres-20260812-040000.tar.gz
+cardinal start postgres
 ```
 
 ### 4.4 Проверки безопасности при восстановлении
 
-При восстановлении dck выполняет следующие проверки:
+При восстановлении cardinal выполняет следующие проверки:
 
 1. **Проверка чексуммы:** Архив проверяется по `.sha256` перед распаковкой. Несовпадение чексуммы прерывает восстановление.
 2. **Совпадение ID:** ID контейнера в архиве должен совпадать с целевым контейнером. Нельзя восстановить бэкап контейнера A в контейнер B.
@@ -306,10 +306,10 @@ dck start postgres
 
 ```bash
 # Скачать конкретный бэкап
-scp root@<IP_СЕРВЕРА>:/root/.dck/backups/postgres/postgres-20260812-040000.tar.gz ./
+scp root@<IP_СЕРВЕРА>:/root/.cardinal/backups/postgres/postgres-20260812-040000.tar.gz ./
 
 # Скачать и чексумму
-scp root@<IP_СЕРВЕРА>:/root/.dck/backups/postgres/postgres-20260812-040000.tar.gz.sha256 ./
+scp root@<IP_СЕРВЕРА>:/root/.cardinal/backups/postgres/postgres-20260812-040000.tar.gz.sha256 ./
 ```
 
 ### 5.2 Через rsync (быстрее, с возможностью возобновления)
@@ -318,10 +318,10 @@ scp root@<IP_СЕРВЕРА>:/root/.dck/backups/postgres/postgres-20260812-04000
 
 ```bash
 # Синхронизировать всю директорию бэкапов
-rsync -avz --progress root@<IP_СЕРВЕРА>:/root/.dck/backups/postgres/ ./local-backups/postgres/
+rsync -avz --progress root@<IP_СЕРВЕРА>:/root/.cardinal/backups/postgres/ ./local-backups/postgres/
 
 # Возобновить прерванную загрузку
-rsync -avz --progress --partial root@<IP_СЕРВЕРА>:/root/.dck/backups/postgres/ ./local-backups/postgres/
+rsync -avz --progress --partial root@<IP_СЕРВЕРА>:/root/.cardinal/backups/postgres/ ./local-backups/postgres/
 ```
 
 ### 5.3 Скачать только последний бэкап
@@ -330,7 +330,7 @@ rsync -avz --progress --partial root@<IP_СЕРВЕРА>:/root/.dck/backups/post
 
 ```bash
 # Найти последний бэкап на сервере и скачать его
-LATEST=$(ssh root@<IP_СЕРВЕРА> "ls -1t /root/.dck/backups/postgres/*.tar.gz | head -1")
+LATEST=$(ssh root@<IP_СЕРВЕРА> "ls -1t /root/.cardinal/backups/postgres/*.tar.gz | head -1")
 scp root@<IP_СЕРВЕРА>:"$LATEST" ./
 
 # Также скачать чексумму
@@ -343,14 +343,14 @@ scp root@<IP_СЕРВЕРА>:"${LATEST}.sha256" ./
 
 ```bash
 # Симметричное шифрование AES-256
-gpg -c --symmetric --cipher-algo AES256 /root/.dck/backups/postgres/postgres-20260812-040000.tar.gz
+gpg -c --symmetric --cipher-algo AES256 /root/.cardinal/backups/postgres/postgres-20260812-040000.tar.gz
 # Вас попросят ввести пароль. Результат: postgres-20260812-040000.tar.gz.gpg
 ```
 
 **С вашего локального компьютера:**
 
 ```bash
-scp root@<IP_СЕРВЕРА>:/root/.dck/backups/postgres/postgres-20260812-040000.tar.gz.gpg ./
+scp root@<IP_СЕРВЕРА>:/root/.cardinal/backups/postgres/postgres-20260812-040000.tar.gz.gpg ./
 ```
 
 **Для расшифровки локально:**
@@ -361,10 +361,10 @@ gpg -d postgres-20260812-040000.tar.gz.gpg > postgres-20260812-040000.tar.gz
 
 ### 5.5 Проверка скачанного бэкапа
 
-**Вариант A — dck установлен локально:**
+**Вариант A — cardinal установлен локально:**
 
 ```bash
-dck backup verify ./postgres-20260812-040000.tar.gz
+cardinal backup verify ./postgres-20260812-040000.tar.gz
 ```
 
 **Вариант B — ручная проверка чексуммы:**
@@ -383,7 +383,7 @@ cat postgres-20260812-040000.tar.gz.sha256
 
 ```bash
 # Синхронизировать всё дерево бэкапов для всех контейнеров
-rsync -avz root@<IP_СЕРВЕРА>:/root/.dck/backups/ ./dck-backups/
+rsync -avz root@<IP_СЕРВЕРА>:/root/.cardinal/backups/ ./cardinal-backups/
 ```
 
 ### 5.7 Загрузить скачанный бэкап обратно на сервер
@@ -395,9 +395,9 @@ rsync -avz root@<IP_СЕРВЕРА>:/root/.dck/backups/ ./dck-backups/
 scp ./postgres-20260812-040000.tar.gz root@<IP_СЕРВЕРА>:/tmp/
 
 # На сервере
-dck stop postgres
-dck backup restore postgres /tmp/postgres-20260812-040000.tar.gz
-dck start postgres
+cardinal stop postgres
+cardinal backup restore postgres /tmp/postgres-20260812-040000.tar.gz
+cardinal start postgres
 rm /tmp/postgres-20260812-040000.tar.gz
 ```
 
@@ -405,7 +405,7 @@ rm /tmp/postgres-20260812-040000.tar.gz
 
 ## 6. Обход bind-монтов
 
-`dck backup` **НЕ** архивирует bind-монты. Для данных, которые находятся в bind-монте (миры Minecraft, код ботов, конфигурационные файлы), используйте cron-задачу на хосте.
+`cardinal backup` **НЕ** архивирует bind-монты. Для данных, которые находятся в bind-монте (миры Minecraft, код ботов, конфигурационные файлы), используйте cron-задачу на хосте.
 
 ### 6.1 Скрипт бэкапа для bind-монтированных данных
 
@@ -428,7 +428,7 @@ mkdir -p "$DEST"
 
 # Опционально: остановить контейнер для идеальной согласованности
 # Раскомментируйте следующие две строки, если нужны crash-consistent бэкапы:
-# dck stop "$CONTAINER" 2>/dev/null || true
+# cardinal stop "$CONTAINER" 2>/dev/null || true
 # STOPPED=true
 
 # Создать архив
@@ -439,7 +439,7 @@ sha256sum "$DEST/${BASENAME}-${STAMP}.tar.gz" > "$DEST/${BASENAME}-${STAMP}.tar.
 
 # Опционально: перезапустить контейнер
 # if [ "${STOPPED:-}" = "true" ]; then
-#   dck start "$CONTAINER"
+#   cardinal start "$CONTAINER"
 # fi
 
 # Ротация старых бэкапов
@@ -481,17 +481,17 @@ mkdir -p "$DEST"
 STAMP=$(date +%Y%m%d-%H%M%S)
 
 # Сохранить мир и остановить сервер
-echo "save-off" | dck attach minecraft 2>/dev/null || true
-echo "save-all" | dck attach minecraft 2>/dev/null || true
+echo "save-off" | cardinal attach minecraft 2>/dev/null || true
+echo "save-all" | cardinal attach minecraft 2>/dev/null || true
 sleep 2
-dck stop minecraft
+cardinal stop minecraft
 
 # Создать архив
 tar czf "$DEST/mc-${STAMP}.tar.gz" -C "$SRC" .
 sha256sum "$DEST/mc-${STAMP}.tar.gz" > "$DEST/mc-${STAMP}.tar.gz.sha256"
 
 # Перезапустить сервер
-dck start minecraft
+cardinal start minecraft
 
 # Ротация
 ls -1t "$DEST"/mc-*.tar.gz 2>/dev/null | tail -n +$((RETENTION + 1)) | xargs -r rm -f
@@ -521,9 +521,9 @@ echo "[$(date)] Бэкап Minecraft выполнен: $DEST/mc-${STAMP}.tar.gz"
 
 Архив может быть записан не полностью. После перезагрузки:
 
-1. `dck-bootstrap.service` запускает супервизор.
+1. `cardinal-bootstrap.service` запускает супервизор.
 2. Контейнеры с `--restart unless-stopped` перезапускаются при восстановлении загрузки.
-3. Запустите `dck backup verify <архив>` — несовпадение чексуммы указывает на неполный архив.
+3. Запустите `cardinal backup verify <архив>` — несовпадение чексуммы указывает на неполный архив.
 4. Следующий запланированный цикл создаст свежий, полный архив.
 
 ### 7.3 Два процесса бэкапа одновременно
@@ -532,7 +532,7 @@ echo "[$(date)] Бэкап Minecraft выполнен: $DEST/mc-${STAMP}.tar.gz"
 
 ### 7.4 Бэкап и crash-loop защита
 
-Если контейнер находится в crash-loop (`restart_blocked: true`), он не в состоянии `running`, поэтому бэкапы пропускаются. После ручного `dck start <контейнер>` и восстановления нормальное планирование бэкапов возобновляется на следующем интервале.
+Если контейнер находится в crash-loop (`restart_blocked: true`), он не в состоянии `running`, поэтому бэкапы пропускаются. После ручного `cardinal start <контейнер>` и восстановления нормальное планирование бэкапов возобновляется на следующем интервале.
 
 ### 7.5 Бэкап и ручная остановка (`unless-stopped`)
 
@@ -540,14 +540,14 @@ echo "[$(date)] Бэкап Minecraft выполнен: $DEST/mc-${STAMP}.tar.gz"
 
 - Контейнер перезапускается нормально после бэкапа.
 - Политика `unless-stopped` не нарушается — контейнер «помнит», что работал до бэкапа.
-- Ручная `dck stop` пользователем корректно отличается от остановки по бэкапу.
+- Ручная `cardinal stop` пользователем корректно отличается от остановки по бэкапу.
 
 ### 7.6 Повреждение архива
 
 Каждый архив бэкапа включает `.sha256` чексумму. Повреждение обнаруживается:
 
-- `dck backup verify` (явная проверка)
-- `dck backup restore` (автоматическая проверка перед распаковкой)
+- `cardinal backup verify` (явная проверка)
+- `cardinal backup restore` (автоматическая проверка перед распаковкой)
 
 Повреждённый архив никогда не применяется молча. Восстановление прерывается с ошибкой.
 
@@ -556,7 +556,7 @@ echo "[$(date)] Бэкап Minecraft выполнен: $DEST/mc-${STAMP}.tar.gz"
 Если на диске закончилось место, создание архива завершается ошибкой. Контейнер перезапускается (defer `restartAfterBackup` выполняется вне зависимости от ошибок). Проверьте место:
 
 ```bash
-du -sh ~/.dck/backups/*
+du -sh ~/.cardinal/backups/*
 df -h /
 ```
 
@@ -566,7 +566,7 @@ df -h /
 
 ## 8. Справочник настроек бэкапов
 
-Эти настройки хранятся в файле состояния контейнера (`~/.dck/containers/<id>.json`):
+Эти настройки хранятся в файле состояния контейнера (`~/.cardinal/containers/<id>.json`):
 
 | Поле | JSON-ключ | Тип | Описание |
 |------|----------|------|----------|
@@ -580,7 +580,7 @@ df -h /
 **Просмотр этих настроек:**
 
 ```bash
-dck inspect <контейнер> | grep -i backup
+cardinal inspect <контейнер> | grep -i backup
 ```
 
 Пример:
@@ -590,7 +590,7 @@ dck inspect <контейнер> | grep -i backup
   "auto_backup": true,
   "backup_interval": "6h0m0s",
   "backup_retention": 14,
-  "backup_dir": "/root/.dck/backups/postgres",
+  "backup_dir": "/root/.cardinal/backups/postgres",
   "last_backup_at": "2026-08-12T04:00:00+03:00"
 }
 ```
@@ -600,7 +600,7 @@ dck inspect <контейнер> | grep -i backup
 ## 9. Структура директорий бэкапов
 
 ```
-~/.dck/backups/
+~/.cardinal/backups/
 ├── postgres/
 │   ├── postgres-20260812-040000.tar.gz
 │   ├── postgres-20260812-040000.tar.gz.sha256
@@ -627,17 +627,17 @@ dck inspect <контейнер> | grep -i backup
 
 | Практика | Почему |
 |----------|--------|
-| **Используйте именованные volume для БД** | `dck backup` автоматически архивирует именованные volume — нулевая настройка |
+| **Используйте именованные volume для БД** | `cardinal backup` автоматически архивирует именованные volume — нулевая настройка |
 | **Планируйте бэкапы на часы минимальной нагрузки** | Контейнер останавливается кратковременно; минимизируйте влияние на пользователей |
 | **Храните 7–14 ежедневных копий для БД** | Достаточное окно восстановления без чрезмерного расхода диска |
 | **Храните 3–5 копий для bind-mount cron** | Бэкапы bind-монтов обычно больше (полный tar директории) |
-| **Периодически проверяйте бэкапы** | Запускайте `dck backup verify` еженедельно для раннего обнаружения повреждений |
+| **Периодически проверяйте бэкапы** | Запускайте `cardinal backup verify` еженедельно для раннего обнаружения повреждений |
 | **Скачивайте важные бэкапы оффлайн** | Защита от отказа диска, случайного удаления, шифровальщиков |
 | **Шифруйте перед скачиванием конфиденциальных данных** | Дополнительная защита: `gpg -c --symmetric --cipher-algo AES256` |
-| **Контролируйте место на диске** | `du -sh ~/.dck/backups/*` и `df -h /` |
+| **Контролируйте место на диске** | `du -sh ~/.cardinal/backups/*` и `df -h /` |
 | **Тестируйте процедуру восстановления** | Бэкап, который невозможно восстановить — не бэкап; потренируйтесь на тестовом контейнере |
 | **Подберите подходящий интервал** | БД с частыми записями → 6ч; боты с редкими изменениями → 24ч |
-| **Комбинируйте dck backup и cron** | `dck backup enable` для именованных volume + cron для bind-монтов |
+| **Комбинируйте cardinal backup и cron** | `cardinal backup enable` для именованных volume + cron для bind-монтов |
 
 ### Оценка места на диске
 
@@ -657,13 +657,13 @@ dck inspect <контейнер> | grep -i backup
 
 ```bash
 # Проверить, работает ли супервизор
-systemctl status dck-bootstrap
+systemctl status cardinal-bootstrap
 
 # Проверить, включён ли auto_backup
-dck backup status <контейнер>
+cardinal backup status <контейнер>
 
 # Проверить логи супервизора
-journalctl -u dck-bootstrap --since "1 hour ago" | grep -i backup
+journalctl -u cardinal-bootstrap --since "1 hour ago" | grep -i backup
 ```
 
 ### Бэкап падает с ошибкой «stop the container before creating a consistent backup»
@@ -671,8 +671,8 @@ journalctl -u dck-bootstrap --since "1 hour ago" | grep -i backup
 Контейнер ещё запущен. Остановите его:
 
 ```bash
-dck stop <контейнер>
-dck backup create <контейнер>
+cardinal stop <контейнер>
+cardinal backup create <контейнер>
 ```
 
 Автоматические бэкапы обрабатывают это автоматически (сами останавливают контейнер).
@@ -681,14 +681,14 @@ dck backup create <контейнер>
 
 ```bash
 # Проверить свободное место
-df -h ~/.dck/backups
+df -h ~/.cardinal/backups
 
 # Проверить размеры бэкапов
-du -sh ~/.dck/backups/*
+du -sh ~/.cardinal/backups/*
 
 # Уменьшить ретенцию
-dck backup disable <контейнер>
-dck backup enable <контейнер> --retention 3
+cardinal backup disable <контейнер>
+cardinal backup enable <контейнер> --retention 3
 ```
 
 ### Восстановление падает с ошибкой «checksum mismatch»
@@ -696,10 +696,10 @@ dck backup enable <контейнер> --retention 3
 Архив повреждён. Используйте другой бэкап:
 
 ```bash
-dck backup list
+cardinal backup list
 # Выберите другой архив и проверьте его
-dck backup verify /путь/к/другому-архиву.tar.gz
-dck backup restore <контейнер> /путь/к/другому-архиву.tar.gz
+cardinal backup verify /путь/к/другому-архиву.tar.gz
+cardinal backup restore <контейнер> /путь/к/другому-архиву.tar.gz
 ```
 
 ### Восстановление падает с ошибкой «backup belongs to container X, not Y»
@@ -712,33 +712,33 @@ dck backup restore <контейнер> /путь/к/другому-архиву
 
 ```bash
 # ─── Установка ───
-dck bootstrap --install                                    # установить супервизор
+cardinal bootstrap --install                                    # установить супервизор
 
 # ─── Автоматические бэкапы ───
-dck backup enable <контейнер> --interval 6h --retention 14  # включить
-dck backup disable <контейнер>                               # отключить
-dck backup status <контейнер>                                # проверить статус
+cardinal backup enable <контейнер> --interval 6h --retention 14  # включить
+cardinal backup disable <контейнер>                               # отключить
+cardinal backup status <контейнер>                                # проверить статус
 
 # ─── Ручные бэкапи ───
-dck stop <контейнер>                                         # сначала остановить
-dck backup create <контейнер> -o /путь/к/файлу.tar.gz       # создать
-dck start <контейнер>                                        # перезапустить
+cardinal stop <контейнер>                                         # сначала остановить
+cardinal backup create <контейнер> -o /путь/к/файлу.tar.gz       # создать
+cardinal start <контейнер>                                        # перезапустить
 
 # ─── Проверка ───
-dck backup verify /путь/к/файлу.tar.gz                      # проверить целостность
+cardinal backup verify /путь/к/файлу.tar.gz                      # проверить целостность
 
 # ─── Восстановление ───
-dck stop <контейнер>
-dck backup verify /путь/к/файлу.tar.gz
-dck backup restore <контейнер> /путь/к/файлу.tar.gz
-dck start <контейнер>
+cardinal stop <контейнер>
+cardinal backup verify /путь/к/файлу.tar.gz
+cardinal backup restore <контейнер> /путь/к/файлу.tar.gz
+cardinal start <контейнер>
 
 # ─── Список ───
-dck backup list                                              # все архивы
+cardinal backup list                                              # все архивы
 
 # ─── Скачивание на ПК ───
-scp root@СЕРВЕР:~/.dck/backups/<контейнер>/<файл>.tar.gz ./
-rsync -avz root@СЕРВЕР:~/.dck/backups/ ./local-backups/
+scp root@СЕРВЕР:~/.cardinal/backups/<контейнер>/<файл>.tar.gz ./
+rsync -avz root@СЕРВЕР:~/.cardinal/backups/ ./local-backups/
 
 # ─── Шифрование для оффлайн-хранилища ───
 gpg -c --symmetric --cipher-algo AES256 backup.tar.gz

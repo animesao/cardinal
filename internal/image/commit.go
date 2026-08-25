@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"dck/internal/overlayutil"
-	"dck/internal/state"
+	"cardinal/internal/overlayutil"
+	"cardinal/internal/state"
 )
 
 func CommitContainer(rootfsDir, name, tag, author, message string) (*Image, error) {
@@ -55,7 +55,7 @@ func CommitContainer(rootfsDir, name, tag, author, message string) (*Image, erro
 		"history": []map[string]interface{}{
 			{
 				"created":    time.Now().UTC().Format(time.RFC3339),
-				"created_by": "dck commit",
+				"created_by": "cardinal commit",
 				"author":     author,
 				"comment":    message,
 			},

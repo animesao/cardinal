@@ -9,8 +9,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"dck/internal/container"
-	"dck/internal/state"
+	"cardinal/internal/container"
+	"cardinal/internal/state"
 )
 
 type diagnosticStatus string
@@ -27,7 +27,7 @@ type diagnostic struct {
 	detail string
 }
 
-// Doctor performs read-only host and dck runtime checks. It never installs
+// Doctor performs read-only host and cardinal runtime checks. It never installs
 // packages, changes system configuration, or starts/stops containers.
 func Doctor(args []string) {
 	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
@@ -37,12 +37,12 @@ func Doctor(args []string) {
 		os.Exit(2)
 	}
 	if fs.NArg() != 0 {
-		fmt.Fprintln(os.Stderr, "Usage: dck doctor [--strict]")
+		fmt.Fprintln(os.Stderr, "Usage: cardinal doctor [--strict]")
 		os.Exit(2)
 	}
 
 	checks := collectDiagnostics()
-	printDiagnostics("dck doctor", checks)
+	printDiagnostics("cardinal doctor", checks)
 	if diagnosticsFailed(checks, *strict) {
 		os.Exit(1)
 	}
@@ -73,13 +73,13 @@ func Security(args []string) {
 				}
 			}
 		}
-		printDiagnostics("dck security check", securityChecks)
+		printDiagnostics("cardinal security check", securityChecks)
 		if diagnosticsFailed(securityChecks, *strict) {
 			os.Exit(1)
 		}
 		return
 	}
-	fmt.Fprintln(os.Stderr, "Usage: dck security check [--strict]")
+	fmt.Fprintln(os.Stderr, "Usage: cardinal security check [--strict]")
 	os.Exit(2)
 }
 
@@ -165,7 +165,7 @@ func checkKernelFeatures() []diagnostic {
 
 func checkRootless() []diagnostic {
 	if !container.IsRootless() {
-		return []diagnostic{{name: "rootless prerequisites", status: diagnosticWarn, detail: "not checked because dck is running as root"}}
+		return []diagnostic{{name: "rootless prerequisites", status: diagnosticWarn, detail: "not checked because cardinal is running as root"}}
 	}
 	warnings, failures := container.CheckRootlessPrereqs()
 	checks := make([]diagnostic, 0, len(warnings)+len(failures)+1)
@@ -182,21 +182,21 @@ func checkRootless() []diagnostic {
 }
 
 func checkAPIConfiguration() []diagnostic {
-	hostOverride := strings.TrimSpace(os.Getenv("DCK_HOST"))
+	hostOverride := strings.TrimSpace(os.Getenv("CARDINAL_HOST"))
 	if hostOverride == "" {
-		return []diagnostic{{name: "API exposure", status: diagnosticOK, detail: "localhost-only default or no DCK_HOST override"}}
+		return []diagnostic{{name: "API exposure", status: diagnosticOK, detail: "localhost-only default or no CARDINAL_HOST override"}}
 	}
 	host, _, err := parseHost(hostOverride)
 	if err != nil {
-		return []diagnostic{{name: "API exposure", status: diagnosticFail, detail: fmt.Sprintf("invalid DCK_HOST=%q: %v", hostOverride, err)}}
+		return []diagnostic{{name: "API exposure", status: diagnosticFail, detail: fmt.Sprintf("invalid CARDINAL_HOST=%q: %v", hostOverride, err)}}
 	}
 	if host == "localhost" || host == "127.0.0.1" || host == "::1" {
-		return []diagnostic{{name: "API exposure", status: diagnosticOK, detail: fmt.Sprintf("localhost bind configured via DCK_HOST=%q", hostOverride)}}
+		return []diagnostic{{name: "API exposure", status: diagnosticOK, detail: fmt.Sprintf("localhost bind configured via CARDINAL_HOST=%q", hostOverride)}}
 	}
-	if strings.TrimSpace(os.Getenv("DCK_TOKEN")) == "" {
-		return []diagnostic{{name: "API exposure", status: diagnosticFail, detail: fmt.Sprintf("DCK_HOST=%q is configured without DCK_TOKEN", hostOverride)}}
+	if strings.TrimSpace(os.Getenv("CARDINAL_TOKEN")) == "" {
+		return []diagnostic{{name: "API exposure", status: diagnosticFail, detail: fmt.Sprintf("CARDINAL_HOST=%q is configured without CARDINAL_TOKEN", hostOverride)}}
 	}
-	return []diagnostic{{name: "API exposure", status: diagnosticOK, detail: "external host has DCK_TOKEN configured"}}
+	return []diagnostic{{name: "API exposure", status: diagnosticOK, detail: "external host has CARDINAL_TOKEN configured"}}
 }
 
 func printDiagnostics(title string, checks []diagnostic) {

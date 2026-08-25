@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"os"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func Restart(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck restart <container>")
+		fmt.Println("Usage: cardinal restart <container>")
 		os.Exit(1)
 	}
 

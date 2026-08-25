@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 // Exit codes follow sysexits(3) conventions where reasonable so scripts

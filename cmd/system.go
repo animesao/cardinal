@@ -7,13 +7,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"dck/internal/container"
-	"dck/internal/state"
+	"cardinal/internal/container"
+	"cardinal/internal/state"
 )
 
 func System(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck system <command>")
+		fmt.Println("Usage: cardinal system <command>")
 		fmt.Println("Commands:")
 		fmt.Println("  df       Show disk usage by images, containers, and volumes")
 		fmt.Println("  prune    Remove unused containers and images")
@@ -30,7 +30,7 @@ func System(args []string) {
 		systemDF()
 	default:
 		fmt.Printf("unknown system command: %s\n", args[0])
-		fmt.Println("Usage: dck system [df|prune]")
+		fmt.Println("Usage: cardinal system [df|prune]")
 		os.Exit(1)
 	}
 }

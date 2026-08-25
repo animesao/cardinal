@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 // VolumeType represents the type of volume mount
@@ -207,7 +207,7 @@ func validateBindSource(source string) (string, error) {
 		return "", fmt.Errorf("absolute bind source %q: %w", source, err)
 	}
 	// IsProtectedHostPath now owns the blocklist and the optional
-	// DCK_ALLOWED_HOST_PATHS allowlist so the same rule applies to
+	// CARDINAL_ALLOWED_HOST_PATHS allowlist so the same rule applies to
 	// COPY/ADD, build contexts and runtime mounts.
 	if IsProtectedHostPath(resolved) {
 		return "", fmt.Errorf("bind source %q is a protected host path", source)

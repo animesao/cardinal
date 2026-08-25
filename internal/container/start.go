@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"dck/internal/image"
-	"dck/internal/log"
-	"dck/internal/network"
-	"dck/internal/state"
+	"cardinal/internal/image"
+	"cardinal/internal/log"
+	"cardinal/internal/network"
+	"cardinal/internal/state"
 )
 
 func commandContext30(name string, arg ...string) *exec.Cmd {
@@ -177,7 +177,7 @@ func (c *Container) startInternal() error {
 		c.abortStart(cmd)
 		return fmt.Errorf("record container namespaces: %w", err)
 	}
-	// The container may have been removed (dck rm) while this start was in
+	// The container may have been removed (cardinal rm) while this start was in
 	// flight (the supervisor's automatic restart racing a user removal). Never
 	// resurrect a deleted container: tear down what we just spawned instead of
 	// re-persisting its state.
@@ -216,12 +216,12 @@ func (c *Container) startInternal() error {
 func initNetworkEnvironment(env []string) []string {
 	filtered := make([]string, 0, len(env)+2)
 	for _, entry := range env {
-		if strings.HasPrefix(entry, "DCK_INIT_READY_FD=") || strings.HasPrefix(entry, "DCK_INIT_GO_FD=") {
+		if strings.HasPrefix(entry, "CARDINAL_INIT_READY_FD=") || strings.HasPrefix(entry, "CARDINAL_INIT_GO_FD=") {
 			continue
 		}
 		filtered = append(filtered, entry)
 	}
-	return append(filtered, "DCK_INIT_READY_FD=3", "DCK_INIT_GO_FD=4")
+	return append(filtered, "CARDINAL_INIT_READY_FD=3", "CARDINAL_INIT_GO_FD=4")
 }
 
 func awaitInitNetworkReady(ready *os.File) error {
@@ -776,7 +776,7 @@ func monitorContainer(c *Container, cmd *exec.Cmd, ctx context.Context) {
 }
 
 // HandleMainProcessExit is invoked by the supervisor when an orphaned container
-// main process (unshare) exits after the original `dck run -d` process is gone.
+// main process (unshare) exits after the original `cardinal run -d` process is gone.
 // It finalizes state and resources exactly like the in-process monitor would.
 // It reports whether finalization actually ran, so callers can avoid repeating
 // the work (e.g. when the state file vanished between Load and finalize).

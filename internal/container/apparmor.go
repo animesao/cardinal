@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"dck/internal/log"
+	"cardinal/internal/log"
 )
 
 // DefaultAppArmorProfile returns the default AppArmor profile for containers.
@@ -16,7 +16,7 @@ import (
 func DefaultAppArmorProfile() string {
 	return `#include <tunables/global>
 
-profile dck-container flags=(attach_disconnected,mediate_deleted) {
+profile cardinal-container flags=(attach_disconnected,mediate_deleted) {
   #include <abstractions/base>
 
   # Deny access to sensitive host paths
@@ -49,7 +49,7 @@ profile dck-container flags=(attach_disconnected,mediate_deleted) {
   dbus,
 
   # Allow signals to processes within the container
-  signal (send,receive) peer=dck-container,
+  signal (send,receive) peer=cardinal-container,
 
   # Deny access to /proc except for the container's own namespace
   /proc/* r,
@@ -61,7 +61,7 @@ profile dck-container flags=(attach_disconnected,mediate_deleted) {
   /proc/*/mountinfo r,
 
   # Allow ptrace for debugging within the container
-  ptrace (read,trace) peer=dck-container,
+  ptrace (read,trace) peer=cardinal-container,
 
   # Deny mount operations (handled by the container runtime)
   deny mount,
@@ -200,7 +200,7 @@ func EnsureAppArmorProfile() error {
 	}
 
 	// Check if our profile is already loaded
-	profileName := "dck-container"
+	profileName := "cardinal-container"
 	data, err := os.ReadFile("/sys/kernel/security/apparmor/profiles")
 	if err == nil {
 		if strings.Contains(string(data), profileName) {
@@ -209,7 +209,7 @@ func EnsureAppArmorProfile() error {
 	}
 
 	// Write profile to temp file and load it
-	tmpFile, err := os.CreateTemp("", "dck-apparmor-*.prof")
+	tmpFile, err := os.CreateTemp("", "cardinal-apparmor-*.prof")
 	if err != nil {
 		return fmt.Errorf("create temp profile: %w", err)
 	}

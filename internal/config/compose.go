@@ -492,7 +492,7 @@ func LoadConfigOrCompose(path string) (*Config, string, error) {
 	}
 
 	candidates := []string{
-		"dck.toml",
+		"cardinal.toml",
 		"compose.yaml",
 		"compose.yml",
 		"docker-compose.yaml",
@@ -501,7 +501,7 @@ func LoadConfigOrCompose(path string) (*Config, string, error) {
 
 	home, _ := os.UserHomeDir()
 	if home != "" {
-		candidates = append(candidates, home+"/.dck/dck.toml")
+		candidates = append(candidates, home+"/.cardinal/cardinal.toml")
 	}
 
 	for _, p := range candidates {
@@ -514,7 +514,7 @@ func LoadConfigOrCompose(path string) (*Config, string, error) {
 		}
 	}
 
-	return nil, "", fmt.Errorf("no config file found (looked for dck.toml, compose.yaml, compose.yml)")
+	return nil, "", fmt.Errorf("no config file found (looked for cardinal.toml, compose.yaml, compose.yml)")
 }
 
 func tryLoad(path string) (*Config, string, error) {

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 // psShowAll is set by the cobra wrapper before calling Ps.

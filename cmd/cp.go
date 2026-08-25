@@ -8,14 +8,14 @@ import (
 	"os"
 	"strings"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func Cp(args []string) {
 	if len(args) < 2 {
-		fmt.Println("Usage: dck cp <src> <dst>")
-		fmt.Println("  dck cp <container>:<path> <host-path>")
-		fmt.Println("  dck cp <host-path> <container>:<path>")
+		fmt.Println("Usage: cardinal cp <src> <dst>")
+		fmt.Println("  cardinal cp <container>:<path> <host-path>")
+		fmt.Println("  cardinal cp <host-path> <container>:<path>")
 		os.Exit(1)
 	}
 

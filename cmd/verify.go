@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"os"
 
-	"dck/internal/image"
+	"cardinal/internal/image"
 )
 
 func Verify(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck verify <image>[:tag]")
+		fmt.Println("Usage: cardinal verify <image>[:tag]")
 		os.Exit(1)
 	}
 	if err := image.VerifyReference(args[0]); err != nil {

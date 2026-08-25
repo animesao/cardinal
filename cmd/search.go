@@ -97,8 +97,8 @@ func fetchTags(repo string, filter string) []string {
 
 func Search(args []string) {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "Usage: dck search <term>")
-		fmt.Fprintln(os.Stderr, "       dck search python:3.11  (filter by tag)")
+		fmt.Fprintln(os.Stderr, "Usage: cardinal search <term>")
+		fmt.Fprintln(os.Stderr, "       cardinal search python:3.11  (filter by tag)")
 		os.Exit(1)
 	}
 
@@ -189,7 +189,7 @@ func Search(args []string) {
 		fmt.Printf("    Stars: %d  Pulls: %d\n", r.item.Stars, r.item.Pulls)
 		if len(r.tags) > 0 {
 			fmt.Printf("    Tags: %s\n", strings.Join(r.tags, ", "))
-			fmt.Printf("    Use:  dck pull %s\n", r.item.Name+":"+r.tags[0])
+			fmt.Printf("    Use:  cardinal pull %s\n", r.item.Name+":"+r.tags[0])
 		}
 		fmt.Println()
 	}

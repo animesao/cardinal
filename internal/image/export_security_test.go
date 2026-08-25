@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 func makeImportArchive(t *testing.T, headers ...*tar.Header) string {
@@ -51,16 +51,16 @@ func imageMetadata(t *testing.T, name, tag string) *tar.Header {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &tar.Header{Name: "image.json", Typeflag: tar.TypeReg, Size: int64(len(data)), Mode: 0600, PAXRecords: map[string]string{"dck-test": string(data)}}
+	return &tar.Header{Name: "image.json", Typeflag: tar.TypeReg, Size: int64(len(data)), Mode: 0600, PAXRecords: map[string]string{"cardinal-test": string(data)}}
 }
 
 func TestImportRejectsTraversal(t *testing.T) {
 	dataDir := t.TempDir()
-	old := os.Getenv("DCK_DATA_DIR")
-	if err := os.Setenv("DCK_DATA_DIR", dataDir); err != nil {
+	old := os.Getenv("CARDINAL_DATA_DIR")
+	if err := os.Setenv("CARDINAL_DATA_DIR", dataDir); err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = os.Setenv("DCK_DATA_DIR", old) }()
+	defer func() { _ = os.Setenv("CARDINAL_DATA_DIR", old) }()
 	if err := state.EnsureDirs(); err != nil {
 		t.Fatal(err)
 	}
@@ -76,9 +76,9 @@ func TestImportRejectsTraversal(t *testing.T) {
 
 func TestImportRejectsDuplicateMetadata(t *testing.T) {
 	dataDir := t.TempDir()
-	old := os.Getenv("DCK_DATA_DIR")
-	_ = os.Setenv("DCK_DATA_DIR", dataDir)
-	defer func() { _ = os.Setenv("DCK_DATA_DIR", old) }()
+	old := os.Getenv("CARDINAL_DATA_DIR")
+	_ = os.Setenv("CARDINAL_DATA_DIR", dataDir)
+	defer func() { _ = os.Setenv("CARDINAL_DATA_DIR", old) }()
 	if err := state.EnsureDirs(); err != nil {
 		t.Fatal(err)
 	}
@@ -90,9 +90,9 @@ func TestImportRejectsDuplicateMetadata(t *testing.T) {
 
 func TestImportRejectsSpecialEntries(t *testing.T) {
 	dataDir := t.TempDir()
-	old := os.Getenv("DCK_DATA_DIR")
-	_ = os.Setenv("DCK_DATA_DIR", dataDir)
-	defer func() { _ = os.Setenv("DCK_DATA_DIR", old) }()
+	old := os.Getenv("CARDINAL_DATA_DIR")
+	_ = os.Setenv("CARDINAL_DATA_DIR", dataDir)
+	defer func() { _ = os.Setenv("CARDINAL_DATA_DIR", old) }()
 	if err := state.EnsureDirs(); err != nil {
 		t.Fatal(err)
 	}
@@ -104,9 +104,9 @@ func TestImportRejectsSpecialEntries(t *testing.T) {
 
 func TestImportRejectsUnsafeMetadataReference(t *testing.T) {
 	dataDir := t.TempDir()
-	old := os.Getenv("DCK_DATA_DIR")
-	_ = os.Setenv("DCK_DATA_DIR", dataDir)
-	defer func() { _ = os.Setenv("DCK_DATA_DIR", old) }()
+	old := os.Getenv("CARDINAL_DATA_DIR")
+	_ = os.Setenv("CARDINAL_DATA_DIR", dataDir)
+	defer func() { _ = os.Setenv("CARDINAL_DATA_DIR", old) }()
 	if err := state.EnsureDirs(); err != nil {
 		t.Fatal(err)
 	}
@@ -139,9 +139,9 @@ func TestImportRejectsUnsafeMetadataReference(t *testing.T) {
 // not point a hardlink at /etc/passwd.
 func TestImportRejectsHardlinkOfflineArchive(t *testing.T) {
 	dataDir := t.TempDir()
-	old := os.Getenv("DCK_DATA_DIR")
-	_ = os.Setenv("DCK_DATA_DIR", dataDir)
-	t.Cleanup(func() { _ = os.Setenv("DCK_DATA_DIR", old) })
+	old := os.Getenv("CARDINAL_DATA_DIR")
+	_ = os.Setenv("CARDINAL_DATA_DIR", dataDir)
+	t.Cleanup(func() { _ = os.Setenv("CARDINAL_DATA_DIR", old) })
 	if err := state.EnsureDirs(); err != nil {
 		t.Fatal(err)
 	}
@@ -188,9 +188,9 @@ func TestSafeArchivePathRejectsNullByte(t *testing.T) {
 // unbounded recursion if naive traversal code follows it.
 func TestImportRejectsSymlinkLoop(t *testing.T) {
 	dataDir := t.TempDir()
-	old := os.Getenv("DCK_DATA_DIR")
-	_ = os.Setenv("DCK_DATA_DIR", dataDir)
-	t.Cleanup(func() { _ = os.Setenv("DCK_DATA_DIR", old) })
+	old := os.Getenv("CARDINAL_DATA_DIR")
+	_ = os.Setenv("CARDINAL_DATA_DIR", dataDir)
+	t.Cleanup(func() { _ = os.Setenv("CARDINAL_DATA_DIR", old) })
 	if err := state.EnsureDirs(); err != nil {
 		t.Fatal(err)
 	}
@@ -208,9 +208,9 @@ func TestImportRejectsSymlinkLoop(t *testing.T) {
 // destination validator must still notice the parent-directory escape.
 func TestImportRejectsDeepTraversal(t *testing.T) {
 	dataDir := t.TempDir()
-	old := os.Getenv("DCK_DATA_DIR")
-	_ = os.Setenv("DCK_DATA_DIR", dataDir)
-	t.Cleanup(func() { _ = os.Setenv("DCK_DATA_DIR", old) })
+	old := os.Getenv("CARDINAL_DATA_DIR")
+	_ = os.Setenv("CARDINAL_DATA_DIR", dataDir)
+	t.Cleanup(func() { _ = os.Setenv("CARDINAL_DATA_DIR", old) })
 	if err := state.EnsureDirs(); err != nil {
 		t.Fatal(err)
 	}

@@ -8,7 +8,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"dck/internal/network"
+	"cardinal/internal/network"
 )
 
 func Network(args []string) {
@@ -40,7 +40,7 @@ func networkCreate(args []string) {
 		os.Exit(1)
 	}
 	if len(fs.Args()) != 1 {
-		fmt.Fprintln(os.Stderr, "Usage: dck network create [--subnet 10.10.0.0/24] <name>")
+		fmt.Fprintln(os.Stderr, "Usage: cardinal network create [--subnet 10.10.0.0/24] <name>")
 		os.Exit(1)
 	}
 	n, err := network.CreateNetwork(fs.Args()[0], *subnet)
@@ -71,7 +71,7 @@ func networkList() {
 
 func networkInspect(args []string) {
 	if len(args) != 1 {
-		fmt.Fprintln(os.Stderr, "Usage: dck network inspect <name>")
+		fmt.Fprintln(os.Stderr, "Usage: cardinal network inspect <name>")
 		os.Exit(1)
 	}
 	n, err := network.LoadNetwork(args[0])
@@ -84,7 +84,7 @@ func networkInspect(args []string) {
 
 func networkRemove(args []string) {
 	if len(args) != 1 {
-		fmt.Fprintln(os.Stderr, "Usage: dck network rm <name>")
+		fmt.Fprintln(os.Stderr, "Usage: cardinal network rm <name>")
 		os.Exit(1)
 	}
 	if err := network.RemoveNetwork(args[0]); err != nil {
@@ -96,12 +96,12 @@ func networkRemove(args []string) {
 
 func printNetworkUsage() {
 	fmt.Println(`Usage:
-  dck network create [--subnet 10.10.0.0/24] <name>
-  dck network ls
-  dck network inspect <name>
-  dck network rm <name>
+  cardinal network create [--subnet 10.10.0.0/24] <name>
+  cardinal network ls
+  cardinal network inspect <name>
+  cardinal network rm <name>
 
 User-defined networks use a Linux bridge and require root/CAP_NET_ADMIN when a
 container using the network is started. The built-in bridge network remains
-dck0 and does not appear in this list.`)
+cardinal0 and does not appear in this list.`)
 }

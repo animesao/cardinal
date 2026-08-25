@@ -1,18 +1,18 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Gentoo packaging for `dck`
+# Gentoo packaging for `cardinal`
 
-This directory carries a Portage ebuild that builds `dck` from source
+This directory carries a Portage ebuild that builds `cardinal` from source
 matching the upstream release pipeline exactly:
 
 ```
 CGO_ENABLED=0 \
 go build -trimpath \
-    -ldflags="-s -w -buildid= -X dck/cmd.version=${PV}" \
-    -o bin/dck .
+    -ldflags="-s -w -buildid= -X cardinal/cmd.version=${PV}" \
+    -o bin/cardinal .
 ```
 
 The upstream `vendor/` tree is left untouched and consumed via
@@ -22,7 +22,7 @@ The upstream `vendor/` tree is left untouched and consumed via
 
 ```
 contrib/gentoo/
-├── dck-1.24.16.ebuild     # bump the version on each release
+├── cardinal-1.24.16.ebuild     # bump the version on each release
 └── README.md              # this file
 ```
 
@@ -30,24 +30,24 @@ contrib/gentoo/
 
 ```bash
 # 1. Create a local overlay root if you don't already have one
-sudo mkdir -p /var/db/repos/dck-overlay/{profiles,metadata}
+sudo mkdir -p /var/db/repos/cardinal-overlay/{profiles,metadata}
 
-echo "dck-overlay" | sudo tee /var/db/repos/dck-overlay/profiles/repo_name
-cat <<'EOF' | sudo tee /var/db/repos/dck-overlay/metadata/layout.conf
+echo "cardinal-overlay" | sudo tee /var/db/repos/cardinal-overlay/profiles/repo_name
+cat <<'EOF' | sudo tee /var/db/repos/cardinal-overlay/metadata/layout.conf
 masters = gentoo
 EOF
 
 # 2. Copy the ebuild into your overlay
-sudo cp contrib/gentoo/dck-1.24.16.ebuild \
-        /var/db/repos/dck-overlay/app-containers/dck/dck-1.24.16.ebuild
+sudo cp contrib/gentoo/cardinal-1.24.16.ebuild \
+        /var/db/repos/cardinal-overlay/app-containers/cardinal/cardinal-1.24.16.ebuild
 
 # 3. Generate an SHA256 manifest
-sudo chown -R portage:portage /var/db/repos/dck-overlay
-sudo Manifest-md5 /var/db/repos/dck-overlay/app-containers/dck/dck-1.24.16.ebuild || true
+sudo chown -R portage:portage /var/db/repos/cardinal-overlay
+sudo Manifest-md5 /var/db/repos/cardinal-overlay/app-containers/cardinal/cardinal-1.24.16.ebuild || true
 
 # 4. Emerge
-sudo emerge --sync dck-overlay
-sudo emerge --ask app-containers/dck
+sudo emerge --sync cardinal-overlay
+sudo emerge --ask app-containers/cardinal
 ```
 
 ## Submitting to ::guru or ::gentoo
@@ -58,7 +58,7 @@ PR against:
 - https://github.com/gentoo/guru (for `~amd64` initially)
 - https://github.com/gentoo/gentoo (for stabilisation later, requires maintainer review)
 
-Conventional category: `app-containers/dck` (consistent with
+Conventional category: `app-containers/cardinal` (consistent with
 `app-containers/docker`, `app-containers/podman`, etc.).
 
 REQUIRED before sending the PR:
@@ -66,7 +66,7 @@ REQUIRED before sending the PR:
 | Field | Value |
 |---|---|
 | `DESCRIPTION` | lightweight, daemonless, OCI-compatible container runtime |
-| `HOMEPAGE` | https://github.com/animesao/dck |
+| `HOMEPAGE` | https://github.com/animesao/cardinal |
 | `LICENSE` | MIT (must match upstream LICENSE file) |
 | `SLOT` | 0 |
 | `KEYWORDS` | start with `~amd64`, add more as testing progresses |

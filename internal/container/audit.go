@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 // AuditEventType represents the type of audit event.

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 // TestNormalizeLoadedStateKeepsLiveContainer verifies that a container whose
@@ -17,9 +17,9 @@ import (
 // containers being marked stopped (and later rm'd) while the real process tree
 // kept running.
 func TestNormalizeLoadedStateKeepsLiveContainer(t *testing.T) {
-	origDataDir := os.Getenv("DCK_DATA_DIR")
-	defer os.Setenv("DCK_DATA_DIR", origDataDir)
-	os.Setenv("DCK_DATA_DIR", t.TempDir())
+	origDataDir := os.Getenv("CARDINAL_DATA_DIR")
+	defer os.Setenv("CARDINAL_DATA_DIR", origDataDir)
+	os.Setenv("CARDINAL_DATA_DIR", t.TempDir())
 
 	cmd := exec.Command("sh", "-c", "sleep 30")
 	if err := cmd.Start(); err != nil {
@@ -41,9 +41,9 @@ func TestNormalizeLoadedStateKeepsLiveContainer(t *testing.T) {
 // TestNormalizeLoadedStateFlipsWhenAllProcessesDead verifies the stopped flip
 // for states where every recorded process is gone.
 func TestNormalizeLoadedStateFlipsWhenAllProcessesDead(t *testing.T) {
-	origDataDir := os.Getenv("DCK_DATA_DIR")
-	defer os.Setenv("DCK_DATA_DIR", origDataDir)
-	os.Setenv("DCK_DATA_DIR", t.TempDir())
+	origDataDir := os.Getenv("CARDINAL_DATA_DIR")
+	defer os.Setenv("CARDINAL_DATA_DIR", origDataDir)
+	os.Setenv("CARDINAL_DATA_DIR", t.TempDir())
 
 	cmd := exec.Command("sh", "-c", "exit 0")
 	if err := cmd.Run(); err != nil {
@@ -76,16 +76,16 @@ func TestFindChildPIDResolvesDirectChild(t *testing.T) {
 }
 
 // TestContainerInitCommandline verifies that the fallback only accepts the
-// exact internal dck init command for the requested container.
+// exact internal cardinal init command for the requested container.
 func TestContainerInitCommandline(t *testing.T) {
-	want := []byte("/usr/local/bin/dck\x00init\x00container-123\x00/var/lib/dck/overlay/merged\x00")
+	want := []byte("/usr/local/bin/cardinal\x00init\x00container-123\x00/var/lib/cardinal/overlay/merged\x00")
 	if !isContainerInitCommandline(want, "container-123") {
-		t.Fatal("valid dck init command line was not recognized")
+		t.Fatal("valid cardinal init command line was not recognized")
 	}
 	if isContainerInitCommandline(want, "other-container") {
 		t.Fatal("command line for another container was accepted")
 	}
-	if isContainerInitCommandline([]byte("/usr/local/bin/dck\\x00start\\x00container-123\\x00"), "container-123") {
+	if isContainerInitCommandline([]byte("/usr/local/bin/cardinal\\x00start\\x00container-123\\x00"), "container-123") {
 		t.Fatal("non-init command line was accepted")
 	}
 }
@@ -93,10 +93,10 @@ func TestContainerInitCommandline(t *testing.T) {
 func TestInitNetworkEnvironment(t *testing.T) {
 	env := initNetworkEnvironment([]string{
 		"PATH=/usr/bin",
-		"DCK_INIT_READY_FD=99",
-		"DCK_INIT_GO_FD=100",
+		"CARDINAL_INIT_READY_FD=99",
+		"CARDINAL_INIT_GO_FD=100",
 	})
-	if len(env) != 3 || env[0] != "PATH=/usr/bin" || env[1] != "DCK_INIT_READY_FD=3" || env[2] != "DCK_INIT_GO_FD=4" {
+	if len(env) != 3 || env[0] != "PATH=/usr/bin" || env[1] != "CARDINAL_INIT_READY_FD=3" || env[2] != "CARDINAL_INIT_GO_FD=4" {
 		t.Fatalf("unexpected network handshake environment: %#v", env)
 	}
 }
@@ -177,9 +177,9 @@ func TestPidAliveTreatsZombieAsDead(t *testing.T) {
 // is visible to the supervisor so an automatic restart cannot resurrect a
 // container mid-removal.
 func TestRemovalTombstone(t *testing.T) {
-	origDataDir := os.Getenv("DCK_DATA_DIR")
-	defer os.Setenv("DCK_DATA_DIR", origDataDir)
-	os.Setenv("DCK_DATA_DIR", t.TempDir())
+	origDataDir := os.Getenv("CARDINAL_DATA_DIR")
+	defer os.Setenv("CARDINAL_DATA_DIR", origDataDir)
+	os.Setenv("CARDINAL_DATA_DIR", t.TempDir())
 	if err := state.EnsureDirs(); err != nil {
 		t.Fatalf("ensure dirs: %v", err)
 	}

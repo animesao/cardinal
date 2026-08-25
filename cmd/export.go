@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"dck/internal/image"
+	"cardinal/internal/image"
 )
 
 func Export(args []string) {
@@ -20,7 +20,7 @@ func Export(args []string) {
 
 	freeArgs := fs.Args()
 	if len(freeArgs) < 1 {
-		fmt.Println("Usage: dck export <image>[:tag] [-o output.tar.gz]")
+		fmt.Println("Usage: cardinal export <image>[:tag] [-o output.tar.gz]")
 		os.Exit(1)
 	}
 
@@ -33,7 +33,7 @@ func Export(args []string) {
 
 func Import(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck import <file.tar.gz>")
+		fmt.Println("Usage: cardinal import <file.tar.gz>")
 		os.Exit(1)
 	}
 

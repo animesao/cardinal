@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 // AuthEntry stores credentials for a registry

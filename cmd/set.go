@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func Set(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck set <container> [options]")
+		fmt.Println("Usage: cardinal set <container> [options]")
 		fmt.Println("  --memory <lim>  Memory limit")
 		fmt.Println("  --ram <lim>     Memory limit (alias for --memory)")
 		fmt.Println("  --cpus <num>    CPU limit")

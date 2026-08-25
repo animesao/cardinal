@@ -1,27 +1,27 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Installing dck on Linux (Universal)
+# Installing cardinal on Linux (Universal)
 
 The universal installer works on any Linux distribution with systemd.
 
 ## Quick Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/animesao/dck/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/animesao/cardinal/main/install.sh | sudo bash
 ```
 
-This installs the latest stable binary to `/usr/local/bin/dck` and enables the systemd supervisor.
+This installs the latest stable binary to `/usr/local/bin/cardinal` and enables the systemd supervisor.
 
 ## What It Does
 
 1. Detects your architecture (amd64, arm64, armv6)
 2. Downloads the latest release binary from GitHub
 3. Verifies the SHA256 checksum
-4. Installs to `/usr/local/bin/dck`
-5. Enables `dck-bootstrap.service` (auto-start on boot)
+4. Installs to `/usr/local/bin/cardinal`
+5. Enables `cardinal-bootstrap.service` (auto-start on boot)
 
 ## Requirements
 
@@ -33,14 +33,14 @@ This installs the latest stable binary to `/usr/local/bin/dck` and enables the s
 ## Verify Installation
 
 ```bash
-dck version
-dck doctor
+cardinal version
+cardinal doctor
 ```
 
 ## Uninstall
 
 ```bash
-dck bootstrap --remove
-sudo rm /usr/local/bin/dck
-sudo rm -rf ~/.dck
+cardinal bootstrap --remove
+sudo rm /usr/local/bin/cardinal
+sudo rm -rf ~/.cardinal
 ```

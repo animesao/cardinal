@@ -1,8 +1,8 @@
 version: 2
-project_name: dck
+project_name: cardinal
 
 builds:
-  - binary: dck
+  - binary: cardinal
     goos: [linux]
     goarch: [amd64, arm64]
     # Reproducible builds: strip absolute paths and VCS info from the binary.
@@ -11,21 +11,21 @@ builds:
     ldflags:
       - -s -w
       - -buildid=
-      - -X dck/cmd.version={{ .Version }}
+      - -X cardinal/cmd.version={{ .Version }}
     env:
       - CGO_ENABLED=0
 
 nfpms:
-  - package_name: dck
+  - package_name: cardinal
     file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Arch }}"
     formats: [deb, rpm, archlinux, apk]
     vendor: animesao
-    homepage: https://github.com/animesao/dck
+    homepage: https://github.com/animesao/cardinal
     description: Lightweight container runtime
     maintainer: animesao <animesao@users.noreply.github.com>
     license: MIT
     # We deliberately leave `contents:` empty here, even though it
-    # looks tempting to add a `src: ./dist/dck_linux_<arch>/dck`
+    # looks tempting to add a `src: ./dist/cardinal_linux_<arch>/cardinal`
     # entry. Looking at goreleaser source (internal/pipe/nfpm/nfpm.go
     # in function `create()`):
     #
@@ -42,9 +42,9 @@ nfpms:
     # goreleaser auto-injects every build artefact under `bindir`,
     # filtered by the per-package artifact list (one package per
     # OS + arch via GroupByPlatform()). Adding a manual entries
-    # pointing to the same `dst: /usr/bin/dck` produced
-    # `content collision: ... dist/dck_linux_amd64_v1/dck is
-    # already present at this destination ... dist/dck_linux_arm64_v8.0/dck`
+    # pointing to the same `dst: /usr/bin/cardinal` produced
+    # `content collision: ... dist/cardinal_linux_amd64_v1/cardinal is
+    # already present at this destination ... dist/cardinal_linux_arm64_v8.0/cardinal`
     # because nfpm sees the auto-injected arch-B source while
     # evaluating arch-A's contents list.
     #
@@ -71,7 +71,7 @@ checksum:
 release:
   github:
     owner: animesao
-    name: dck
+    name: cardinal
   extra_files:
     - glob: dist/*.deb
     - glob: dist/*.rpm

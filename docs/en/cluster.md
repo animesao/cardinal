@@ -1,24 +1,24 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
 # Cluster Orchestration
 
-dck supports multi-node clustering with service management, DNS-based service discovery,
+cardinal supports multi-node clustering with service management, DNS-based service discovery,
 and rolling updates — all in a single 5 MB binary with no external dependencies.
 
 ## Architecture
 
 ```
 ┌──────────────────────────────────────────┐
-│              dck cluster                  │
+│              cardinal cluster                  │
 │                                          │
 │  ┌──────────┐     ┌──────────┐          │
 │  │  Node 1   │     │  Node 2   │          │
 │  │ (leader)  │◄───►│ (worker)  │          │
 │  │           │     │           │          │
-│  │ dck run   │     │ dck run   │          │
+│  │ cardinal run   │     │ cardinal run   │          │
 │  │ containers│     │ containers│          │
 │  └──────────┘     └──────────┘          │
 │         ▲                ▲               │
@@ -36,13 +36,13 @@ and rolling updates — all in a single 5 MB binary with no external dependencie
 
 ## Cluster commands
 
-### `dck cluster init`
+### `cardinal cluster init`
 
 Initialize a new cluster. The first node becomes the leader.
 Use `--serve` to also start the API server for accepting remote replica requests.
 
 ```
-DCK_TOKEN='<strong-random-token>' dck cluster init --name prod --bind 0.0.0.0 --port 7946 --api-port 2375 --serve --token '<strong-random-token>'
+CARDINAL_TOKEN='<strong-random-token>' cardinal cluster init --name prod --bind 0.0.0.0 --port 7946 --api-port 2375 --serve --token '<strong-random-token>'
 ```
 
 Output:
@@ -55,12 +55,12 @@ Initialized cluster prod (a1b2c3d4e5f6)
 Starting API server on 0.0.0.0:2375 (Bearer token required)...
 ```
 
-### `dck cluster join <peer>`
+### `cardinal cluster join <peer>`
 
 Join an existing cluster. Use `--serve` to also start the API server.
 
 ```
-DCK_TOKEN='<strong-random-token>' dck cluster join 10.0.0.1:7946 --bind 0.0.0.0 --port 2375 --serve --token '<strong-random-token>'
+CARDINAL_TOKEN='<strong-random-token>' cardinal cluster join 10.0.0.1:7946 --bind 0.0.0.0 --port 2375 --serve --token '<strong-random-token>'
 ```
 
 The joining node:
@@ -68,21 +68,21 @@ The joining node:
 2. Receives full cluster state (nodes + services)
 3. Starts heartbeating every 5 seconds
 
-### `dck cluster leave`
+### `cardinal cluster leave`
 
 Gracefully leave the cluster. Notifies all peers and resets local state.
 
 ```
-dck cluster leave
+cardinal cluster leave
 ```
 
-### `dck cluster serve`
+### `cardinal cluster serve`
 
 Start the HTTP API server that accepts replica requests from other cluster nodes.
 Required on each node that should run containers scheduled by the cluster.
 
 ```
-dck cluster serve -p 2375 -H 0.0.0.0 --token '<strong-random-token>'
+cardinal cluster serve -p 2375 -H 0.0.0.0 --token '<strong-random-token>'
 ```
 
 The API server handles:
@@ -91,7 +91,7 @@ The API server handles:
 - `GET /cluster/containers` — list containers on this node
 - Built-in Docker API compatibility (Portainer etc.)
 
-### `dck cluster ls`
+### `cardinal cluster ls`
 
 List all nodes in the cluster.
 
@@ -104,12 +104,12 @@ e7f8a9b0  node-03   10.0.0.3:2375  worker  active    15:04:01
 
 ## Service management
 
-### `dck service create`
+### `cardinal service create`
 
 Create a service with replicas spread across the cluster.
 
 ```
-dck service create \
+cardinal service create \
   --name web \
   --replicas 3 \
   --port 80:80 \
@@ -117,7 +117,7 @@ dck service create \
   nginx:alpine
 ```
 
-### `dck service ls`
+### `cardinal service ls`
 
 List all services.
 
@@ -127,35 +127,35 @@ web    nginx:alpine  3         80->80/tcp    2026-07-03 15:00:00
 api    myapi:latest  2         3000->3000/tcp 2026-07-03 14:00:00
 ```
 
-### `dck service scale <name> <replicas>`
+### `cardinal service scale <name> <replicas>`
 
 Scale a service up or down.
 
 ```
-dck service scale web 5    # scale up to 5
-dck service scale api 0    # scale down to 0 (stop all)
+cardinal service scale web 5    # scale up to 5
+cardinal service scale api 0    # scale down to 0 (stop all)
 ```
 
-### `dck service update <name> --image <new-image>`
+### `cardinal service update <name> --image <new-image>`
 
 Perform a rolling update. The scheduler gradually replaces replicas
 (controlled by `UpdateConfig.Parallelism` and `UpdateConfig.Delay`).
 
 ```
-dck service update web --image nginx:1.25
+cardinal service update web --image nginx:1.25
 ```
 
-### `dck service rm <name>`
+### `cardinal service rm <name>`
 
 Remove a service and all its replicas.
 
 ```
-dck service rm web
+cardinal service rm web
 ```
 
 ## DNS-based service discovery
 
-dck includes a built-in DNS server that resolves service names to container IPs.
+cardinal includes a built-in DNS server that resolves service names to container IPs.
 
 Format: `<name>.svc.cluster.local`
 
@@ -185,7 +185,7 @@ web.svc.cluster.local → 10.0.0.10, 10.0.0.11, 10.0.0.12  (round-robin)
 Each node stores cluster state locally:
 
 ```
-~/.dck/
+~/.cardinal/
   cluster/
     cluster.json         # cluster config + node list
   services/

@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dck/internal/log"
-	"dck/internal/overlayutil"
+	"cardinal/internal/log"
+	"cardinal/internal/overlayutil"
 )
 
 func mountOverlay(lower, upper, work, merged string) error {

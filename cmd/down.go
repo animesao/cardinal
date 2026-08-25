@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 
-	"dck/internal/config"
-	"dck/internal/container"
+	"cardinal/internal/config"
+	"cardinal/internal/container"
 )
 
 func Down(args []string) {

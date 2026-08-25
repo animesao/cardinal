@@ -100,12 +100,12 @@ func TestBindSourceValidation(t *testing.T) {
 }
 
 func TestRemoveKeepsNamedVolume(t *testing.T) {
-	origDataDir := os.Getenv("DCK_DATA_DIR")
+	origDataDir := os.Getenv("CARDINAL_DATA_DIR")
 	tmpDir := t.TempDir()
-	if err := os.Setenv("DCK_DATA_DIR", tmpDir); err != nil {
+	if err := os.Setenv("CARDINAL_DATA_DIR", tmpDir); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Setenv("DCK_DATA_DIR", origDataDir)
+	defer os.Setenv("CARDINAL_DATA_DIR", origDataDir)
 
 	vol, err := CreateVolume("persistent", "local", nil, nil)
 	if err != nil {
@@ -148,11 +148,11 @@ func TestNeedsNetwork(t *testing.T) {
 
 func TestSaveAndLoad(t *testing.T) {
 	// Save the original data dir
-	origDataDir := os.Getenv("DCK_DATA_DIR")
-	defer os.Setenv("DCK_DATA_DIR", origDataDir)
+	origDataDir := os.Getenv("CARDINAL_DATA_DIR")
+	defer os.Setenv("CARDINAL_DATA_DIR", origDataDir)
 
 	tmpDir := t.TempDir()
-	os.Setenv("DCK_DATA_DIR", tmpDir)
+	os.Setenv("CARDINAL_DATA_DIR", tmpDir)
 
 	c := &Container{
 		ID:        "test-save-load",
@@ -186,9 +186,9 @@ func TestSaveAndLoad(t *testing.T) {
 }
 
 func TestNormalizeLoadedStateRejectsLegacyRunningState(t *testing.T) {
-	origDataDir := os.Getenv("DCK_DATA_DIR")
-	defer os.Setenv("DCK_DATA_DIR", origDataDir)
-	os.Setenv("DCK_DATA_DIR", t.TempDir())
+	origDataDir := os.Getenv("CARDINAL_DATA_DIR")
+	defer os.Setenv("CARDINAL_DATA_DIR", origDataDir)
+	os.Setenv("CARDINAL_DATA_DIR", t.TempDir())
 
 	// A legacy state whose init process is gone (and no unshare PID is
 	// recorded) is truly dead and must be downgraded to stopped.
@@ -241,11 +241,11 @@ func TestPortMap(t *testing.T) {
 }
 
 func TestFindByName(t *testing.T) {
-	origDataDir := os.Getenv("DCK_DATA_DIR")
-	defer os.Setenv("DCK_DATA_DIR", origDataDir)
+	origDataDir := os.Getenv("CARDINAL_DATA_DIR")
+	defer os.Setenv("CARDINAL_DATA_DIR", origDataDir)
 
 	tmpDir := t.TempDir()
-	os.Setenv("DCK_DATA_DIR", tmpDir)
+	os.Setenv("CARDINAL_DATA_DIR", tmpDir)
 
 	c := &Container{
 		ID:   "findme",

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"dck/internal/config"
+	"cardinal/internal/config"
 )
 
 // ResolveSecretSpecs converts config-level secret/config refs into container mount specs

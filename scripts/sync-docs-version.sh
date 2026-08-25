@@ -19,8 +19,8 @@ find "$ROOT" -type f -name '*.md' -not -path "$ROOT/.git/*" -not -path "$ROOT/ve
 
 sync_version_marker() {
   path=$1
-  start_count=$(grep -cF '<!-- dck-version:start -->' "$path" || true)
-  end_count=$(grep -cF '<!-- dck-version:end -->' "$path" || true)
+  start_count=$(grep -cF '<!-- cardinal-version:start -->' "$path" || true)
+  end_count=$(grep -cF '<!-- cardinal-version:end -->' "$path" || true)
   if [ "$start_count" -gt 0 ] || [ "$end_count" -gt 0 ]; then
     if [ "$start_count" -ne 1 ] || [ "$end_count" -ne 1 ]; then
       echo "Malformed version markers in ${path#"$ROOT/"}" >&2
@@ -31,22 +31,22 @@ sync_version_marker() {
   tmp=$(mktemp "$path.tmp.XXXXXX")
   if [ "$start_count" -eq 0 ]; then
     {
-      printf '%s\n' '<!-- dck-version:start -->'
+      printf '%s\n' '<!-- cardinal-version:start -->'
       printf '**Documentation version:** `%s`\n' "$VERSION"
       printf '**Project release:** `v%s`\n' "$VERSION"
-      printf '%s\n\n' '<!-- dck-version:end -->'
+      printf '%s\n\n' '<!-- cardinal-version:end -->'
       cat "$path"
     } > "$tmp"
   else
     awk -v version="$VERSION" '
-      /<!-- dck-version:start -->/ {
+      /<!-- cardinal-version:start -->/ {
         print
         print "**Documentation version:** `" version "`"
         print "**Project release:** `v" version "`"
         inside=1
         next
       }
-      /<!-- dck-version:end -->/ {
+      /<!-- cardinal-version:end -->/ {
         print
         inside=0
         next
@@ -60,8 +60,8 @@ sync_version_marker() {
 
 sync_readme_version_badge() {
   path=$1
-  start_count=$(grep -cF '<!-- dck-version-badge:start -->' "$path" || true)
-  end_count=$(grep -cF '<!-- dck-version-badge:end -->' "$path" || true)
+  start_count=$(grep -cF '<!-- cardinal-version-badge:start -->' "$path" || true)
+  end_count=$(grep -cF '<!-- cardinal-version-badge:end -->' "$path" || true)
   if [ "$start_count" -ne 1 ] || [ "$end_count" -ne 1 ]; then
     echo "Malformed or missing version badge markers in ${path#"$ROOT/"}" >&2
     return 1
@@ -69,13 +69,13 @@ sync_readme_version_badge() {
 
   tmp=$(mktemp "$path.tmp.XXXXXX")
   awk -v version="$VERSION" '
-    /<!-- dck-version-badge:start -->/ {
+    /<!-- cardinal-version-badge:start -->/ {
       print
       print "  <img src=\"https://img.shields.io/badge/version-v" version "-blue?style=flat-square\">"
       inside=1
       next
     }
-    /<!-- dck-version-badge:end -->/ {
+    /<!-- cardinal-version-badge:end -->/ {
       print
       inside=0
       next
@@ -88,13 +88,13 @@ sync_readme_version_badge() {
 
 check_readme_version_badge() {
   path=$1
-  start_count=$(grep -cF '<!-- dck-version-badge:start -->' "$path" || true)
-  end_count=$(grep -cF '<!-- dck-version-badge:end -->' "$path" || true)
+  start_count=$(grep -cF '<!-- cardinal-version-badge:start -->' "$path" || true)
+  end_count=$(grep -cF '<!-- cardinal-version-badge:end -->' "$path" || true)
   if [ "$start_count" -ne 1 ] || [ "$end_count" -ne 1 ]; then
     echo "Malformed or missing version badge markers in ${path#"$ROOT/"}" >&2
     return 1
   fi
-  if ! sed -n '/<!-- dck-version-badge:start -->/,/<!-- dck-version-badge:end -->/p' "$path" | grep -q "version-v$VERSION-blue"; then
+  if ! sed -n '/<!-- cardinal-version-badge:start -->/,/<!-- cardinal-version-badge:end -->/p' "$path" | grep -q "version-v$VERSION-blue"; then
     echo "Stale README version badge in ${path#"$ROOT/"}" >&2
     return 1
   fi
@@ -102,8 +102,8 @@ check_readme_version_badge() {
 
 sync_changelog_current_release() {
   path=$1
-  start_count=$(grep -cF '<!-- dck-current-release:start -->' "$path" || true)
-  end_count=$(grep -cF '<!-- dck-current-release:end -->' "$path" || true)
+  start_count=$(grep -cF '<!-- cardinal-current-release:start -->' "$path" || true)
+  end_count=$(grep -cF '<!-- cardinal-current-release:end -->' "$path" || true)
   if [ "$start_count" -gt 0 ] || [ "$end_count" -gt 0 ]; then
     if [ "$start_count" -ne 1 ] || [ "$end_count" -ne 1 ]; then
       echo "Malformed current-release markers in ${path#"$ROOT/"}" >&2
@@ -123,21 +123,21 @@ sync_changelog_current_release() {
         print
         if ($0 == "# Changelog") {
           print ""
-          print "<!-- dck-current-release:start -->"
+          print "<!-- cardinal-current-release:start -->"
           print "> Current release: **v" version "**. Detailed release notes below are maintained manually."
-          print "<!-- dck-current-release:end -->"
+          print "<!-- cardinal-current-release:end -->"
         }
       }
     ' "$path" > "$tmp"
   else
     awk -v version="$VERSION" '
-      /<!-- dck-current-release:start -->/ {
+      /<!-- cardinal-current-release:start -->/ {
         print
         print "> Current release: **v" version "**. Detailed release notes below are maintained manually."
         inside=1
         next
       }
-      /<!-- dck-current-release:end -->/ {
+      /<!-- cardinal-current-release:end -->/ {
         print
         inside=0
         next
@@ -151,8 +151,8 @@ sync_changelog_current_release() {
 
 sync_readme_release_block() {
   path=$1
-  start_count=$(grep -cF '<!-- dck-release:start -->' "$path" || true)
-  end_count=$(grep -cF '<!-- dck-release:end -->' "$path" || true)
+  start_count=$(grep -cF '<!-- cardinal-release:start -->' "$path" || true)
+  end_count=$(grep -cF '<!-- cardinal-release:end -->' "$path" || true)
   if [ "$start_count" -gt 0 ] || [ "$end_count" -gt 0 ]; then
     if [ "$start_count" -ne 1 ] || [ "$end_count" -ne 1 ]; then
       echo "Malformed release markers in ${path#"$ROOT/"}" >&2
@@ -172,21 +172,21 @@ sync_readme_release_block() {
         print
         if ($0 == "## Changelog") {
           print ""
-          print "<!-- dck-release:start -->"
+          print "<!-- cardinal-release:start -->"
           print "**v" version "** — Documentation, installation, AppImage, update, and release automation are synchronized from the root `VERSION` file."
-          print "<!-- dck-release:end -->"
+          print "<!-- cardinal-release:end -->"
         }
       }
     ' "$path" > "$tmp"
   else
     awk -v version="$VERSION" '
-      /<!-- dck-release:start -->/ {
+      /<!-- cardinal-release:start -->/ {
         print
         print "**v" version "** — Documentation, installation, AppImage, update, and release automation are synchronized from the root `VERSION` file."
         inside=1
         next
       }
-      /<!-- dck-release:end -->/ {
+      /<!-- cardinal-release:end -->/ {
         print
         inside=0
         next
@@ -200,13 +200,13 @@ sync_readme_release_block() {
 
 check_version_marker() {
   path=$1
-  start_count=$(grep -cF '<!-- dck-version:start -->' "$path" || true)
-  end_count=$(grep -cF '<!-- dck-version:end -->' "$path" || true)
+  start_count=$(grep -cF '<!-- cardinal-version:start -->' "$path" || true)
+  end_count=$(grep -cF '<!-- cardinal-version:end -->' "$path" || true)
   if [ "$start_count" -ne 1 ] || [ "$end_count" -ne 1 ]; then
     echo "Malformed or missing version markers in ${path#"$ROOT/"}" >&2
     return 1
   fi
-  block=$(sed -n '/<!-- dck-version:start -->/,/<!-- dck-version:end -->/p' "$path")
+  block=$(sed -n '/<!-- cardinal-version:start -->/,/<!-- cardinal-version:end -->/p' "$path")
   expected="**Documentation version:** \`$VERSION\`"
   expected_release="**Project release:** \`v$VERSION\`"
   actual=$(printf '%s\n' "$block" | sed -n '2p')
@@ -219,13 +219,13 @@ check_version_marker() {
 
 check_changelog_current_release() {
   path=$1
-  start_count=$(grep -cF '<!-- dck-current-release:start -->' "$path" || true)
-  end_count=$(grep -cF '<!-- dck-current-release:end -->' "$path" || true)
+  start_count=$(grep -cF '<!-- cardinal-current-release:start -->' "$path" || true)
+  end_count=$(grep -cF '<!-- cardinal-current-release:end -->' "$path" || true)
   if [ "$start_count" -ne 1 ] || [ "$end_count" -ne 1 ]; then
     echo "Malformed or missing current-release markers in ${path#"$ROOT/"}" >&2
     return 1
   fi
-  if ! sed -n '/<!-- dck-current-release:start -->/,/<!-- dck-current-release:end -->/p' "$path" | grep -q "v$VERSION"; then
+  if ! sed -n '/<!-- cardinal-current-release:start -->/,/<!-- cardinal-current-release:end -->/p' "$path" | grep -q "v$VERSION"; then
     echo "Stale current changelog release in ${path#"$ROOT/"}" >&2
     return 1
   fi
@@ -233,13 +233,13 @@ check_changelog_current_release() {
 
 check_readme_release_block() {
   path=$1
-  start_count=$(grep -cF '<!-- dck-release:start -->' "$path" || true)
-  end_count=$(grep -cF '<!-- dck-release:end -->' "$path" || true)
+  start_count=$(grep -cF '<!-- cardinal-release:start -->' "$path" || true)
+  end_count=$(grep -cF '<!-- cardinal-release:end -->' "$path" || true)
   if [ "$start_count" -ne 1 ] || [ "$end_count" -ne 1 ]; then
     echo "Malformed or missing release markers in ${path#"$ROOT/"}" >&2
     return 1
   fi
-  if ! sed -n '/<!-- dck-release:start -->/,/<!-- dck-release:end -->/p' "$path" | grep -q "v$VERSION"; then
+  if ! sed -n '/<!-- cardinal-release:start -->/,/<!-- cardinal-release:end -->/p' "$path" | grep -q "v$VERSION"; then
     echo "Stale current release in ${path#"$ROOT/"}" >&2
     return 1
   fi

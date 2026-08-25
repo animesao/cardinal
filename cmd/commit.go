@@ -8,14 +8,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dck/internal/container"
-	"dck/internal/image"
-	"dck/internal/state"
+	"cardinal/internal/container"
+	"cardinal/internal/image"
+	"cardinal/internal/state"
 )
 
 func Commit(args []string) {
 	if len(args) < 2 {
-		fmt.Println("Usage: dck commit <container> <image>[:<tag>]")
+		fmt.Println("Usage: cardinal commit <container> <image>[:<tag>]")
 		os.Exit(1)
 	}
 

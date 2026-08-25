@@ -13,7 +13,7 @@ var (
 	// FaaS metrics
 	FaaSInvokeCount = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "dck_faas_invoke_total",
+			Name: "cardinal_faas_invoke_total",
 			Help: "Total number of function invocations",
 		},
 		[]string{"function"},
@@ -21,7 +21,7 @@ var (
 
 	FaaSInvokeErrors = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "dck_faas_invoke_errors_total",
+			Name: "cardinal_faas_invoke_errors_total",
 			Help: "Total number of function invocation errors",
 		},
 		[]string{"function", "reason"},
@@ -29,7 +29,7 @@ var (
 
 	FaaSInvokeDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "dck_faas_invoke_duration_seconds",
+			Name:    "cardinal_faas_invoke_duration_seconds",
 			Help:    "Duration of function invocations in seconds",
 			Buckets: prometheus.ExponentialBuckets(0.01, 2, 10),
 		},
@@ -39,7 +39,7 @@ var (
 	// Scale up/down metrics
 	ScaleUpTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "dck_scale_up_total",
+			Name: "cardinal_scale_up_total",
 			Help: "Total number of scale up operations",
 		},
 		[]string{"target", "type"}, // type: function, service
@@ -47,7 +47,7 @@ var (
 
 	ScaleUpErrors = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "dck_scale_up_errors_total",
+			Name: "cardinal_scale_up_errors_total",
 			Help: "Total number of scale up errors",
 		},
 		[]string{"target", "type"},
@@ -55,7 +55,7 @@ var (
 
 	ScaleUpDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "dck_scale_up_duration_seconds",
+			Name:    "cardinal_scale_up_duration_seconds",
 			Help:    "Duration of scale up operations in seconds",
 			Buckets: prometheus.ExponentialBuckets(0.1, 2, 10),
 		},
@@ -64,7 +64,7 @@ var (
 
 	ScaleDownTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "dck_scale_down_total",
+			Name: "cardinal_scale_down_total",
 			Help: "Total number of scale down operations",
 		},
 		[]string{"target", "type"},
@@ -72,7 +72,7 @@ var (
 
 	ScaleDownErrors = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "dck_scale_down_errors_total",
+			Name: "cardinal_scale_down_errors_total",
 			Help: "Total number of scale down errors",
 		},
 		[]string{"target", "type"},
@@ -80,7 +80,7 @@ var (
 
 	ScaleDownDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "dck_scale_down_duration_seconds",
+			Name:    "cardinal_scale_down_duration_seconds",
 			Help:    "Duration of scale down operations in seconds",
 			Buckets: prometheus.ExponentialBuckets(0.1, 2, 10),
 		},
@@ -90,7 +90,7 @@ var (
 	// Active containers gauge
 	ActiveContainers = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "dck_active_containers",
+			Name: "cardinal_active_containers",
 			Help: "Number of active containers",
 		},
 		[]string{"type"}, // function, service
@@ -99,7 +99,7 @@ var (
 	// Container operations
 	ContainerCreatedTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "dck_container_created_total",
+			Name: "cardinal_container_created_total",
 			Help: "Total number of containers created",
 		},
 		[]string{"type"},
@@ -107,7 +107,7 @@ var (
 
 	ContainerRemovedTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "dck_container_removed_total",
+			Name: "cardinal_container_removed_total",
 			Help: "Total number of containers removed",
 		},
 		[]string{"type"},
@@ -116,7 +116,7 @@ var (
 	// Scheduler metrics
 	ScheduleReplicaTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "dck_schedule_replica_total",
+			Name: "cardinal_schedule_replica_total",
 			Help: "Total number of replica scheduling attempts",
 		},
 		[]string{"service", "target_node"},
@@ -124,7 +124,7 @@ var (
 
 	ScheduleReplicaErrors = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "dck_schedule_replica_errors_total",
+			Name: "cardinal_schedule_replica_errors_total",
 			Help: "Total number of replica scheduling errors",
 		},
 		[]string{"service", "reason"},
@@ -133,14 +133,14 @@ var (
 	// Auto-heal metrics
 	AutoHealTotal = promauto.NewCounter(
 		prometheus.CounterOpts{
-			Name: "dck_auto_heal_total",
+			Name: "cardinal_auto_heal_total",
 			Help: "Total number of auto-heal cycles",
 		},
 	)
 
 	AutoHealReplicasCreated = promauto.NewCounter(
 		prometheus.CounterOpts{
-			Name: "dck_auto_heal_replicas_created_total",
+			Name: "cardinal_auto_heal_replicas_created_total",
 			Help: "Total number of replicas created by auto-healer",
 		},
 	)
@@ -148,7 +148,7 @@ var (
 	// Rolling update metrics
 	RollingUpdateTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "dck_rolling_update_total",
+			Name: "cardinal_rolling_update_total",
 			Help: "Total number of rolling update operations",
 		},
 		[]string{"service"},
@@ -156,7 +156,7 @@ var (
 
 	RollingUpdateErrors = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "dck_rolling_update_errors_total",
+			Name: "cardinal_rolling_update_errors_total",
 			Help: "Total number of rolling update errors",
 		},
 		[]string{"service"},

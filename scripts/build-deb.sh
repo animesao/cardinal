@@ -1,5 +1,5 @@
 #!/bin/sh
-# Build dck .deb package for Debian/Ubuntu
+# Build cardinal .deb package for Debian/Ubuntu
 set -e
 
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -11,9 +11,9 @@ VERSION="${VERSION:-$(cat VERSION 2>/dev/null | head -1 | tr -d '[:space:]')}"
 VERSION_DEB="$(echo "$VERSION" | sed 's/^[^0-9]*//')"
 ARCH="${ARCH:-amd64}"
 
-echo "==> Building dck v$VERSION for linux/$ARCH..."
+echo "==> Building cardinal v$VERSION for linux/$ARCH..."
 
-BINARY="dck-linux-${ARCH}"
+BINARY="cardinal-linux-${ARCH}"
 
 # Build the binary only if it doesn't already exist
 if [ ! -f "$BINARY" ]; then
@@ -22,7 +22,7 @@ if [ ! -f "$BINARY" ]; then
         exit 1
     fi
     echo "==> Compiling..."
-    CGO_ENABLED=0 GOOS=linux GOARCH=$ARCH go build -ldflags="-s -w -X dck/cmd.version=$VERSION" -o "$BINARY" .
+    CGO_ENABLED=0 GOOS=linux GOARCH=$ARCH go build -ldflags="-s -w -X cardinal/cmd.version=$VERSION" -o "$BINARY" .
 fi
 
 mkdir -p dist
@@ -33,7 +33,7 @@ BIN_DEST="$PKG_DIR/usr/bin"
 
 # Copy binary
 install -d "$BIN_DEST"
-install -m 755 "$BINARY" "$BIN_DEST/dck"
+install -m 755 "$BINARY" "$BIN_DEST/cardinal"
 
 # Set permissions
 chmod 755 "$PKG_DIR/DEBIAN/postinst"
@@ -45,16 +45,16 @@ sed -i "s/^Architecture: .*/Architecture: $ARCH/" "$PKG_DIR/DEBIAN/control"
 
 # Build .deb
 echo "==> Building .deb package..."
-fakeroot dpkg-deb --build "$PKG_DIR" "dist/dck_${VERSION_DEB}_${ARCH}.deb" 2>/dev/null || \
-dpkg-deb --build "$PKG_DIR" "dist/dck_${VERSION_DEB}_${ARCH}.deb"
+fakeroot dpkg-deb --build "$PKG_DIR" "dist/cardinal_${VERSION_DEB}_${ARCH}.deb" 2>/dev/null || \
+dpkg-deb --build "$PKG_DIR" "dist/cardinal_${VERSION_DEB}_${ARCH}.deb"
 
 # Clean up binary from package dir
-rm -f "$BIN_DEST/dck"
+rm -f "$BIN_DEST/cardinal"
 
 echo ""
-echo "   Package: dist/dck_${VERSION_DEB}_${ARCH}.deb"
-echo "   Size:    $(ls -lh "dist/dck_${VERSION_DEB}_${ARCH}.deb" | awk '{print $5}')"
+echo "   Package: dist/cardinal_${VERSION_DEB}_${ARCH}.deb"
+echo "   Size:    $(ls -lh "dist/cardinal_${VERSION_DEB}_${ARCH}.deb" | awk '{print $5}')"
 echo ""
 echo "Install:"
-echo "   sudo dpkg -i dist/dck_${VERSION_DEB}_${ARCH}.deb"
+echo "   sudo dpkg -i dist/cardinal_${VERSION_DEB}_${ARCH}.deb"
 echo "   sudo apt-get install -f   # install dependencies"

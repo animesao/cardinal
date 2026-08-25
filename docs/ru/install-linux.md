@@ -1,27 +1,27 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Установка dck на Linux (Универсальная)
+# Установка cardinal на Linux (Универсальная)
 
 Универсальный установщик работает на любом Linux-дистрибутиве с systemd.
 
 ## Быстрая установка
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/animesao/dck/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/animesao/cardinal/main/install.sh | sudo bash
 ```
 
-Устанавливает последнюю стабильную версию в `/usr/local/bin/dck` и включает systemd-супервизор.
+Устанавливает последнюю стабильную версию в `/usr/local/bin/cardinal` и включает systemd-супервизор.
 
 ## Что делает скрипт
 
 1. Определяет архитектуру (amd64, arm64, armv6)
 2. Скачивает бинарник последнего релиза с GitHub
 3. Проверяет SHA256 контрольную сумму
-4. Устанавливает в `/usr/local/bin/dck`
-5. Включает `dck-bootstrap.service` (автозапуск при загрузке)
+4. Устанавливает в `/usr/local/bin/cardinal`
+5. Включает `cardinal-bootstrap.service` (автозапуск при загрузке)
 
 ## Требования
 
@@ -33,14 +33,14 @@ curl -fsSL https://raw.githubusercontent.com/animesao/dck/main/install.sh | sudo
 ## Проверка установки
 
 ```bash
-dck version
-dck doctor
+cardinal version
+cardinal doctor
 ```
 
 ## Удаление
 
 ```bash
-dck bootstrap --remove
-sudo rm /usr/local/bin/dck
-sudo rm -rf ~/.dck
+cardinal bootstrap --remove
+sudo rm /usr/local/bin/cardinal
+sudo rm -rf ~/.cardinal
 ```

@@ -35,7 +35,7 @@ func blueprintReposPath() string {
 	if err != nil {
 		home = "/root"
 	}
-	return filepath.Join(home, ".dck", "blueprint-repos.json")
+	return filepath.Join(home, ".cardinal", "blueprint-repos.json")
 }
 
 func loadBlueprintRepos() *blueprintRepoConfig {
@@ -106,12 +106,12 @@ func repoNameFromURL(rawURL string) string {
 
 func blueprintRepoAdd(args []string) {
 	if len(args) < 1 || args[0] == "" {
-		fmt.Println("Usage: dck blueprint repo add <url> [--name <name>] [--branch <branch>]")
+		fmt.Println("Usage: cardinal blueprint repo add <url> [--name <name>] [--branch <branch>]")
 		fmt.Println()
 		fmt.Println("Examples:")
-		fmt.Println("  dck blueprint repo add user/my-blueprints")
-		fmt.Println("  dck blueprint repo add https://github.com/user/my-blueprints --branch dev")
-		fmt.Println("  dck blueprint repo add https://raw.githubusercontent.com/user/my-blueprints")
+		fmt.Println("  cardinal blueprint repo add user/my-blueprints")
+		fmt.Println("  cardinal blueprint repo add https://github.com/user/my-blueprints --branch dev")
+		fmt.Println("  cardinal blueprint repo add https://raw.githubusercontent.com/user/my-blueprints")
 		os.Exit(1)
 	}
 
@@ -187,7 +187,7 @@ func blueprintRepoList() {
 
 func blueprintRepoRemove(args []string) {
 	if len(args) < 1 || args[0] == "" {
-		fmt.Println("Usage: dck blueprint repo remove <name|url|index>")
+		fmt.Println("Usage: cardinal blueprint repo remove <name|url|index>")
 		os.Exit(1)
 	}
 	target := args[0]
@@ -216,9 +216,9 @@ func blueprintRepoRemove(args []string) {
 
 func blueprintRepoUsage() {
 	fmt.Println(`Repository commands:
-  dck blueprint repo list                 List configured blueprint repositories
-  dck blueprint repo add <url> [options]  Add a blueprint repository
-  dck blueprint repo remove <name>        Remove a blueprint repository
+  cardinal blueprint repo list                 List configured blueprint repositories
+  cardinal blueprint repo add <url> [options]  Add a blueprint repository
+  cardinal blueprint repo remove <name>        Remove a blueprint repository
 
 Add options:
   --name <name>     Display name (default: derived from URL)

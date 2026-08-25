@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"dck/internal/log"
+	"cardinal/internal/log"
 )
 
 // NetworkPolicy represents a network segmentation policy.
@@ -49,7 +49,7 @@ func ApplyNetworkPolicy(policy *NetworkPolicy) error {
 	}
 
 	// Create a custom chain for this policy
-	chainName := fmt.Sprintf("DCK-%s", strings.ToUpper(policy.Name))
+	chainName := fmt.Sprintf("CARDINAL-%s", strings.ToUpper(policy.Name))
 	if err := createChain(chainName); err != nil {
 		return fmt.Errorf("create chain %s: %w", chainName, err)
 	}
@@ -78,7 +78,7 @@ func ApplyNetworkPolicy(policy *NetworkPolicy) error {
 
 // RemoveNetworkPolicy removes a network policy.
 func RemoveNetworkPolicy(policyName string) error {
-	chainName := fmt.Sprintf("DCK-%s", strings.ToUpper(policyName))
+	chainName := fmt.Sprintf("CARDINAL-%s", strings.ToUpper(policyName))
 
 	// Flush the chain
 	if err := flushChain(chainName); err != nil {
@@ -272,7 +272,7 @@ func ListContainerPolicies(containerID string) ([]string, error) {
 // SetupNetworkSegmentation sets up basic network segmentation.
 func SetupNetworkSegmentation() error {
 	// Create a chain for inter-container traffic
-	chainName := "DCK-INTER-CONTAINER"
+	chainName := "CARDINAL-INTER-CONTAINER"
 	if err := createChain(chainName); err != nil {
 		return fmt.Errorf("create inter-container chain: %w", err)
 	}
@@ -294,11 +294,11 @@ func SetupNetworkSegmentation() error {
 // TeardownNetworkSegmentation removes network segmentation rules.
 func TeardownNetworkSegmentation() error {
 	// Remove the chain from FORWARD
-	_ = exec.Command("iptables", "-D", "FORWARD", "-j", "DCK-INTER-CONTAINER").Run()
+	_ = exec.Command("iptables", "-D", "FORWARD", "-j", "CARDINAL-INTER-CONTAINER").Run()
 
 	// Flush and delete the chain
-	_ = flushChain("DCK-INTER-CONTAINER")
-	_ = deleteChain("DCK-INTER-CONTAINER")
+	_ = flushChain("CARDINAL-INTER-CONTAINER")
+	_ = deleteChain("CARDINAL-INTER-CONTAINER")
 
 	return nil
 }

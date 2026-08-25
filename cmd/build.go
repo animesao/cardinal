@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dck/internal/builder"
+	"cardinal/internal/builder"
 )
 
 func Build(args []string) {
@@ -29,7 +29,7 @@ func Build(args []string) {
 	}
 
 	if *tag == "" {
-		fmt.Println("Usage: dck build -t <name>[:<tag>] [options] <context>")
+		fmt.Println("Usage: cardinal build -t <name>[:<tag>] [options] <context>")
 		fmt.Println("  -t name:tag    Image name and tag (required)")
 		fmt.Println("  -f Dockerfile  Path to Dockerfile (default: ./Dockerfile)")
 		fmt.Println("  --no-cache     Disable layer caching")

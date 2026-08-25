@@ -24,8 +24,8 @@ func TestAllowlist_DefaultIncludesDockerHub(t *testing.T) {
 }
 
 func TestAllowlist_StrictModeBlocksOffList(t *testing.T) {
-	t.Setenv("DCK_REGISTRY_STRICT", "1")
-	t.Setenv("DCK_DATA_DIR", t.TempDir())
+	t.Setenv("CARDINAL_REGISTRY_STRICT", "1")
+	t.Setenv("CARDINAL_DATA_DIR", t.TempDir())
 	if err := InitRegistryAllowlist(); err != nil {
 		t.Fatalf("InitRegistryAllowlist: %v", err)
 	}
@@ -38,19 +38,19 @@ func TestAllowlist_StrictModeBlocksOffList(t *testing.T) {
 }
 
 func TestAllowlist_PermissiveModeLetsEverything(t *testing.T) {
-	t.Setenv("DCK_REGISTRY_STRICT", "0")
+	t.Setenv("CARDINAL_REGISTRY_STRICT", "0")
 	if err := InitRegistryAllowlist(); err != nil {
 		t.Fatalf("InitRegistryAllowlist: %v", err)
 	}
 	if !IsRegistryAllowed("https://attacker.example.com/v2/") {
-		t.Errorf("with DCK_REGISTRY_STRICT=0 the gate should be permissive")
+		t.Errorf("with CARDINAL_REGISTRY_STRICT=0 the gate should be permissive")
 	}
 }
 
 func TestAllowlist_AddRemove(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("DCK_DATA_DIR", dir)
-	t.Setenv("DCK_REGISTRY_STRICT", "1")
+	t.Setenv("CARDINAL_DATA_DIR", dir)
+	t.Setenv("CARDINAL_REGISTRY_STRICT", "1")
 	if err := InitRegistryAllowlist(); err != nil {
 		t.Fatalf("InitRegistryAllowlist: %v", err)
 	}
@@ -73,13 +73,13 @@ func TestAllowlist_AddRemove(t *testing.T) {
 }
 
 func TestAllowlist_InsecureRegistryDefaultDenied(t *testing.T) {
-	t.Setenv("DCK_ALLOW_INSECURE_REGISTRY", "")
+	t.Setenv("CARDINAL_ALLOW_INSECURE_REGISTRY", "")
 	if IsInsecureRegistryAllowed() {
 		t.Errorf("insecure registry must be denied by default")
 	}
-	t.Setenv("DCK_ALLOW_INSECURE_REGISTRY", "yes")
+	t.Setenv("CARDINAL_ALLOW_INSECURE_REGISTRY", "yes")
 	if !IsInsecureRegistryAllowed() {
-		t.Errorf("DCK_ALLOW_INSECURE_REGISTRY=yes should opt in")
+		t.Errorf("CARDINAL_ALLOW_INSECURE_REGISTRY=yes should opt in")
 	}
 }
 

@@ -10,7 +10,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func Volume(args []string) {
@@ -41,7 +41,7 @@ func Volume(args []string) {
 }
 
 func printVolumeUsage() {
-	fmt.Println(`Usage: dck volume COMMAND
+	fmt.Println(`Usage: cardinal volume COMMAND
 
 Manage volumes
 
@@ -121,7 +121,7 @@ func volumeList(args []string) {
 
 func volumeRemove(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck volume rm <name> [<name>...]")
+		fmt.Println("Usage: cardinal volume rm <name> [<name>...]")
 		os.Exit(1)
 	}
 
@@ -136,7 +136,7 @@ func volumeRemove(args []string) {
 
 func volumeInspect(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck volume inspect <name>")
+		fmt.Println("Usage: cardinal volume inspect <name>")
 		os.Exit(1)
 	}
 

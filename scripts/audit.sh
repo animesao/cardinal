@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/audit.sh — статический аудит репозитория dck
+# scripts/audit.sh — статический аудит репозитория cardinal
 # Запуск: bash scripts/audit.sh [--strict]
 # Exit: 0 если нет FAIL, 1 если есть FAIL (или WARN при --strict)
 set -uo pipefail

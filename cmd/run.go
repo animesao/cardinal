@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"dck/internal/builder"
-	"dck/internal/container"
-	"dck/internal/image"
+	"cardinal/internal/builder"
+	"cardinal/internal/container"
+	"cardinal/internal/image"
 )
 
 type stringSlice []string
@@ -176,7 +176,7 @@ func Run(args []string) {
 	hasImageFlag := *imageFlag != ""
 	if !hasImageFlag {
 		if len(freeArgs) < 1 {
-			fmt.Println("Usage: dck run [opts] <image> [cmd...]")
+			fmt.Println("Usage: cardinal run [opts] <image> [cmd...]")
 			os.Exit(1)
 		}
 		imageRef = freeArgs[0]

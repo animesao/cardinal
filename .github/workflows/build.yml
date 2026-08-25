@@ -184,28 +184,28 @@ jobs:
       - name: Reproducible cross-compile
         env:
           ARCH: ${{ matrix.goarch }}
-          LD_FLAGS: "-s -w -buildid= -X dck/cmd.version=${{ github.ref_name }}"
+          LD_FLAGS: "-s -w -buildid= -X cardinal/cmd.version=${{ github.ref_name }}"
         run: |
           mkdir -p dist
           GOOS=linux GOARCH=${ARCH} \
             CGO_ENABLED=0 \
             go build -trimpath \
               -ldflags="${LD_FLAGS}" \
-              -o dist/dck-linux-${ARCH} .
-          sha256sum dist/dck-linux-${ARCH} | tee dist/dck-linux-${ARCH}.sha256
+              -o dist/cardinal-linux-${ARCH} .
+          sha256sum dist/cardinal-linux-${ARCH} | tee dist/cardinal-linux-${ARCH}.sha256
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: dck-linux-${{ matrix.goarch }}
-          path: dist/dck-linux-${{ matrix.goarch }}
+          name: cardinal-linux-${{ matrix.goarch }}
+          path: dist/cardinal-linux-${{ matrix.goarch }}
           retention-days: 90
 
       - name: Upload sha256 sidecar
         uses: actions/upload-artifact@v4
         with:
-          name: dck-linux-${{ matrix.goarch }}.sha256
-          path: dist/dck-linux-${{ matrix.goarch }}.sha256
+          name: cardinal-linux-${{ matrix.goarch }}.sha256
+          path: dist/cardinal-linux-${{ matrix.goarch }}.sha256
           retention-days: 90
 
   # Aggregator: waits for both arches to upload, then produces the
@@ -310,14 +310,14 @@ jobs:
           # Locate the binary that the build job uploaded
           BINARY=""
           for candidate in \
-            "dist/dck-linux-${ARCH}" \
-            "dist/dck_${VERSION#v}_linux_${ARCH}/dck" \
-            "dist/dck_${VERSION}_linux_${ARCH}/dck" \
-            "dist/dck_linux_${ARCH}_v1/dck" \
-            "dist/dck_linux_${ARCH}_v8.0/dck" \
-            "dist/dck_linux_${ARCH}/dck" \
-            "dist/dck_${VERSION#v}_linux_${ARCH}_v1/dck" \
-            "dist/dck_${VERSION}_linux_${ARCH}_v1/dck"; do
+            "dist/cardinal-linux-${ARCH}" \
+            "dist/cardinal_${VERSION#v}_linux_${ARCH}/cardinal" \
+            "dist/cardinal_${VERSION}_linux_${ARCH}/cardinal" \
+            "dist/cardinal_linux_${ARCH}_v1/cardinal" \
+            "dist/cardinal_linux_${ARCH}_v8.0/cardinal" \
+            "dist/cardinal_linux_${ARCH}/cardinal" \
+            "dist/cardinal_${VERSION#v}_linux_${ARCH}_v1/cardinal" \
+            "dist/cardinal_${VERSION}_linux_${ARCH}_v1/cardinal"; do
             if [ -f "$candidate" ]; then
               BINARY="$candidate"
               break
@@ -332,11 +332,11 @@ jobs:
 
           mkdir -p "${APPDIR}/usr/bin"
 
-          install -D -m 0755 "$BINARY"         "${APPDIR}/usr/bin/dck"
+          install -D -m 0755 "$BINARY"         "${APPDIR}/usr/bin/cardinal"
           install -D -m 0755 packaging/appimage/AppRun "${APPDIR}/AppRun"
-          install -D -m 0644 packaging/appimage/dck.desktop "${APPDIR}/usr/share/applications/dck.desktop"
-          install -D -m 0644 packaging/appimage/dck.desktop "${APPDIR}/dck.desktop"
-          install -D -m 0644 packaging/appimage/dck.png "${APPDIR}/dck.png" 2>/dev/null || true
+          install -D -m 0644 packaging/appimage/cardinal.desktop "${APPDIR}/usr/share/applications/cardinal.desktop"
+          install -D -m 0644 packaging/appimage/cardinal.desktop "${APPDIR}/cardinal.desktop"
+          install -D -m 0644 packaging/appimage/cardinal.png "${APPDIR}/cardinal.png" 2>/dev/null || true
           install -D -m 0755 install-appimage.sh "${APPDIR}/usr/bin/install-appimage.sh"
 
           chmod +x "${APPDIR}/AppRun"
@@ -345,7 +345,7 @@ jobs:
             "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
           chmod +x /tmp/appimagetool
 
-          APPIMAGE_FILE="dist/dck_${VERSION#v}_${ARCH}.AppImage"
+          APPIMAGE_FILE="dist/cardinal_${VERSION#v}_${ARCH}.AppImage"
           ARCH=amd64 /tmp/appimagetool "${APPDIR}" "${APPIMAGE_FILE}" --no-appstream 2>&1 || true
 
           if [ ! -f "${APPIMAGE_FILE}" ]; then
@@ -390,7 +390,7 @@ jobs:
         uses: anchore/sbom-action@v0
         with:
           format: spdx-json
-          artifact-name: dck-sbom.spdx.json
+          artifact-name: cardinal-sbom.spdx.json
         continue-on-error: true
 
       - name: Publish GitHub Release
@@ -415,8 +415,8 @@ jobs:
           #    and exit non-zero on the first miss.
           #
           # 2. `dist/*` includes goreleaser's intermediate
-          #    `artifacts.json` and `dck_*_linux_amd64_v1/` /
-          #    `dck_*_linux_arm64_v8.0/` directories and a few
+          #    `artifacts.json` and `cardinal_*_linux_amd64_v1/` /
+          #    `cardinal_*_linux_arm64_v8.0/` directories and a few
           #    metadata stubs that are part of the goreleaser
           #    bookkeeping. Listing them as "release artefacts"
           #    causes ugly listing in the GitHub release page
@@ -430,20 +430,20 @@ jobs:
           # Actions `dist` artefact upload provides the same
           # payload out-of-band.
           files: |
-            dist/dck_*_linux_amd64.tar.gz
-            dist/dck_*_linux_arm64.tar.gz
-            dist/dck_*_amd64.deb
-            dist/dck_*_arm64.deb
-            dist/dck_*_amd64.rpm
-            dist/dck_*_arm64.rpm
-            dist/dck_*_amd64.apk
-            dist/dck_*_arm64.apk
-            dist/dck_*_amd64.pkg.tar.zst
-            dist/dck_*_arm64.pkg.tar.zst
-            dist/dck_*_amd64.AppImage
+            dist/cardinal_*_linux_amd64.tar.gz
+            dist/cardinal_*_linux_arm64.tar.gz
+            dist/cardinal_*_amd64.deb
+            dist/cardinal_*_arm64.deb
+            dist/cardinal_*_amd64.rpm
+            dist/cardinal_*_arm64.rpm
+            dist/cardinal_*_amd64.apk
+            dist/cardinal_*_arm64.apk
+            dist/cardinal_*_amd64.pkg.tar.zst
+            dist/cardinal_*_arm64.pkg.tar.zst
+            dist/cardinal_*_amd64.AppImage
             dist/SHA256SUMS.txt
-            dist/dck_*_checksums.txt
-            dck-sbom.spdx.json
+            dist/cardinal_*_checksums.txt
+            cardinal-sbom.spdx.json
           fail_on_unmatched_files: false
         continue-on-error: true
 
@@ -463,7 +463,7 @@ jobs:
         if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
         uses: actions/upload-artifact@v4
         with:
-          name: dck-release-${{ github.ref_name }}
+          name: cardinal-release-${{ github.ref_name }}
           path: |
             dist/*.tar.gz
             dist/*.deb
@@ -472,6 +472,6 @@ jobs:
             dist/*.pkg.tar.zst
             dist/*.AppImage
             dist/SHA256SUMS.txt
-            dist/dck_*_checksums.txt
+            dist/cardinal_*_checksums.txt
           retention-days: 365
           if-no-files-found: warn

@@ -1,9 +1,9 @@
-name: dcktool
+name: cardinal
 base: core22
 version: 0.0.0
 summary: Lightweight container runtime
 description: |
-  dck is a lightweight container runtime for Linux.
+  cardinal is a lightweight container runtime for Linux.
   It provides container creation, management, and monitoring capabilities.
 license: MIT
 confinement: classic
@@ -16,13 +16,13 @@ architectures:
     build-for: [arm64]
 
 apps:
-  dcktool:
-    command: bin/dck
+  cardinal:
+    command: bin/cardinal
     aliases:
-      - dck
+      - cardinal
 
 parts:
-  dck:
+  cardinal:
     plugin: nil
     source: ..
     build-packages:
@@ -49,8 +49,8 @@ parts:
       mkdir -p "$CRAFT_PART_INSTALL/bin"
       GOOS=linux GOARCH="$CRAFT_ARCH_BUILD_FOR" CGO_ENABLED=0 go build \
         -tags netgo \
-        -ldflags="-s -w -X dck/cmd.version=${SNAPCRAFT_PROJECT_VERSION}" \
-        -o "$CRAFT_PART_INSTALL/bin/dck" \
+        -ldflags="-s -w -X cardinal/cmd.version=${SNAPCRAFT_PROJECT_VERSION}" \
+        -o "$CRAFT_PART_INSTALL/bin/cardinal" \
         .
 
-      echo "Built: $(ls -lh $CRAFT_PART_INSTALL/bin/dck)"
+      echo "Built: $(ls -lh $CRAFT_PART_INSTALL/bin/cardinal)"

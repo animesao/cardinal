@@ -17,7 +17,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 const (
@@ -55,7 +55,7 @@ func StartServerWithTLS(port int, host, certFile, keyFile string) error {
 		return fmt.Errorf("TLS requires both certificate and key files")
 	}
 	if isExternalHost(host) && authToken == "" {
-		return fmt.Errorf("refusing to expose API on %s without an authentication token; use --token or DCK_TOKEN", host)
+		return fmt.Errorf("refusing to expose API on %s without an authentication token; use --token or CARDINAL_TOKEN", host)
 	}
 
 	mux := http.NewServeMux()
@@ -93,7 +93,7 @@ func StartServerWithTLS(port int, host, certFile, keyFile string) error {
 		return fmt.Errorf("listen %s: %w", addr, err)
 	}
 
-	fmt.Printf("dck API server listening on %s\n", addr)
+	fmt.Printf("cardinal API server listening on %s\n", addr)
 	scheme := "http"
 	if certFile != "" {
 		scheme = "https"
@@ -180,9 +180,9 @@ var allowedCORSOrigins []string
 func init() {
 	// Default: localhost and loopback only.
 	allowedCORSOrigins = []string{"localhost", "127.0.0.1", "::1"}
-	// DCK_CORS_ORIGINS is a comma-separated list of additional hostnames or IPs
+	// CARDINAL_CORS_ORIGINS is a comma-separated list of additional hostnames or IPs
 	// allowed as CORS origins (e.g. "myapp.example.com,10.0.0.5").
-	if env := os.Getenv("DCK_CORS_ORIGINS"); env != "" {
+	if env := os.Getenv("CARDINAL_CORS_ORIGINS"); env != "" {
 		for _, h := range strings.Split(env, ",") {
 			h = strings.TrimSpace(h)
 			if h != "" {
@@ -224,7 +224,7 @@ func jsonContentType(next http.Handler) http.Handler {
 // burst of `bucket`. Because the runtime is privileged, requests are gated
 // more strictly than a normal HTTP service — a low cap protects the host
 // from accidental DoS loops in user scripts. The limiter exempts the
-// loopback interface because `dck exec`/`dck port` etc. all hit the API
+// loopback interface because `cardinal exec`/`cardinal port` etc. all hit the API
 // multiple times per command and a slow token bucket there would hurt UX.
 type rateBucket struct {
 	tokens float64
@@ -302,9 +302,9 @@ func pruneLocked(clients map[string]*rateBucket, maxAge time.Duration) {
 // (cgroup counters, image pull timestamps) that an attacker could use to
 // plan DoS attacks, so we require the same authentication that the rest of
 // the API needs. Loopback callers can opt out of the strict default by
-// setting DCK_METRICS_REQUIRES_AUTH=0.
+// setting CARDINAL_METRICS_REQUIRES_AUTH=0.
 func metricsHandler() http.Handler {
-	strict := os.Getenv("DCK_METRICS_REQUIRES_AUTH") != "0"
+	strict := os.Getenv("CARDINAL_METRICS_REQUIRES_AUTH") != "0"
 	if !strict {
 		return promhttp.Handler()
 	}
@@ -339,7 +339,7 @@ func handleVersion(w http.ResponseWriter, r *http.Request) {
 		Version:       serverVersion,
 		APIVersion:    DockerAPIVersion,
 		MinAPIVersion: "1.24",
-		GitCommit:     "dck",
+		GitCommit:     "cardinal",
 		GoVersion:     runtime.Version(),
 		Os:            "linux",
 		Arch:          "amd64",
@@ -351,7 +351,7 @@ func handleVersion(w http.ResponseWriter, r *http.Request) {
 func handleRoot(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/" {
 		writeJSON(w, 200, map[string]string{
-			"message":    "dck API server",
+			"message":    "cardinal API server",
 			"version":    DockerAPIVersion,
 			"api":        "Docker API compatible",
 			"repository": state.DataDir(),
@@ -414,7 +414,7 @@ func handleInfo(w http.ResponseWriter, r *http.Request) {
 		NCPU:            readCPUCount(),
 		MemTotal:        readMemTotal(),
 		DockerRootDir:   state.DataDir(),
-		Name:            hostname, ServerVersion: serverVersion + "-dck",
+		Name:            hostname, ServerVersion: serverVersion + "-cardinal",
 		HTTPProxy:          os.Getenv("HTTP_PROXY"),
 		HTTPSProxy:         os.Getenv("HTTPS_PROXY"),
 		NoProxy:            os.Getenv("NO_PROXY"),

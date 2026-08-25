@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func Port(args []string) {
@@ -31,15 +31,15 @@ func Port(args []string) {
 
 func printPortUsage() {
 	fmt.Println(`Usage:
-  dck port <container>                  Show port mappings
-  dck port add <c> <host>:<cont>[/p]   Add port mapping
-  dck port remove <c> <host>[/p]        Remove port mapping
-  dck port rm <c> <host>[/p]            Remove port mapping (alias)`)
+  cardinal port <container>                  Show port mappings
+  cardinal port add <c> <host>:<cont>[/p]   Add port mapping
+  cardinal port remove <c> <host>[/p]        Remove port mapping
+  cardinal port rm <c> <host>[/p]            Remove port mapping (alias)`)
 }
 
 func portShow(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck port <container>")
+		fmt.Println("Usage: cardinal port <container>")
 		os.Exit(1)
 	}
 
@@ -95,7 +95,7 @@ func parsePortRef(s string) (hostPort int, protocol string, err error) {
 
 func portAdd(args []string) {
 	if len(args) < 2 {
-		fmt.Println("Usage: dck port add <container> <host>:<container>[/proto]")
+		fmt.Println("Usage: cardinal port add <container> <host>:<container>[/proto]")
 		os.Exit(1)
 	}
 
@@ -126,7 +126,7 @@ func portAdd(args []string) {
 
 func portRemove(args []string) {
 	if len(args) < 2 {
-		fmt.Println("Usage: dck port remove <container> <host>[/proto]")
+		fmt.Println("Usage: cardinal port remove <container> <host>[/proto]")
 		os.Exit(1)
 	}
 

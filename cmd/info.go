@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"dck/internal/container"
-	"dck/internal/image"
-	"dck/internal/state"
+	"cardinal/internal/container"
+	"cardinal/internal/image"
+	"cardinal/internal/state"
 )
 
 func Info(args []string) {

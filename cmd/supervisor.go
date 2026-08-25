@@ -13,8 +13,8 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"dck/internal/container"
-	"dck/internal/network"
+	"cardinal/internal/container"
+	"cardinal/internal/network"
 )
 
 const supervisorPollInterval = time.Second
@@ -25,11 +25,11 @@ var (
 )
 
 // Supervisor keeps detached restart-policy containers alive independently of a
-// short-lived `dck run -d` CLI process. The container monitor owns crash
+// short-lived `cardinal run -d` CLI process. The container monitor owns crash
 // restart delays; this process only adopts containers that are not yet managed.
 func Supervisor(args []string) {
 	if len(args) > 0 {
-		fmt.Fprintln(os.Stderr, "Usage: dck supervisor")
+		fmt.Fprintln(os.Stderr, "Usage: cardinal supervisor")
 		os.Exit(1)
 	}
 
@@ -37,11 +37,11 @@ func Supervisor(args []string) {
 	defer stop()
 	defer backupWorkers.Wait()
 
-	// Become a subreaper so orphaned container processes — whose `dck run -d`
+	// Become a subreaper so orphaned container processes — whose `cardinal run -d`
 	// parent already exited — are reparented here instead of to init, and their
 	// exits can be observed and reaped below.
 	if err := unix.Prctl(unix.PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0); err != nil {
-		fmt.Fprintf(os.Stderr, "dck supervisor: set child subreaper: %v\n", err)
+		fmt.Fprintf(os.Stderr, "cardinal supervisor: set child subreaper: %v\n", err)
 	}
 	network.EnsureNetBase()
 	managed := make(map[string]time.Time)
@@ -65,7 +65,7 @@ func Supervisor(args []string) {
 
 // finalizeExitedContainers detects containers whose recorded process tree has
 // exited and finalizes their state and resources. This is the primary exit
-// detection: container processes started by `dck run -d` are not descendants of
+// detection: container processes started by `cardinal run -d` are not descendants of
 // the supervisor (they orphan to init once the CLI exits), so wait4-based
 // reaping alone cannot observe them. Polling the recorded PIDs works regardless
 // of the process parentage.
@@ -92,7 +92,7 @@ func finalizeExitedContainers(finalized map[string]bool) {
 		// "stopped" while the tree is actually running).
 		if container.ContainerProcessAlive(c) {
 			// Healthy; forget an earlier finalization so a later exit (after a
-			// restart or an explicit `dck start`) is handled again.
+			// restart or an explicit `cardinal start`) is handled again.
 			delete(finalized, c.ID)
 			continue
 		}
@@ -153,7 +153,7 @@ func handleExitedContainerProcess(pid int) {
 func adoptEligibleContainers(managed map[string]time.Time, finalized map[string]bool) {
 	all, err := container.List(true)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "dck supervisor: list containers: %v\n", err)
+		fmt.Fprintf(os.Stderr, "cardinal supervisor: list containers: %v\n", err)
 		return
 	}
 	for _, c := range all {
@@ -199,7 +199,7 @@ func adoptEligibleContainers(managed map[string]time.Time, finalized map[string]
 		if !container.AllowAutomaticRestart(c) {
 			continue
 		}
-		// The container may have been removed (dck rm) between the List above
+		// The container may have been removed (cardinal rm) between the List above
 		// and now; never resurrect a deleted container. Re-load the state so we
 		// decide from the latest file on disk, and honor the removal tombstone
 		// in case rm is mid-cleanup.
@@ -218,7 +218,7 @@ func adoptEligibleContainers(managed map[string]time.Time, finalized map[string]
 		managed[c.ID] = time.Time{}
 		if err := fresh.Start(); err != nil {
 			managed[c.ID] = time.Now().Add(supervisorRestartDelay(fresh))
-			fmt.Fprintf(os.Stderr, "dck supervisor: start %s: %v\n", fresh.Name, err)
+			fmt.Fprintf(os.Stderr, "cardinal supervisor: start %s: %v\n", fresh.Name, err)
 		}
 		// A successful (re)start means this container is alive again; forget any
 		// earlier finalization so that if it crashes again within the same poll
@@ -230,7 +230,7 @@ func adoptEligibleContainers(managed map[string]time.Time, finalized map[string]
 func runAutomaticBackups() {
 	all, err := container.List(true)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "dck supervisor: list backup containers: %v\n", err)
+		fmt.Fprintf(os.Stderr, "cardinal supervisor: list backup containers: %v\n", err)
 		return
 	}
 	now := time.Now()
@@ -257,9 +257,9 @@ func runAutomaticBackups() {
 			if err := performAutomaticBackup(c); err != nil {
 				c.BackupNextAttemptAt = now.Add(minBackupRetryDelay(interval))
 				if saveErr := c.Save(); saveErr != nil {
-					fmt.Fprintf(os.Stderr, "dck supervisor: save backup retry %s: %v\n", c.Name, saveErr)
+					fmt.Fprintf(os.Stderr, "cardinal supervisor: save backup retry %s: %v\n", c.Name, saveErr)
 				}
-				fmt.Fprintf(os.Stderr, "dck supervisor: backup %s: %v\n", c.Name, err)
+				fmt.Fprintf(os.Stderr, "cardinal supervisor: backup %s: %v\n", c.Name, err)
 			}
 		}(c, now, interval)
 	}

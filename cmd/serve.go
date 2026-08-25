@@ -13,14 +13,14 @@ import (
 	"strings"
 	"syscall"
 
-	"dck/internal/api"
-	"dck/internal/container"
-	"dck/internal/log"
-	"dck/internal/orchestrator"
+	"cardinal/internal/api"
+	"cardinal/internal/container"
+	"cardinal/internal/log"
+	"cardinal/internal/orchestrator"
 )
 
-const dckServeServiceUnit = `[Unit]
-Description=dck Docker-compatible API server
+const cardinalServeServiceUnit = `[Unit]
+Description=cardinal Docker-compatible API server
 After=network-online.target
 Wants=network-online.target
 
@@ -32,7 +32,7 @@ RestartSec=5s
 KillMode=process
 StandardOutput=journal
 StandardError=journal
-Environment=DCK_TOKEN=%s
+Environment=CARDINAL_TOKEN=%s
 
 [Install]
 WantedBy=multi-user.target
@@ -41,9 +41,9 @@ WantedBy=multi-user.target
 func Serve(args []string) {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
 	port := fs.Int("p", 2375, "API port")
-	host := fs.String("H", "127.0.0.1", "API host (external addresses require --token or DCK_TOKEN)")
+	host := fs.String("H", "127.0.0.1", "API host (external addresses require --token or CARDINAL_TOKEN)")
 	daemon := fs.Bool("d", false, "Run as daemon (background)")
-	token := fs.String("token", "", "Authentication token (or DCK_TOKEN env)")
+	token := fs.String("token", "", "Authentication token (or CARDINAL_TOKEN env)")
 	certFile := fs.String("tls-cert", "", "TLS certificate file (requires --tls-key)")
 	keyFile := fs.String("tls-key", "", "TLS private key file (requires --tls-cert)")
 
@@ -67,8 +67,8 @@ func Serve(args []string) {
 		}
 	}
 
-	// Allow override via DCK_HOST env
-	if envHost := os.Getenv("DCK_HOST"); envHost != "" {
+	// Allow override via CARDINAL_HOST env
+	if envHost := os.Getenv("CARDINAL_HOST"); envHost != "" {
 		if h, p, err := parseHost(envHost); err == nil {
 			*host = h
 			*port = p
@@ -78,7 +78,7 @@ func Serve(args []string) {
 	// Token: flag > env var > disabled
 	apiToken := *token
 	if apiToken == "" {
-		apiToken = os.Getenv("DCK_TOKEN")
+		apiToken = os.Getenv("CARDINAL_TOKEN")
 	}
 	api.SetAuthToken(apiToken)
 	api.SetServerVersion(version)
@@ -91,7 +91,7 @@ func Serve(args []string) {
 		}
 		cmd := exec.Command("/proc/self/exe", append(childArgs, flag.Args()...)...)
 		if apiToken != "" {
-			cmd.Env = append(os.Environ(), "DCK_TOKEN="+apiToken)
+			cmd.Env = append(os.Environ(), "CARDINAL_TOKEN="+apiToken)
 		}
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			Setpgid: true,
@@ -135,17 +135,17 @@ func Serve(args []string) {
 	}
 }
 
-const serveSystemdUnit = "/etc/systemd/system/dck-serve.service"
+const serveSystemdUnit = "/etc/systemd/system/cardinal-serve.service"
 
 func serveOn(port int, host, token, certFile, keyFile string) {
 	if os.Geteuid() != 0 {
-		fmt.Fprintf(os.Stderr, "Error: must run as root (sudo dck serve on)\n")
+		fmt.Fprintf(os.Stderr, "Error: must run as root (sudo cardinal serve on)\n")
 		os.Exit(1)
 	}
 
 	path, err := os.Executable()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error getting dck path: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error getting cardinal path: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -156,10 +156,10 @@ func serveOn(port int, host, token, certFile, keyFile string) {
 
 	tokenVal := token
 	if tokenVal == "" {
-		tokenVal = os.Getenv("DCK_TOKEN")
+		tokenVal = os.Getenv("CARDINAL_TOKEN")
 	}
 
-	unit := fmt.Sprintf(dckServeServiceUnit, path, host, port, tlsArgs, tokenVal)
+	unit := fmt.Sprintf(cardinalServeServiceUnit, path, host, port, tlsArgs, tokenVal)
 
 	// Backup existing unit if present
 	previous, readErr := os.ReadFile(serveSystemdUnit)
@@ -204,30 +204,30 @@ func serveOn(port int, host, token, certFile, keyFile string) {
 	if !run("systemctl", "daemon-reload") {
 		os.Exit(1)
 	}
-	if !run("systemctl", "enable", "dck-serve") {
+	if !run("systemctl", "enable", "cardinal-serve") {
 		os.Exit(1)
 	}
-	if !run("systemctl", "start", "dck-serve") {
+	if !run("systemctl", "start", "cardinal-serve") {
 		os.Exit(1)
 	}
 
-	fmt.Println("dck-serve service installed and started.")
+	fmt.Println("cardinal-serve service installed and started.")
 	fmt.Printf("  Port:    %d\n", port)
 	fmt.Printf("  Host:    %s\n", host)
 	fmt.Println("  Enabled: yes (starts on boot)")
 	fmt.Println()
-	fmt.Println("Stop:  dck serve off")
-	fmt.Println("Logs:  journalctl -u dck-serve -f")
+	fmt.Println("Stop:  cardinal serve off")
+	fmt.Println("Logs:  journalctl -u cardinal-serve -f")
 }
 
 func serveOff() {
 	if os.Geteuid() != 0 {
-		fmt.Fprintf(os.Stderr, "Error: must run as root (sudo dck serve off)\n")
+		fmt.Fprintf(os.Stderr, "Error: must run as root (sudo cardinal serve off)\n")
 		os.Exit(1)
 	}
 
 	if _, err := os.Stat(serveSystemdUnit); os.IsNotExist(err) {
-		fmt.Println("dck-serve service not installed.")
+		fmt.Println("cardinal-serve service not installed.")
 		return
 	}
 
@@ -238,30 +238,30 @@ func serveOff() {
 		_ = cmd.Run()
 	}
 
-	ignore("systemctl", "stop", "dck-serve")
-	ignore("systemctl", "disable", "dck-serve")
+	ignore("systemctl", "stop", "cardinal-serve")
+	ignore("systemctl", "disable", "cardinal-serve")
 	_ = os.Remove(serveSystemdUnit)
 	ignore("systemctl", "daemon-reload")
 
-	fmt.Println("dck-serve service stopped and removed.")
+	fmt.Println("cardinal-serve service stopped and removed.")
 }
 
 func serveStatus() {
-	cmd := exec.Command("systemctl", "is-active", "dck-serve")
+	cmd := exec.Command("systemctl", "is-active", "cardinal-serve")
 	out, err := cmd.Output()
 	status := strings.TrimSpace(string(out))
 	if err != nil || status == "" {
 		status = "inactive"
 	}
 
-	cmd = exec.Command("systemctl", "is-enabled", "dck-serve")
+	cmd = exec.Command("systemctl", "is-enabled", "cardinal-serve")
 	out, err = cmd.Output()
 	enabled := strings.TrimSpace(string(out))
 	if err != nil || enabled == "" {
 		enabled = "disabled"
 	}
 
-	fmt.Printf("dck-serve: %s (boot: %s)\n", status, enabled)
+	fmt.Printf("cardinal-serve: %s (boot: %s)\n", status, enabled)
 }
 
 func parseHost(s string) (string, int, error) {

@@ -1,58 +1,58 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Примеры команд dck
+# Примеры команд cardinal
 
 Практические рецепты для Linux. Замените имена образов, пароли, пути и публичные порты на свои.
 
-> dck специально отклоняет защищённые host bind sources: `/root`, `/etc`, `/var`, `/usr`, `/opt`, `/run`. Используйте `/data/<project>` или именованный volume. Host-каталог нужно создать заранее.
+> cardinal специально отклоняет защищённые host bind sources: `/root`, `/etc`, `/var`, `/usr`, `/opt`, `/run`. Используйте `/data/<project>` или именованный volume. Host-каталог нужно создать заранее.
 
 ## 1. Быстрый smoke test
 
 ```bash
-dck version
-dck pull alpine:latest
-dck run --rm alpine:latest echo "DCK OK"
-dck ps -a
+cardinal version
+cardinal pull alpine:latest
+cardinal run --rm alpine:latest echo "CARDINAL OK"
+cardinal ps -a
 ```
 
 В результате разового теста должна появиться строка:
 
 ```text
-DCK OK
+CARDINAL OK
 ```
 
 ## 2. Долгоживущий тестовый контейнер
 
 ```bash
-dck run -d \
-  -n dck-test \
+cardinal run -d \
+  -n cardinal-test \
   --restart unless-stopped \
   --restart-delay 10s \
   alpine:latest \
   sh -c 'i=0; while true; do i=$((i+1)); echo "tick $i $(date)"; sleep 5; done'
 
-dck ps
-dck logs --tail 20 dck-test
-dck logs -f dck-test
+cardinal ps
+cardinal logs --tail 20 cardinal-test
+cardinal logs -f cardinal-test
 ```
 
 Нажмите `Ctrl+C`, чтобы выйти из просмотра логов; контейнер при этом не остановится.
 
 ```bash
-dck stop dck-test
-dck ps -a
-dck rm dck-test
+cardinal stop cardinal-test
+cardinal ps -a
+cardinal rm cardinal-test
 ```
 
 ## 3. Проверка перезапуска после сбоя
 
-Этот процесс завершается через три секунды. dck должен запустить его снова после заданной задержки.
+Этот процесс завершается через три секунды. cardinal должен запустить его снова после заданной задержки.
 
 ```bash
-dck run -d \
+cardinal run -d \
   -n restart-test \
   --restart always \
   --restart-delay 10s \
@@ -60,17 +60,17 @@ dck run -d \
   sh -c 'echo process-started; sleep 3; exit 1'
 
 sleep 15
-dck ps -a
-dck logs --all restart-test
+cardinal ps -a
+cardinal logs --all restart-test
 ```
 
 После проверки удалите контейнер:
 
 ```bash
-dck rm -f restart-test
+cardinal rm -f restart-test
 ```
 
-Если контейнер должен оставаться остановленным после ручного `dck stop`, используйте `unless-stopped`, а не `always`.
+Если контейнер должен оставаться остановленным после ручного `cardinal stop`, используйте `unless-stopped`, а не `always`.
 
 ## 4. Переменные окружения и `.env`
 
@@ -78,10 +78,10 @@ dck rm -f restart-test
 mkdir -p /data/env-test
 cat > /data/env-test/.env <<'EOF'
 APP_ENV=production
-APP_NAME=dck-demo
+APP_NAME=cardinal-demo
 EOF
 
-dck run --rm \
+cardinal run --rm \
   --env-file /data/env-test/.env \
   alpine:latest \
   sh -c 'printf "%s/%s\\n" "$APP_NAME" "$APP_ENV"'
@@ -91,23 +91,23 @@ dck run --rm \
 
 ## 5. Именованные volumes
 
-Именованные volumes хранятся в dck и переживают удаление контейнера.
+Именованные volumes хранятся в cardinal и переживают удаление контейнера.
 
 ```bash
-dck volume create demo-data
-dck run --rm --vol demo-data:/data alpine:latest \
+cardinal volume create demo-data
+cardinal run --rm --vol demo-data:/data alpine:latest \
   sh -c 'echo saved > /data/message.txt'
-dck run --rm --vol demo-data:/data alpine:latest \
+cardinal run --rm --vol demo-data:/data alpine:latest \
   cat /data/message.txt
-dck volume inspect demo-data
-dck volume rm demo-data
+cardinal volume inspect demo-data
+cardinal volume rm demo-data
 ```
 
 Bind mount подключает существующий каталог хоста:
 
 ```bash
 mkdir -p /data/demo-app
-dck run --rm -v /data/demo-app:/app alpine:latest \
+cardinal run --rm -v /data/demo-app:/app alpine:latest \
   sh -c 'echo host-visible > /app/message.txt'
 cat /data/demo-app/message.txt
 ```
@@ -116,9 +116,9 @@ cat /data/demo-app/message.txt
 
 ```bash
 mkdir -p /data/site
-printf '<h1>Hello from dck</h1>\n' > /data/site/index.html
+printf '<h1>Hello from cardinal</h1>\n' > /data/site/index.html
 
-dck run -d \
+cardinal run -d \
   -n web \
   -p 8080:80 \
   --restart unless-stopped \
@@ -126,8 +126,8 @@ dck run -d \
   nginx:alpine
 
 curl http://127.0.0.1:8080
-dck port web
-dck logs --tail 50 web
+cardinal port web
+cardinal logs --tail 50 web
 ```
 
 Источник на хосте — `/data/site`; `/usr/share/nginx/html` — путь внутри nginx-контейнера.
@@ -149,12 +149,12 @@ app = Flask(__name__)
 
 @app.get('/')
 def index():
-    return 'Hello from dck\n'
+    return 'Hello from cardinal\n'
 
 app.run(host='0.0.0.0', port=5000)
 EOF
 
-dck run -d \
+cardinal run -d \
   -n flask \
   -p 5000:5000 \
   --restart unless-stopped \
@@ -165,7 +165,7 @@ dck run -d \
   sh -c 'python -m pip install --no-cache-dir -r requirements.txt && exec python app.py'
 
 curl http://127.0.0.1:5000
-dck logs -f flask
+cardinal logs -f flask
 ```
 
 Для Discord или Telegram-бота замените `app.py` и `requirements.txt`, передайте token через `--env-file` и оставьте политику `--restart unless-stopped`.
@@ -177,7 +177,7 @@ dck logs -f flask
 ### PostgreSQL
 
 ```bash
-dck run -d \
+cardinal run -d \
   -n postgres \
   -p 5432:5432 \
   --restart unless-stopped \
@@ -191,7 +191,7 @@ dck run -d \
 ### MySQL
 
 ```bash
-dck run -d \
+cardinal run -d \
   -n mysql \
   -p 3306:3306 \
   --restart unless-stopped \
@@ -204,7 +204,7 @@ dck run -d \
 ### Redis
 
 ```bash
-dck run -d \
+cardinal run -d \
   -n redis \
   -p 6379:6379 \
   --restart unless-stopped \
@@ -215,10 +215,10 @@ dck run -d \
 Проверка состояния и логов:
 
 ```bash
-dck ps
-dck logs --tail 100 postgres
-dck exec postgres pg_isready -U app -d app
-dck exec redis redis-cli ping
+cardinal ps
+cardinal logs --tail 100 postgres
+cardinal exec postgres pg_isready -U app -d app
+cardinal exec redis redis-cli ping
 ```
 
 ## 9. Minecraft Java через `$PWD`
@@ -232,7 +232,7 @@ cd /data/minecraft
 ls -lh server.jar
 printf 'eula=true\n' > eula.txt
 
-dck run -d \
+cardinal run -d \
   -n minecraft \
   -h minecraft \
   -p 25565:25565 \
@@ -249,13 +249,13 @@ dck run -d \
 Проверка Minecraft:
 
 ```bash
-dck ps -a
-dck logs --tail 100 minecraft
-dck logs -f minecraft
+cardinal ps -a
+cardinal logs --tail 100 minecraft
+cardinal logs -f minecraft
 ss -ltnp | grep 25565
 ```
 
-Ищите в логах `Done (...)! For help, type "help"`. Подключение: `PUBLIC_IP_VPS:25565`. Файлы Minecraft в `/data` находятся на bind mount и не входят в backup контейнера dck; каталог `/data/minecraft` нужно архивировать отдельно.
+Ищите в логах `Done (...)! For help, type "help"`. Подключение: `PUBLIC_IP_VPS:25565`. Файлы Minecraft в `/data` находятся на bind mount и не входят в backup контейнера cardinal; каталог `/data/minecraft` нужно архивировать отдельно.
 
 ## 10. Java/Paper через start-скрипт
 
@@ -269,7 +269,7 @@ exec java -Xms1G -Xmx4G -jar server.jar nogui
 EOF
 chmod +x start.sh
 
-dck run -d \
+cardinal run -d \
   -n minecraft \
   -p 25565:25565 \
   --restart unless-stopped \
@@ -280,82 +280,82 @@ dck run -d \
   ./start.sh
 ```
 
-Не используйте Paper-команду `/restart`, если host-side `start.sh` отсутствует. Пусть dck перезапускает главный процесс. Если сервер завершится, `--restart-delay 1m` восстановит его через минуту.
+Не используйте Paper-команду `/restart`, если host-side `start.sh` отсутствует. Пусть cardinal перезапускает главный процесс. Если сервер завершится, `--restart-delay 1m` восстановит его через минуту.
 
 ## 11. Backup
 
 Automatic backup архивирует writable overlay и именованные volumes, но не host bind mounts. Полное руководство по бэкапам — автоматические, ручные, восстановление, скачивание на ПК, обход bind-монтов, граничные случаи и лучшие практики — см. в [Руководстве по бэкапам](backups.md).
 
 ```bash
-dck run -d \
+cardinal run -d \
   -n backup-test \
   --restart unless-stopped \
   --vol backup-data:/data \
   alpine:latest \
   sh -c 'echo backup-data > /data/test.txt; sleep 3600'
 
-dck bootstrap --install
-dck backup enable backup-test --interval 1h --retention 7
-dck backup status backup-test
-dck backup list
+cardinal bootstrap --install
+cardinal backup enable backup-test --interval 1h --retention 7
+cardinal backup status backup-test
+cardinal backup list
 ```
 
 Разовый backup остановленного контейнера:
 
 ```bash
-dck stop backup-test
-dck backup create backup-test -o /data/backups/backup-test/manual.tar.gz
-dck backup restore backup-test /data/backups/backup-test/manual.tar.gz
-dck start backup-test
+cardinal stop backup-test
+cardinal backup create backup-test -o /data/backups/backup-test/manual.tar.gz
+cardinal backup restore backup-test /data/backups/backup-test/manual.tar.gz
+cardinal start backup-test
 ```
 
-Проверка архива по контрольной сумме (если checksum-файла рядом нет, dck сообщит, что архив не проверен):
+Проверка архива по контрольной сумме (если checksum-файла рядом нет, cardinal сообщит, что архив не проверен):
 
 ```bash
-dck backup verify /data/backups/backup-test/manual.tar.gz
+cardinal backup verify /data/backups/backup-test/manual.tar.gz
 ```
 
 Очистка:
 
 ```bash
-dck backup disable backup-test
-dck rm -f backup-test
-dck volume rm backup-data
+cardinal backup disable backup-test
+cardinal rm -f backup-test
+cardinal volume rm backup-data
 ```
 
 ## 12. Inspect, exec, copy и filesystem
 
 ```bash
-dck inspect web
-dck inspect --sensitive web
-dck exec -i -t web /bin/sh
-dck console web
-dck top web
-dck stats --no-stream web
-dck fs ls web /
-dck fs tree web /etc/nginx
-dck fs find web /etc --name '.conf' --type f
-dck fs cat web /etc/hostname
-dck cp ./local.conf web:/etc/app/config.conf
-dck cp web:/etc/app/config.conf /data/config-backup/
+cardinal inspect web
+cardinal inspect --sensitive web
+cardinal exec -i -t web /bin/sh
+cardinal console web
+cardinal top web
+cardinal stats --no-stream web
+cardinal fs ls web /
+cardinal fs tree web /etc/nginx
+cardinal fs find web /etc --name '.conf' --type f
+cardinal fs cat web /etc/hostname
+cardinal cp ./local.conf web:/etc/app/config.conf
+cardinal cp web:/etc/app/config.conf /data/config-backup/
 ```
 
 ## 13. Динамические порты
 
 ```bash
-dck port web
-dck port add web 8081:80
-dck port add web 5353:53/udp
-dck port remove web 8081
-dck port rm web 5353/udp
+cardinal port web
+cardinal port add web 8081:80
+cardinal port add web 5353:53/udp
+cardinal port remove web 8081
+cardinal port rm web 5353/udp
 ```
 
-## 14. Multi-container stack через `dck.toml`
+## 14. Multi-container stack через `cardinal.toml`
 
 ```bash
 mkdir -p /data/stack
 cd /data/stack
-cat > dck.toml <<'EOF'
+cat > cardinal.toml <<'EOF'
 [container.db]
 image = "postgres:16"
 restart = "unless-stopped"
@@ -372,27 +372,27 @@ EOF
 mkdir -p /data/stack/site
 echo 'stack is up' > /data/stack/site/index.html
 
-dck up -f dck.toml
-dck ps
-dck down -f dck.toml
+cardinal up -f cardinal.toml
+cardinal ps
+cardinal down -f cardinal.toml
 ```
 
 Создать исходную конфигурацию из существующих именованных контейнеров:
 
 ```bash
-dck up --generate -f generated.toml
+cardinal up --generate -f generated.toml
 ```
 
 ## 15. Registry, перенос и build
 
 ```bash
-dck login registry.example.com
-dck build -t registry.example.com/team/app:1.0 .
-dck push registry.example.com/team/app:1.0
-dck export registry.example.com/team/app:1.0 -o /data/app-1.0.tar.gz
-dck import /data/app-1.0.tar.gz
-dck verify registry.example.com/team/app:1.0
-dck logout registry.example.com
+cardinal login registry.example.com
+cardinal build -t registry.example.com/team/app:1.0 .
+cardinal push registry.example.com/team/app:1.0
+cardinal export registry.example.com/team/app:1.0 -o /data/app-1.0.tar.gz
+cardinal import /data/app-1.0.tar.gz
+cardinal verify registry.example.com/team/app:1.0
+cardinal logout registry.example.com
 ```
 
 ## 16. Cluster, services и functions
@@ -400,56 +400,56 @@ dck logout registry.example.com
 Инициализация одновузлового cluster:
 
 ```bash
-export DCK_TOKEN='replace-with-a-long-random-token'
-dck cluster init --name production --bind 10.0.2.1 --port 7946 --api-port 2375 --token "$DCK_TOKEN"
-dck cluster info
-dck cluster node ls
-dck cluster join-token
+export CARDINAL_TOKEN='replace-with-a-long-random-token'
+cardinal cluster init --name production --bind 10.0.2.1 --port 7946 --api-port 2375 --token "$CARDINAL_TOKEN"
+cardinal cluster info
+cardinal cluster node ls
+cardinal cluster join-token
 ```
 
 Replicated service:
 
 ```bash
-dck service create --name api --replicas 3 --port 8080:80 nginx:alpine
-dck service ls
-dck service scale api 5
-dck service update api --image nginx:1.27-alpine
-dck service rm api
+cardinal service create --name api --replicas 3 --port 8080:80 nginx:alpine
+cardinal service ls
+cardinal service scale api 5
+cardinal service update api --image nginx:1.27-alpine
+cardinal service rm api
 ```
 
 Serverless function:
 
 ```bash
 # Замените образ на свой function image с HTTP handler /handler на порту 8080.
-dck fn deploy --name hello --port 8080 --timeout 30 --idle 300 --warm 1 registry.example.com/team/hello-function:latest
-dck fn ls
-dck fn call hello --data '{"name":"dck"}'
-dck fn rm hello
+cardinal fn deploy --name hello --port 8080 --timeout 30 --idle 300 --warm 1 registry.example.com/team/hello-function:latest
+cardinal fn ls
+cardinal fn call hello --data '{"name":"cardinal"}'
+cardinal fn rm hello
 ```
 
 ## 17. Обслуживание и recovery после reboot
 
 ```bash
-dck info
-dck events --since "2026-01-01T00:00:00Z"
-dck system prune
-dck update --check
-dck bootstrap --install
-systemctl status dck-bootstrap
-journalctl -u dck-bootstrap -f
+cardinal info
+cardinal events --since "2026-01-01T00:00:00Z"
+cardinal system prune
+cardinal update --check
+cardinal bootstrap --install
+systemctl status cardinal-bootstrap
+journalctl -u cardinal-bootstrap -f
 ```
 
-Используйте `dck bootstrap --remove`, только если больше не нужны запуск после reboot и scheduled backups.
+Используйте `cardinal bootstrap --remove`, только если больше не нужны запуск после reboot и scheduled backups.
 
 ## 18. Чек-лист очистки
 
 ```bash
-dck ps -a
-dck stop minecraft
+cardinal ps -a
+cardinal stop minecraft
 # Перед удалением host directory отдельно сохраните bind-mounted файлы.
-dck rm -f minecraft
-dck volume ls
-dck volume prune
+cardinal rm -f minecraft
+cardinal volume ls
+cardinal volume prune
 ```
 
 Полный синтаксис каждой команды — в [Справочнике CLI](commands.md), установка и troubleshooting — в [Руководстве по запуску](running.md).

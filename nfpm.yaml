@@ -1,4 +1,4 @@
-name: dck
+name: cardinal
 # The workflow replaces these literal tokens before invoking nfpm.
 # nfpm does not expand environment variables in YAML values.
 arch: "__ARCH__"
@@ -9,19 +9,19 @@ priority: optional
 maintainer: animesao <igorerantaev66@gmail.com>
 description: Lightweight container runtime for Linux
 vendor: animesao
-homepage: https://github.com/animesao/dck
+homepage: https://github.com/animesao/cardinal
 license: MIT
 
 contents:
-  - src: ./dck-linux-__BIN_ARCH__
-    dst: /usr/bin/dck
+  - src: ./cardinal-linux-__BIN_ARCH__
+    dst: /usr/bin/cardinal
 
 rpm:
   group: System Environment/Base
   compression: lzma
 
 archlinux:
-  pkgbase: dck
+  pkgbase: cardinal
   packager: animesao
 
 overrides:

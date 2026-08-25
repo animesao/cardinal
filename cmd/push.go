@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"dck/internal/image"
+	"cardinal/internal/image"
 )
 
 func Push(args []string) {
@@ -22,7 +22,7 @@ func Push(args []string) {
 
 	freeArgs := fs.Args()
 	if len(freeArgs) < 1 {
-		fmt.Println("Usage: dck push [-u username] [-p password] <image>[:<tag>]")
+		fmt.Println("Usage: cardinal push [-u username] [-p password] <image>[:<tag>]")
 		fmt.Println("  -u username  Registry username (or DOCKER_USERNAME env)")
 		fmt.Println("  -p password  Registry password (or DOCKER_PASSWORD env)")
 		os.Exit(1)

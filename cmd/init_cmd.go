@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"os"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func initContainer(args []string) {
 	if len(args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: dck init <container-id> <merged-path>\n")
+		fmt.Fprintf(os.Stderr, "Usage: cardinal init <container-id> <merged-path>\n")
 		os.Exit(1)
 	}
 

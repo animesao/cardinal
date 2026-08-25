@@ -1,11 +1,11 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Установка dck в Nix / NixOS
+# Установка cardinal в Nix / NixOS
 
-`dck` поставляется в виде flake + классического Nix-выражения
+`cardinal` поставляется в виде flake + классического Nix-выражения
 в каталоге [`contrib/nix/`](../../contrib/nix/). Оба дают одинаковый
 бинарник — берите тот, что подходит под ваш рабочий процесс.
 
@@ -20,20 +20,20 @@
 
 ```
 CGO_ENABLED=0
-go build -trimpath -ldflags="-s -w -buildid= -X dck/cmd.version=${version}"
+go build -trimpath -ldflags="-s -w -buildid= -X cardinal/cmd.version=${version}"
 ```
 
 ## Однострочник через flake
 
 ```bash
 # Однократный запуск, без глобальных изменений
-nix run github:animesao/dck -- --version
+nix run github:animesao/cardinal -- --version
 
 # Установка для текущего пользователя
-nix profile install github:animesao/dck
+nix profile install github:animesao/cardinal
 ```
 
-`nix run` запускает `dck ...` без изменения состояния системы;
+`nix run` запускает `cardinal ...` без изменения состояния системы;
 `nix profile install` — «постоянный» вариант на non-NixOS системе.
 
 ## Включение в NixOS system configuration
@@ -42,11 +42,11 @@ nix profile install github:animesao/dck
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    dck.url = "github:animesao/dck/v1.24.15";
-    dck.inputs.nixpkgs.follows = "nixpkgs";
+    cardinal.url = "github:animesao/cardinal/v1.24.15";
+    cardinal.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, dck, ... }:
+  outputs = { self, nixpkgs, cardinal, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
@@ -57,7 +57,7 @@ nix profile install github:animesao/dck
         modules = [
           ({ pkgs, ... }: {
             environment.systemPackages = [
-              dck.packages.${system}.default
+              cardinal.packages.${system}.default
             ];
           })
         ];
@@ -66,8 +66,8 @@ nix profile install github:animesao/dck
 }
 ```
 
-После `nixos-rebuild switch` команда `dck` окажется
-в `/run/current-system/sw/bin/dck` для всех пользователей системы.
+После `nixos-rebuild switch` команда `cardinal` окажется
+в `/run/current-system/sw/bin/cardinal` для всех пользователей системы.
 
 ## В профиль Home Manager
 
@@ -76,10 +76,10 @@ nix profile install github:animesao/dck
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager.url = "github:nix-community/home-manager";
-    dck.url = "github:animesao/dck/v1.24.15";
+    cardinal.url = "github:animesao/cardinal/v1.24.15";
   };
 
-  outputs = { self, nixpkgs, home-manager, dck, ... }:
+  outputs = { self, nixpkgs, home-manager, cardinal, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
@@ -89,7 +89,7 @@ nix profile install github:animesao/dck
         inherit pkgs;
         modules = [
           ({ pkgs, ... }: {
-            home.packages = [ dck.packages.${system}.default ];
+            home.packages = [ cardinal.packages.${system}.default ];
           })
         ];
       };
@@ -99,11 +99,11 @@ nix profile install github:animesao/dck
 
 ## Проверка требований к ядру
 
-`dck` требует активную kernel-config. Запустите на хосте после
+`cardinal` требует активную kernel-config. Запустите на хосте после
 установки:
 
 ```bash
-dck doctor
+cardinal doctor
 ```
 
 Полезные строки, на которые стоит обратить внимание:
@@ -133,6 +133,6 @@ boot.kernelFeatures.enable = [ "cgroup_namespaces" "userns" ];
 см. `contrib/nix/README.md`.
 
 **В: Можно воспользоваться `nix shell`?**
-О: Да. `nix shell github:animesao/dck#devShells.<system>.default`
+О: Да. `nix shell github:animesao/cardinal#devShells.<system>.default`
 откроет шелл с `go`, `golangci-lint`, `shellcheck` — теми же
 инструментами, что в upstream build-matrix.

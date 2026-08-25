@@ -1,9 +1,9 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# dck — Continuous audit
+# cardinal — Continuous audit
 
 This document describes how the repository is audited automatically and what
 every check enforces.
@@ -116,7 +116,7 @@ FTP probing on a privileged port because `cmd/` already passes
 through to syscall-making helpers.
 
 Removal recorded under commit message: `chore(security): drop
-unmaintained internal/ftp; recommend sftp/dck cp in SECURITY.md`. The
+unmaintained internal/ftp; recommend sftp/cardinal cp in SECURITY.md`. The
 rationale and the recommended replacement stack are documented in
 `SECURITY.md` § *File transfer into and out of containers*.
 

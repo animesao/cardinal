@@ -1,11 +1,11 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Installing dck on Nix / NixOS
+# Installing cardinal on Nix / NixOS
 
-`dck` ships native flake + classic Nix expressions under
+`cardinal` ships native flake + classic Nix expressions under
 [`contrib/nix/`](../../contrib/nix/). Both produce the same
 binary; pick the one that matches your workflow.
 
@@ -21,20 +21,20 @@ artefact:
 
 ```
 CGO_ENABLED=0
-go build -trimpath -ldflags="-s -w -buildid= -X dck/cmd.version=${version}"
+go build -trimpath -ldflags="-s -w -buildid= -X cardinal/cmd.version=${version}"
 ```
 
 ## Flake one-liner
 
 ```bash
 # Try it (one-shot, no install required)
-nix run github:animesao/dck -- --version
+nix run github:animesao/cardinal -- --version
 
 # Install for the current user (adds to ~/.nix-profile)
-nix profile install github:animesao/dck
+nix profile install github:animesao/cardinal
 ```
 
-`nix run` drops you into a `dck ...` invocation with no global
+`nix run` drops you into a `cardinal ...` invocation with no global
 state changes; `nix profile install` is the persistence equivalent
 on a non-NixOS system.
 
@@ -44,11 +44,11 @@ on a non-NixOS system.
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    dck.url = "github:animesao/dck/v1.24.15";
-    dck.inputs.nixpkgs.follows = "nixpkgs";
+    cardinal.url = "github:animesao/cardinal/v1.24.15";
+    cardinal.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, dck, ... }:
+  outputs = { self, nixpkgs, cardinal, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
@@ -59,7 +59,7 @@ on a non-NixOS system.
         modules = [
           ({ pkgs, ... }: {
             environment.systemPackages = [
-              dck.packages.${system}.default
+              cardinal.packages.${system}.default
             ];
           })
         ];
@@ -68,8 +68,8 @@ on a non-NixOS system.
 }
 ```
 
-After running `nixos-rebuild switch`, `dck` lands at
-`/run/current-system/sw/bin/dck` for every user on the system.
+After running `nixos-rebuild switch`, `cardinal` lands at
+`/run/current-system/sw/bin/cardinal` for every user on the system.
 
 ## Add to a Home Manager user profile
 
@@ -78,10 +78,10 @@ After running `nixos-rebuild switch`, `dck` lands at
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager.url = "github:nix-community/home-manager";
-    dck.url = "github:animesao/dck/v1.24.15";
+    cardinal.url = "github:animesao/cardinal/v1.24.15";
   };
 
-  outputs = { self, nixpkgs, home-manager, dck, ... }:
+  outputs = { self, nixpkgs, home-manager, cardinal, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
@@ -91,7 +91,7 @@ After running `nixos-rebuild switch`, `dck` lands at
         inherit pkgs;
         modules = [
           ({ pkgs, ... }: {
-            home.packages = [ dck.packages.${system}.default ];
+            home.packages = [ cardinal.packages.${system}.default ];
           })
         ];
       };
@@ -101,14 +101,14 @@ After running `nixos-rebuild switch`, `dck` lands at
 
 ## Verify kernel prerequisites
 
-`dck` needs an active kernel configuration. Run on the host after
+`cardinal` needs an active kernel configuration. Run on the host after
 install:
 
 ```bash
-dck doctor
+cardinal doctor
 ```
 
-The output is structured: the same script decides whether `dck`
+The output is structured: the same script decides whether `cardinal`
 can run `run`, `serve`, `network create`, etc. Useful lines to look
 at:
 
@@ -120,14 +120,14 @@ overlayfs                      OK   available
 ```
 
 If any of those are `WARN` or `FAIL`, you have a kernel-config or
-kernel-version issue to fix first; `dck` will refuse to update the
+kernel-version issue to fix first; `cardinal` will refuse to update the
 filesystem state on a kernel that can't honour the namespace
 guarantees it advertises.
 
 ## Q & A
 
 **Q: Can I use `nix shell` to enter a dev shell?**
-A: Yes. `nix shell github:animesao/dck#devShells.<system>.default`
+A: Yes. `nix shell github:animesao/cardinal#devShells.<system>.default`
 gives you a shell with `go`, `golangci-lint`, `shellcheck`,
 matching the upstream build matrix.
 
@@ -137,7 +137,7 @@ re-fingerprinting both. Look at the build log, copy the printed
 hashes into `flake.nix` and `default.nix`, rebuild. See
 `contrib/nix/README.md` for the diagnostic flow.
 
-**Q: Does `dck` work on NixOS itself, or do I need a different
+**Q: Does `cardinal` work on NixOS itself, or do I need a different
 kernel?** A: Both. NixOS uses the upstream kernel with user
 namespaces + cgroup v2 enabled by default since 22.11. Older
 NixOS installations need:

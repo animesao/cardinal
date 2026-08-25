@@ -12,7 +12,7 @@ APT_DIR="docs/apt"
 mkdir -p "$APT_DIR"
 
 # Copy the deb file into the APT repository.
-cp "dist/dck_${VERSION}_amd64.deb" "$APT_DIR/"
+cp "dist/cardinal_${VERSION}_amd64.deb" "$APT_DIR/"
 
 # Generate the Packages index.
 cd "$APT_DIR"
@@ -21,14 +21,14 @@ for deb in *.deb; do
     SIZE=$(stat -c%s "$deb" 2>/dev/null || stat -f%z "$deb" 2>/dev/null)
     SHA256=$(sha256sum "$deb" | cut -d' ' -f1)
     {
-        echo "Package: dck"
+        echo "Package: cardinal"
         echo "Version: ${VERSION}"
         echo "Architecture: amd64"
         echo "Maintainer: animesao <animesao@users.noreply.github.com>"
         echo "Filename: $deb"
         echo "Size: $SIZE"
         echo "SHA256: $SHA256"
-        echo "Description: dck - lightweight container runtime"
+        echo "Description: cardinal - lightweight container runtime"
         echo " No daemon. No Docker. Just containers."
         echo ""
     } >> Packages
@@ -42,13 +42,13 @@ PKG_GZ_SIZE=$(stat -c%s "Packages.gz" 2>/dev/null || stat -f%z "Packages.gz" 2>/
 PKG_SHA256=$(sha256sum "Packages" | cut -d' ' -f1)
 PKG_GZ_SHA256=$(sha256sum "Packages.gz" | cut -d' ' -f1)
 cat > Release <<EOF
-Origin: dck
-Label: dck APT Repository
+Origin: cardinal
+Label: cardinal APT Repository
 Suite: stable
-Codename: dck
+Codename: cardinal
 Date: $NOW
 Architectures: amd64
-Description: dck lightweight container runtime
+Description: cardinal lightweight container runtime
 SHA256:
  $PKG_SHA256 $PKG_SIZE Packages
  $PKG_GZ_SHA256 $PKG_GZ_SIZE Packages.gz

@@ -1,11 +1,11 @@
 [Unit]
-Description=dck container supervisor — restart policy and boot recovery
+Description=cardinal container supervisor — restart policy and boot recovery
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/dck supervisor
+ExecStart=/usr/bin/cardinal supervisor
 Restart=always
 RestartSec=5s
 KillMode=process

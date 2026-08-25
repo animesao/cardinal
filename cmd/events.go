@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func Events(args []string) {

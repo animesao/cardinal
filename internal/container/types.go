@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 // stoppedContainers is a shared map used to signal container stop events

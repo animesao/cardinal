@@ -7,7 +7,7 @@ import (
 )
 
 func TestCreateListAndAllocateUserNetwork(t *testing.T) {
-	t.Setenv("DCK_DATA_DIR", t.TempDir())
+	t.Setenv("CARDINAL_DATA_DIR", t.TempDir())
 
 	n, err := CreateNetwork("testnet", "10.33.0.0/24")
 	if err != nil {
@@ -54,7 +54,7 @@ func TestCreateListAndAllocateUserNetwork(t *testing.T) {
 }
 
 func TestCreateNetworkValidation(t *testing.T) {
-	t.Setenv("DCK_DATA_DIR", t.TempDir())
+	t.Setenv("CARDINAL_DATA_DIR", t.TempDir())
 	for _, name := range []string{"", "bridge", "bad/name", "bad name"} {
 		if _, err := CreateNetwork(name, "10.34.0.0/24"); err == nil {
 			t.Errorf("CreateNetwork(%q) unexpectedly succeeded", name)

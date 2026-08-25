@@ -8,17 +8,17 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func Fs(args []string) {
 	if len(args) < 2 {
 		fmt.Println("Usage:")
-		fmt.Println("  dck fs ls <container> [path]")
-		fmt.Println("  dck fs cat <container> <path>")
-		fmt.Println("  dck fs tree <container> [path]")
-		fmt.Println("  dck fs find <container> [path] [--name <pattern>] [--grep <text>] [--type f|d] [--max-depth <n>]")
-		fmt.Println("  dck fs find [--name <pattern>] [--grep <text>] [--type f|d] [--max-depth <n>]  (search all containers)")
+		fmt.Println("  cardinal fs ls <container> [path]")
+		fmt.Println("  cardinal fs cat <container> <path>")
+		fmt.Println("  cardinal fs tree <container> [path]")
+		fmt.Println("  cardinal fs find <container> [path] [--name <pattern>] [--grep <text>] [--type f|d] [--max-depth <n>]")
+		fmt.Println("  cardinal fs find [--name <pattern>] [--grep <text>] [--type f|d] [--max-depth <n>]  (search all containers)")
 		os.Exit(1)
 	}
 
@@ -27,7 +27,7 @@ func Fs(args []string) {
 	// If second arg is a flag, search all containers (no container specified)
 	if len(args) > 1 && strings.HasPrefix(args[1], "--") {
 		if sub != "find" {
-			fmt.Fprintf(os.Stderr, "Error: container required for 'dck fs %s'\n", sub)
+			fmt.Fprintf(os.Stderr, "Error: container required for 'cardinal fs %s'\n", sub)
 			os.Exit(1)
 		}
 		containers, err := container.List(true)

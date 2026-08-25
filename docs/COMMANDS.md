@@ -1,9 +1,9 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# dck — Command verification map
+# cardinal — Command verification map
 
 This is the per-command audit map. For every top-level command, we list
 the runtime requirements (kernel features, registry network access,
@@ -28,7 +28,7 @@ invokes the kernel through `syscall`/`exec` like any container engine.
 
 | Command | Requires | Verification | Notes |
 |---|---|---|---|
-| `pull` | registry network, overlayfs mount | `cobra`, `audit` | Allowlist via `DCK_REGISTRY_STRICT=1`. |
+| `pull` | registry network, overlayfs mount | `cobra`, `audit` | Allowlist via `CARDINAL_REGISTRY_STRICT=1`. |
 | `push` | registry network, overlayfs | `cobra`, `audit` | Blocked by same allowlist. |
 | `run` | namespaces, cgroup v2, overlayfs, iptables | `cobra`, `unit-test` (cap-root gate, run-flag reorder) | Dangerous-cap/root gated by `--allow-*` flags. |
 | `exec` | nsenter, ps/pgrep | `cobra`, `e2e-linux` (smoke in `e2e.yml`) | Verifies namespace IDs. |
@@ -72,7 +72,7 @@ invokes the kernel through `syscall`/`exec` like any container engine.
 | `doctor` | `/proc` | `cobra`, `e2e-linux` | Read-only host check. |
 | `security` | `/proc` + config | `cobra` | `security check` runs the security-focused subset of doctor. |
 | `system` | state dir | `cobra` | prunes images / containers / volumes. |
-| `update` | network + GitHub Releases | `cobra`, `unit-test` (cosign verification path) | SHA256 mandatory; cosign opt-in via `DCK_REQUIRE_SIGNATURE=1`. |
+| `update` | network + GitHub Releases | `cobra`, `unit-test` (cosign verification path) | SHA256 mandatory; cosign opt-in via `CARDINAL_REQUIRE_SIGNATURE=1`. |
 | `init` | namespaces | `cobra` | Internal helper used by `run`. |
 | `registry` | state dir | `cobra`, `unit-test` (allowlist default/perm/strict/insecure) | Allowlist + credential management. |
 | `version` | nothing | `cobra`, `e2e-linux` | Plain text version. |
@@ -86,15 +86,15 @@ invokes the kernel through `syscall`/`exec` like any container engine.
 
 ## Sub-command surface
 
-`dck backup` advertises: create / list / restore / enable / disable /
+`cardinal backup` advertises: create / list / restore / enable / disable /
 status / verify. Each sub-command is also a `register(commandSpec{...})`
-entry — they appear in `dck backup --help` in alphabetical order.
+entry — they appear in `cardinal backup --help` in alphabetical order.
 
-`dck security` advertises: check.
+`cardinal security` advertises: check.
 
-`dck completion` advertises: bash / zsh / fish / powershell.
+`cardinal completion` advertises: bash / zsh / fish / powershell.
 
-`dck registry` advertises: allowlist (list/add/remove) and forwards
+`cardinal registry` advertises: allowlist (list/add/remove) and forwards
 `login` / `logout` to the existing pre-cobra implementations.
 
 ## How to verify on your own host

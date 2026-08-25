@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func Inspect(args []string) {
@@ -22,7 +22,7 @@ func Inspect(args []string) {
 		names = append(names, arg)
 	}
 	if len(names) < 1 {
-		fmt.Println("Usage: dck inspect [--sensitive] <container> [<container>...]")
+		fmt.Println("Usage: cardinal inspect [--sensitive] <container> [<container>...]")
 		os.Exit(1)
 	}
 

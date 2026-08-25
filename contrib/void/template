@@ -1,36 +1,36 @@
-# xbps-src template for dck.
+# xbps-src template for cardinal.
 #
 # This file is registered with `xbps-src` under
-#   srcpkgs/dck/template
+#   srcpkgs/cardinal/template
 # in a fork of void-packages (https://github.com/void-linux/void-packages).
 #
 # The xbps-src build pipeline:
-#   1. fetches `distfiles/dck-${version}.tar.gz`   <-- from $distfiles
+#   1. fetches `distfiles/cardinal-${version}.tar.gz`   <-- from $distfiles
 #   2. verifies against `checksum=` below
 #   3. unpacks into $wrksrc
 #   4. runs build_style="go" which invokes:
 #        ${go} build ${go_package}
-#      with CGO_ENABLED=0 hard-coded (because dck is a pure-go binary)
+#      with CGO_ENABLED=0 hard-coded (because cardinal is a pure-go binary)
 #   5. installs via the framework `do_install()`
 #
-# We override `do_install()` so the binary lands at /usr/bin/dck,
-# not /usr/lib/go/bin/dck which is xbps-src's default.
+# We override `do_install()` so the binary lands at /usr/bin/cardinal,
+# not /usr/lib/go/bin/cardinal which is xbps-src's default.
 
-pkgname=dck
+pkgname=cardinal
 version=1.24.15
 revision=1
-wrksrc="dck-${version}"
+wrksrc="cardinal-${version}"
 build_style="go"
-go_import_path="github.com/animesao/dck"
+go_import_path="github.com/animesao/cardinal"
 go_package=.
 go_build_tags="netgo"
 short_desc="Lightweight, daemonless, OCI-compatible container runtime"
 maintainer="animesao <animesao@users.noreply.github.com>"
 license="MIT"
-homepage="https://github.com/animesao/dck"
-changelog="https://github.com/animesao/dck/releases/tag/v${version}"
-distfiles="https://github.com/animesao/dck/archive/v${version}.tar.gz"
-checksum="sha256-PLACEHOLDER-REPLACE-ME-WITH: xbps-src checksum dck-${version}.tar.gz"
+homepage="https://github.com/animesao/cardinal"
+changelog="https://github.com/animesao/cardinal/releases/tag/v${version}"
+distfiles="https://github.com/animesao/cardinal/archive/v${version}.tar.gz"
+checksum="sha256-PLACEHOLDER-REPLACE-ME-WITH: xbps-src checksum cardinal-${version}.tar.gz"
 
 # We strip the binary upstream via -s -w -buildid=,
 # so xbps-src's `nostrip=yes` keeps it from double-stripping (which
@@ -39,11 +39,11 @@ checksum="sha256-PLACEHOLDER-REPLACE-ME-WITH: xbps-src checksum dck-${version}.t
 nostrip=yes
 
 # Upstream build matrix uses these ldflags exactly:
-#   -trimpath -ldflags="-s -w -buildid= -X dck/cmd.version=${version}"
+#   -trimpath -ldflags="-s -w -buildid= -X cardinal/cmd.version=${version}"
 # xbps-src injects `go build ${go_build_opts}`; we set the matching
 # CGO + ldflags here so the produced xbps is binary-identical to the
-# upstream goreleaser-produced `dck_1.24.15_*.pkg.tar.zst`.
-go_build_opts+=" -trimpath -ldflags=-s -ldflags=-w -ldflags=-buildid= -ldflags=-X=dck/cmd.version=${version}"
+# upstream goreleaser-produced `cardinal_1.24.15_*.pkg.tar.zst`.
+go_build_opts+=" -trimpath -ldflags=-s -ldflags=-w -ldflags=-buildid= -ldflags=-X=cardinal/cmd.version=${version}"
 
 # We do NOT want tests at build time:
 #   * go test ./... runs all tests; many require root + namespaces
@@ -51,15 +51,15 @@ go_build_opts+=" -trimpath -ldflags=-s -ldflags=-w -ldflags=-buildid= -ldflags=-
 go_check=
 
 # xbps depends:
-# dck can manage its own loopback networking + iptables using the host's
+# cardinal can manage its own loopback networking + iptables using the host's
 # iproute2 binary, so we don't need to declare a hard dep here. We DO
 # mark iproute2 as `shlib_requires` for install via `xbps-query --files`
-# hinting so users who run `dck network create` get a sensible error.
+# hinting so users who run `cardinal network create` get a sensible error.
 depends="iproute2>=4.18"
 
 do_install() {
     # xbps-src has a generic helper for "single binary I built":
-    vbin dck
+    vbin cardinal
     # If we ever ship a default config or a systemd unit, install it here:
     # vcompletion ...
     # vlicense LICENSE   # auto-detected by xbps-src's license fixture
@@ -67,9 +67,9 @@ do_install() {
 
 # post-install verification: ensure the produced binary actually starts.
 # Most Void builds skip this (xbps check covers it later), but on our
-# CI loop we run `xbps-install --dry-run -i dck` separately to catch
+# CI loop we run `xbps-install --dry-run -i cardinal` separately to catch
 # ABI drift against the freshly built glibc.
-dck-1.24.15-lang-en_US() {
+cardinal-1.24.15-lang-en_US() {
     # ensure we ship the language pack the embed expects
     :
 }

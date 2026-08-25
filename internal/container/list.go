@@ -9,7 +9,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 func pidAlive(pid int) bool {

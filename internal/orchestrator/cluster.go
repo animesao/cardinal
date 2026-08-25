@@ -18,8 +18,8 @@ import (
 	"sync"
 	"time"
 
-	"dck/internal/log"
-	"dck/internal/state"
+	"cardinal/internal/log"
+	"cardinal/internal/state"
 )
 
 var (
@@ -41,7 +41,7 @@ func clusterAuthHeader() string {
 	token := clusterToken
 	tokenLock.RUnlock()
 	if token == "" {
-		token = os.Getenv("DCK_TOKEN")
+		token = os.Getenv("CARDINAL_TOKEN")
 	}
 	if token != "" {
 		return "Bearer " + token

@@ -17,7 +17,7 @@ import (
 
 const (
 	// EncryptionKeyEnv is the environment variable for the encryption key.
-	EncryptionKeyEnv = "DCK_BACKUP_KEY"
+	EncryptionKeyEnv = "CARDINAL_BACKUP_KEY"
 
 	// EncryptionKeyFile is the path to the encryption key file.
 	EncryptionKeyFile = ".backup-key"
@@ -45,7 +45,7 @@ func NewBackupEncryptor(key []byte) (*BackupEncryptor, error) {
 	return &BackupEncryptor{key: key}, nil
 }
 
-// NewBackupEncryptorFromEnv creates a BackupEncryptor from the DCK_BACKUP_KEY env var.
+// NewBackupEncryptorFromEnv creates a BackupEncryptor from the CARDINAL_BACKUP_KEY env var.
 func NewBackupEncryptorFromEnv() (*BackupEncryptor, error) {
 	keyStr := os.Getenv(EncryptionKeyEnv)
 	if keyStr == "" {
@@ -145,7 +145,7 @@ func (e *BackupEncryptor) EncryptFile(path string) error {
 	}
 
 	// Write to temp file and rename for atomicity
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".dck-enc-*.tmp")
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".cardinal-enc-*.tmp")
 	if err != nil {
 		return fmt.Errorf("create temp: %w", err)
 	}
@@ -188,7 +188,7 @@ func (e *BackupEncryptor) DecryptFile(path string) error {
 	}
 
 	// Write to temp file and rename for atomicity
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".dck-dec-*.tmp")
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".cardinal-dec-*.tmp")
 	if err != nil {
 		return fmt.Errorf("create temp: %w", err)
 	}

@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"syscall"
 
-	"dck/internal/log"
+	"cardinal/internal/log"
 )
 
 // RestrictDevShm mounts /dev/shm with restrictive options inside the container.

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# dck Container Runtime Installer — Universal Linux
-# Usage: curl -sSL https://raw.githubusercontent.com/animesao/dck/main/install.sh | sudo bash
+# cardinal Container Runtime Installer — Universal Linux
+# Usage: curl -sSL https://raw.githubusercontent.com/animesao/cardinal/main/install.sh | sudo bash
 
-REPO="animesao/dck"
-DCK_BIN="/usr/local/bin/dck"
+REPO="animesao/cardinal"
+CARDINAL_BIN="/usr/local/bin/cardinal"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 log()  { echo -e "${GREEN}[+]${NC} $1"; }
@@ -113,13 +113,13 @@ fi
 log "Latest version: $LATEST_TAG"
 
 # ---- Download binary and verify SHA256 checksum ----
-TMP_BIN="$(mktemp -t dck.XXXXXX)"
-TMP_ARCHIVE="$(mktemp -t dck-archive.XXXXXX)"
-TMP_SUMS="$(mktemp -t dck-sums.XXXXXX)"
+TMP_BIN="$(mktemp -t cardinal.XXXXXX)"
+TMP_ARCHIVE="$(mktemp -t cardinal-archive.XXXXXX)"
+TMP_SUMS="$(mktemp -t cardinal-sums.XXXXXX)"
 VERSION="${LATEST_TAG#v}"
-ARCHIVE_NAME="dck_${VERSION}_linux_${ARCH}.tar.gz"
-CHECKSUMS_NAME="dck_${VERSION}_checksums.txt"
-log "Downloading dck ${LATEST_TAG} (${ARCH})..."
+ARCHIVE_NAME="cardinal_${VERSION}_linux_${ARCH}.tar.gz"
+CHECKSUMS_NAME="cardinal_${VERSION}_checksums.txt"
+log "Downloading cardinal ${LATEST_TAG} (${ARCH})..."
 curl -fsSL "https://github.com/$REPO/releases/download/${LATEST_TAG}/${ARCHIVE_NAME}" \
   -o "$TMP_ARCHIVE"
 
@@ -142,35 +142,35 @@ else
 fi
 
 # Extract binary from tar.gz
-tar -xzf "$TMP_ARCHIVE" -C "$(dirname "$TMP_BIN")" --strip-components=0 dck 2>/dev/null \
-  || tar -xzf "$TMP_ARCHIVE" -C /tmp dck 2>/dev/null && cp /tmp/dck "$TMP_BIN"
-rm -f "$TMP_ARCHIVE" /tmp/dck
+tar -xzf "$TMP_ARCHIVE" -C "$(dirname "$TMP_BIN")" --strip-components=0 cardinal 2>/dev/null \
+  || tar -xzf "$TMP_ARCHIVE" -C /tmp cardinal 2>/dev/null && cp /tmp/cardinal "$TMP_BIN"
+rm -f "$TMP_ARCHIVE" /tmp/cardinal
 
 if [[ ! -s "$TMP_BIN" ]]; then
   rm -f "$TMP_BIN" "$TMP_SUMS"
-  err "Failed to extract dck binary from archive"
+  err "Failed to extract cardinal binary from archive"
 fi
 
-install -m 0755 "$TMP_BIN" "$DCK_BIN"
+install -m 0755 "$TMP_BIN" "$CARDINAL_BIN"
 rm -f "$TMP_BIN" "$TMP_SUMS"
-log "Binary installed: $DCK_BIN"
+log "Binary installed: $CARDINAL_BIN"
 
 # ---- Verify binary works (check for glibc error) ----
-if ! "$DCK_BIN" --version &>/dev/null; then
+if ! "$CARDINAL_BIN" --version &>/dev/null; then
   warn "Binary failed to run (likely glibc mismatch). Building from source..."
   if command -v go &>/dev/null; then
-    log "Building dck from source..."
+    log "Building cardinal from source..."
     TMPDIR=$(mktemp -d)
     git clone --depth 1 "https://github.com/$REPO.git" "$TMPDIR" 2>/dev/null || {
       err "Git clone failed. Install Go manually and run: CGO_ENABLED=0 go build"
     }
     cd "$TMPDIR"
-    CGO_ENABLED=0 go build -tags netgo -installsuffix netgo -ldflags="-s -w" -o dck .
-    cp dck "$DCK_BIN"
-    chmod +x "$DCK_BIN"
+    CGO_ENABLED=0 go build -tags netgo -installsuffix netgo -ldflags="-s -w" -o cardinal .
+    cp cardinal "$CARDINAL_BIN"
+    chmod +x "$CARDINAL_BIN"
     cd /
     rm -rf "$TMPDIR"
-    log "Built from source: $DCK_BIN"
+    log "Built from source: $CARDINAL_BIN"
   else
     warn "Go not installed. Installing Go to build from source..."
     GO_VER="1.23.4"
@@ -180,12 +180,12 @@ if ! "$DCK_BIN" --version &>/dev/null; then
     TMPDIR=$(mktemp -d)
     git clone --depth 1 "https://github.com/$REPO.git" "$TMPDIR"
     cd "$TMPDIR"
-    CGO_ENABLED=0 /usr/local/go/bin/go build -tags netgo -installsuffix netgo -ldflags="-s -w" -o dck .
-    cp dck "$DCK_BIN"
-    chmod +x "$DCK_BIN"
+    CGO_ENABLED=0 /usr/local/go/bin/go build -tags netgo -installsuffix netgo -ldflags="-s -w" -o cardinal .
+    cp cardinal "$CARDINAL_BIN"
+    chmod +x "$CARDINAL_BIN"
     cd /
     rm -rf "$TMPDIR" /tmp/go.tar.gz
-    log "Built from source: $DCK_BIN"
+    log "Built from source: $CARDINAL_BIN"
   fi
 fi
 
@@ -214,7 +214,7 @@ fi
 # ---- Bootstrap systemd service ----
 if [[ -d /run/systemd/system ]]; then
   log "Installing systemd service..."
-  "$DCK_BIN" bootstrap --install 2>/dev/null || true
+  "$CARDINAL_BIN" bootstrap --install 2>/dev/null || true
   if [[ -n "$SERVICE_RELOAD" ]]; then
     $SERVICE_RELOAD 2>/dev/null || true
   fi
@@ -222,22 +222,22 @@ fi
 
 # ---- Verify ----
 log "Verifying installation..."
-if command -v dck &>/dev/null; then
-  log "dck installed: $(dck --version 2>/dev/null || echo 'ok')"
+if command -v cardinal &>/dev/null; then
+  log "cardinal installed: $(cardinal --version 2>/dev/null || echo 'ok')"
 else
-  warn "dck not found in PATH — ensure $DCK_BIN is accessible"
+  warn "cardinal not found in PATH — ensure $CARDINAL_BIN is accessible"
 fi
 
 # ---- Done ----
 echo ""
 log "═══════════════════════════════════════════════"
-log "  dck installed successfully!"
+log "  cardinal installed successfully!"
 log "═══════════════════════════════════════════════"
 log ""
 log "  Quick start:"
-log "    dck pull alpine"
-log "    dck run --rm alpine echo hello"
-log "    dck --help"
+log "    cardinal pull alpine"
+log "    cardinal run --rm alpine echo hello"
+log "    cardinal --help"
 log ""
 log "  Docs:  https://github.com/$REPO"
 echo ""

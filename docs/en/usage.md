@@ -1,11 +1,11 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
 # Usage & Commands
 
-dck is a lightweight container runtime — no daemon, no Docker. Just containers.
+cardinal is a lightweight container runtime — no daemon, no Docker. Just containers.
 ~5 MB static binary, OCI images, bridge networking, cluster orchestration, FaaS.
 
 > For the exhaustive command tree, every alias/prefix, and all flags, see the [Complete CLI Command Reference](commands.md). For copy-paste deployment recipes, see [Command Examples](examples.md).
@@ -17,23 +17,23 @@ dck is a lightweight container runtime — no daemon, no Docker. Just containers
 - [Running Guide](running.md)
 - [Deploying Websites](websites.md)
 - [Image Management](#image-management)
-  - [dck pull](#dck-pull---platform-osarch-imagetag)
-  - [dck search](#dck-search-term)
-  - [dck images](#dck-images)
-  - [dck rmi](#dck-rmi-imagetag)
-  - [dck export](#dck-export-image--o-filetargz)
-  - [dck import](#dck-import-filetargz)
-  - [dck build](#dck-build--t-nametag-options-)
-  - [dck commit](#dck-commit-container-imagetag)
-  - [dck push](#dck-push-imagetag)
-  - [dck login / dck logout](#dck-login-registry--dck-logout-registry)
+  - [cardinal pull](#cardinal-pull---platform-osarch-imagetag)
+  - [cardinal search](#cardinal-search-term)
+  - [cardinal images](#cardinal-images)
+  - [cardinal rmi](#cardinal-rmi-imagetag)
+  - [cardinal export](#cardinal-export-image--o-filetargz)
+  - [cardinal import](#cardinal-import-filetargz)
+  - [cardinal build](#cardinal-build--t-nametag-options-)
+  - [cardinal commit](#cardinal-commit-container-imagetag)
+  - [cardinal push](#cardinal-push-imagetag)
+  - [cardinal login / cardinal logout](#cardinal-login-registry--cardinal-logout-registry)
 - [Container Lifecycle](#container-lifecycle)
-- [Running Containers (`dck run`)](#dck-run)
+- [Running Containers (`cardinal run`)](#cardinal-run)
 - [Working with Containers](#working-with-containers)
 - [Exec & Attach](#exec--attach)
 - [Logs & Monitoring](#logs--monitoring)
 - [Networking](#networking)
-- [Filesystem Browser](#filesystem-browser--dck-fs)
+- [Filesystem Browser](#filesystem-browser--cardinal-fs)
 - [Storage & Volumes](#storage--volumes)
 - [Resource Limits](#resource-limits)
 - [Security](#security)
@@ -41,8 +41,8 @@ dck is a lightweight container runtime — no daemon, no Docker. Just containers
 - [Healthchecks](#healthchecks)
 - [Startup Scripts](#startup-scripts)
 - [Port Mapping](#port-mapping)
-- [dck.toml / Compose](#dcktoml--compose)
-- [Multi-Container Config](#dck-up--dck-down)
+- [cardinal.toml / Compose](#cardinaltoml--compose)
+- [Multi-Container Config](#cardinal-up--cardinal-down)
 - [Cluster Orchestration](#cluster-orchestration)
 - [Service Management](#service-management)
 - [FaaS / Serverless](#faas--serverless)
@@ -58,80 +58,80 @@ dck is a lightweight container runtime — no daemon, no Docker. Just containers
 
 ## Image Management
 
-### `dck pull [--platform os/arch] <image>[:tag]`
+### `cardinal pull [--platform os/arch] <image>[:tag]`
 
 Pull an image from a registry (Docker Hub by default).
 
 ```bash
-dck pull nginx
-dck pull alpine:3.19
-dck pull --platform linux/arm64 eclipse-temurin:21-jre
-dck pull registry.example.com/myapp:v1.0
+cardinal pull nginx
+cardinal pull alpine:3.19
+cardinal pull --platform linux/arm64 eclipse-temurin:21-jre
+cardinal pull registry.example.com/myapp:v1.0
 ```
 
 Private registries: set `DOCKER_USERNAME` / `DOCKER_PASSWORD` env vars,
 or use `-u user -p pass` on push.
 
-### `dck search <term>`
+### `cardinal search <term>`
 
 Search for images on Docker Hub.
 
 ```bash
-dck search nginx
-dck search python
-dck search alpine
-dck search python:3.11          # filter by tag
+cardinal search nginx
+cardinal search python
+cardinal search alpine
+cardinal search python:3.11          # filter by tag
 ```
 
 Shows image name, description, stars, pull count, and available tags. Use `image:tag` syntax to filter by specific tag.
 
-### `dck images`
+### `cardinal images`
 
 List locally stored images.
 
 ```bash
-dck images
+cardinal images
 ```
 
-### `dck rmi <image>[:tag]`
+### `cardinal rmi <image>[:tag]`
 
 Remove an image from local storage.
 
 ```bash
-dck rmi nginx:alpine
+cardinal rmi nginx:alpine
 ```
 
-### `dck verify <image>[:tag]`
+### `cardinal verify <image>[:tag]`
 
 Verify a local image's config and layer digests.
 
 ```bash
-dck verify nginx:alpine
+cardinal verify nginx:alpine
 ```
 
-### `dck export <image> -o <file.tar.gz>`
+### `cardinal export <image> -o <file.tar.gz>`
 
 Export an image to a tar.gz file (for backup or transfer).
 
 ```bash
-dck export myapp:v1 -o myapp-v1.tar.gz
+cardinal export myapp:v1 -o myapp-v1.tar.gz
 ```
 
-### `dck import <file.tar.gz>`
+### `cardinal import <file.tar.gz>`
 
 Import an image from a tar.gz file.
 
 ```bash
-dck import myapp-v1.tar.gz
+cardinal import myapp-v1.tar.gz
 ```
 
-### `dck build -t <name>:<tag> [options] .`
+### `cardinal build -t <name>:<tag> [options] .`
 
 Build an image from a Dockerfile.
 
 ```bash
-dck build -t myapp:v1 .
-dck build -t myapp:v1 --build-arg VERSION=1.0 -f Dockerfile.prod .
+cardinal build -t myapp:v1 .
+cardinal build -t myapp:v1 --build-arg VERSION=1.0 -f Dockerfile.prod .
 ```
 
 **Supported Dockerfile instructions:**
@@ -142,78 +142,78 @@ VOLUME, SHELL, ARG, HEALTHCHECK, STOPSIGNAL, ONBUILD.
 - ✅ Multi-stage builds (`FROM ... AS alias`, `COPY --from=`)
 - ✅ ARG substitution (`$VAR` / `${VAR}` in all instructions)
 - ✅ HEALTHCHECK with `--start-period`
-- `--no-cache` is accepted for CLI compatibility; dck currently rebuilds every Dockerfile instruction and does not reuse instruction results
+- `--no-cache` is accepted for CLI compatibility; cardinal currently rebuilds every Dockerfile instruction and does not reuse instruction results
 
-### `dck commit <container> <image>[:tag]`
+### `cardinal commit <container> <image>[:tag]`
 
 Create a new image from a container's current state (including all changes in the overlay).
 
 ```bash
-dck commit myproject myproject-snapshot:v1
+cardinal commit myproject myproject-snapshot:v1
 ```
 
 This saves everything you installed (packages, files, configs) into a reusable image.
 
-### `dck push <image>[:tag]`
+### `cardinal push <image>[:tag]`
 
 Push a local image to a registry.
 
 ```bash
-dck push myapp:v1
-dck push registry.example.com/myapp:v1
+cardinal push myapp:v1
+cardinal push registry.example.com/myapp:v1
 ```
 
 Auth: `-u user -p pass` or `DOCKER_USERNAME` / `DOCKER_PASSWORD`.
 
-### `dck login <registry>` / `dck logout <registry>`
+### `cardinal login <registry>` / `cardinal logout <registry>`
 
 Log in or out of a registry for authenticated pulls/pushes.
 
 ```bash
-dck login registry.example.com
-dck logout registry.example.com
+cardinal login registry.example.com
+cardinal logout registry.example.com
 ```
 
 ---
 
 ## Container Lifecycle
 
-### `dck ps`
+### `cardinal ps`
 
 List containers.
 
 ```bash
-dck ps           # running only
-dck ps -a        # all containers (including stopped)
+cardinal ps           # running only
+cardinal ps -a        # all containers (including stopped)
 ```
 
-### `dck run [options] <image> [command]`
+### `cardinal run [options] <image> [command]`
 
 Create and start a container. This is the main command.
 
 ```bash
 # One-shot command
-dck run --rm alpine echo "hello"
+cardinal run --rm alpine echo "hello"
 
 # Detached web server
-dck run -d -n web -p 80:80 nginx:alpine
+cardinal run -d -n web -p 80:80 nginx:alpine
 
 # Interactive shell
-dck run -i -t --rm alpine sh
+cardinal run -i -t --rm alpine sh
 
 # With resource limits
-dck run -d --memory 512m --cpus 1.5 node:20 node app.js
+cardinal run -d --memory 512m --cpus 1.5 node:20 node app.js
 
 # With volume and env
-dck run -d -v /data:/data -e DB_URL=postgres://... myapp
+cardinal run -d -v /data:/data -e DB_URL=postgres://... myapp
 
 # With long flags and auto-restart
-dck run -d --name myapp --ports 8080:80 --volume /app:/app --restart always --image nginx:alpine
+cardinal run -d --name myapp --ports 8080:80 --volume /app:/app --restart always --image nginx:alpine
 ```
 
-**Important:** dck uses Go's `flag` package, so flags must be passed separately:
-- ✅ `dck run -i -t alpine sh` (correct)
-- ❌ `dck run -it alpine sh` (will error — use `-i -t`)
+**Important:** cardinal uses Go's `flag` package, so flags must be passed separately:
+- ✅ `cardinal run -i -t alpine sh` (correct)
+- ❌ `cardinal run -it alpine sh` (will error — use `-i -t`)
 
 #### Run options
 
@@ -262,193 +262,193 @@ dck run -d --name myapp --ports 8080:80 --volume /app:/app --restart always --im
 | `--healthcheck-retries <n>` | Health check retries | `--healthcheck-retries 5` |
 | `--healthcheck-timeout <s>` | Health check timeout (seconds) | `--healthcheck-timeout 10` |
 
-### `dck stop <container>`
+### `cardinal stop <container>`
 
 Stop a running container (sends SIGTERM, then SIGKILL after timeout).
 
 ```bash
-dck stop web
-dck stop web db       # stop multiple
+cardinal stop web
+cardinal stop web db       # stop multiple
 ```
 
-### `dck start <container>`
+### `cardinal start <container>`
 
 Start a stopped container. All data in the overlay is preserved.
 
 ```bash
-dck start web
+cardinal start web
 ```
 
-### `dck restart <container>`
+### `cardinal restart <container>`
 
 Restart a container (stop + start).
 
 ```bash
-dck restart web
+cardinal restart web
 ```
 
-### `dck rm [-f] <container>`
+### `cardinal rm [-f] <container>`
 
 Remove a container. `-f` forces removal of running containers.
 
 ```bash
-dck rm web
-dck rm -f web         # force remove even if running
+cardinal rm web
+cardinal rm -f web         # force remove even if running
 ```
 
 **Warning:** Removing a container deletes its overlay layer — all changes (installed packages, files) are lost.
 
-### `dck set <container> [options]`
+### `cardinal set <container> [options]`
 
 Modify container parameters without deleting (overlay data preserved). Stops, updates, and restarts.
 
 ```bash
-dck set mc --memory 4g --cpus 2
-dck set mc --restart always
-dck set mc -e DIFFICULTY=hard
-dck set mc --workdir /data-mc
+cardinal set mc --memory 4g --cpus 2
+cardinal set mc --restart always
+cardinal set mc -e DIFFICULTY=hard
+cardinal set mc --workdir /data-mc
 ```
 
-### `dck rename <container> <new-name>`
+### `cardinal rename <container> <new-name>`
 
 Rename a container.
 
 ```bash
-dck rename web web-new
+cardinal rename web web-new
 ```
 
-### `dck port <container>`
+### `cardinal port <container>`
 
 Show port mappings for a container.
 
 ```bash
-dck port web
+cardinal port web
 ```
 
-### `dck port add <container> <host>:<container>[/proto]`
+### `cardinal port add <container> <host>:<container>[/proto]`
 
 Add a port mapping to a running container. Applies iptables DNAT instantly — no restart needed.
 
 ```bash
-dck port add web 8080:80
-dck port add web 53:53/udp
+cardinal port add web 8080:80
+cardinal port add web 53:53/udp
 ```
 
-### `dck port remove <container> <host>[/proto]`
+### `cardinal port remove <container> <host>[/proto]`
 
 Remove a port mapping from a running container.
 
 ```bash
-dck port remove web 8080
-dck port rm web 8080    # alias
+cardinal port remove web 8080
+cardinal port rm web 8080    # alias
 ```
 
-### `dck top <container>`
+### `cardinal top <container>`
 
 Show running processes inside a container.
 
 ```bash
-dck top web
+cardinal top web
 ```
 
 ---
 
 ## Exec & Attach
 
-### `dck exec [-i] [-t] <container> <command>`
+### `cardinal exec [-i] [-t] <container> <command>`
 
 Execute a command inside a running container.
 
 ```bash
 # Run a command (non-interactive)
-dck exec web nginx -s reload
+cardinal exec web nginx -s reload
 
 # Interactive shell with TTY
-dck exec -i -t myproject sh
+cardinal exec -i -t myproject sh
 
 # Interactive Python
-dck exec -i -t myproject python3
+cardinal exec -i -t myproject python3
 ```
 
 This creates a **new process** inside the container. It enters the container's namespaces (PID, mount, network, IPC) and runs the command directly at the container's root filesystem (no chroot needed — the container root is already set via pivot_root).
 
-### `dck attach <container>`
+### `cardinal attach <container>`
 
 Attach to the container's **main process** stdin/stdout (only works for containers started with `-d`).
 
 ```bash
-dck run -d -i -t -n myproject alpine sh
-dck attach myproject    # connect to sh
+cardinal run -d -i -t -n myproject alpine sh
+cardinal attach myproject    # connect to sh
 ```
 
 > **exec vs attach:** `attach` connects to the main process stdin/stdout. `exec` runs a new command inside the container. `console` is a shortcut for `exec -i -t` with auto-detected shell.
 
-`dck attach` is **Ctrl+C safe** — the container keeps running.
+`cardinal attach` is **Ctrl+C safe** — the container keeps running.
 
-### `dck console <container>`
+### `cardinal console <container>`
 
-Auto-detect and start an interactive shell inside the container. Equivalent to `dck exec -i -t <container> sh`.
+Auto-detect and start an interactive shell inside the container. Equivalent to `cardinal exec -i -t <container> sh`.
 
 ```bash
-dck console myproject
+cardinal console myproject
 ```
 
 ---
 
 ## Logs & Monitoring
 
-### `dck logs [-f] [--tail <n>] <container>`
+### `cardinal logs [-f] [--tail <n>] <container>`
 
 Show container stdout/stderr logs.
 
 ```bash
-dck logs web            # current-run output
-dck logs -f web         # follow new output
-dck logs --tail 20 web  # last 20 lines
-dck logs -f --tail 10 web  # last 10 lines + follow
+cardinal logs web            # current-run output
+cardinal logs -f web         # follow new output
+cardinal logs --tail 20 web  # last 20 lines
+cardinal logs -f --tail 10 web  # last 10 lines + follow
 ```
 
-A fresh dck log is created at every new container start, so output from previous `stop`/`start` or `restart` cycles is not appended indefinitely. Logs written by the application itself (for example Minecraft's `/data/logs/latest.log`) remain in the mounted application storage.
+A fresh cardinal log is created at every new container start, so output from previous `stop`/`start` or `restart` cycles is not appended indefinitely. Logs written by the application itself (for example Minecraft's `/data/logs/latest.log`) remain in the mounted application storage.
 
-For root, dck logs are stored under `/root/.dck/logs/<container-id>.log`; set `DCK_DATA_DIR` to change the dck state location. See the [running guide](running.md) for operational examples.
+For root, cardinal logs are stored under `/root/.cardinal/logs/<container-id>.log`; set `CARDINAL_DATA_DIR` to change the cardinal state location. See the [running guide](running.md) for operational examples.
 
-### `dck backup create|list|restore|enable|disable|status|verify`
+### `cardinal backup create|list|restore|enable|disable|status|verify`
 
-Create manual archives or enable a persistent schedule for one container. Scheduled backups include the writable overlay and named volumes, but not host bind mounts; back up bind-mounted application directories separately. dck briefly stops a running container for a consistent archive and starts it again afterward. The first scheduled archive is created after the configured interval, not immediately.
+Create manual archives or enable a persistent schedule for one container. Scheduled backups include the writable overlay and named volumes, but not host bind mounts; back up bind-mounted application directories separately. cardinal briefly stops a running container for a consistent archive and starts it again afterward. The first scheduled archive is created after the configured interval, not immediately.
 
 ```bash
-dck backup enable minecraft --interval 6h --retention 14
-dck backup status minecraft
-dck backup list
-dck backup disable minecraft
+cardinal backup enable minecraft --interval 6h --retention 14
+cardinal backup status minecraft
+cardinal backup list
+cardinal backup disable minecraft
 
 # Optional custom destination (must not be a protected host path)
-dck backup enable minecraft --interval 24h --retention 7 --dir /data/backups/minecraft
+cardinal backup enable minecraft --interval 24h --retention 7 --dir /data/backups/minecraft
 ```
 
 The systemd supervisor must be installed for scheduled backups to continue after the CLI exits:
 
 ```bash
-dck bootstrap --install
+cardinal bootstrap --install
 ```
 
-`dck backup create NAME -o file.tar.gz` remains the manual one-shot operation. Restore only into a stopped container with `dck backup restore NAME file.tar.gz`. Verify an archive against its checksum with `dck backup verify FILE.tar.gz`; when no checksum sidecar exists, dck reports the archive as unverified.
+`cardinal backup create NAME -o file.tar.gz` remains the manual one-shot operation. Restore only into a stopped container with `cardinal backup restore NAME file.tar.gz`. Verify an archive against its checksum with `cardinal backup verify FILE.tar.gz`; when no checksum sidecar exists, cardinal reports the archive as unverified.
 
-### `dck stats [container]`
+### `cardinal stats [container]`
 
 Show live resource usage stats: CPU, memory, I/O, and PIDs. Uses cgroups v2.
 
 ```bash
-dck stats               # all running containers
-dck stats web           # specific container
+cardinal stats               # all running containers
+cardinal stats web           # specific container
 ```
 
-### `dck info`
+### `cardinal info`
 
 Show system information: kernel version, storage driver, data directory, CPU model, memory, disk usage.
 
 ```bash
-dck info
+cardinal info
 ```
 
 ---
@@ -459,27 +459,27 @@ dck info
 
 | Mode | Description |
 |---|---|
-| `bridge` (default) | Each container gets IP `10.0.2.X` on bridge `dck0`. Host at `10.0.2.1`. |
+| `bridge` (default) | Each container gets IP `10.0.2.X` on bridge `cardinal0`. Host at `10.0.2.1`. |
 | `none` | No network (loopback only) |
 | `host` | Shares host network namespace (for VPN containers, packet capture) |
-| `<name>` | User-defined Linux bridge network created with `dck network create` | `--network appnet` |
+| `<name>` | User-defined Linux bridge network created with `cardinal network create` | `--network appnet` |
 
 ```bash
-dck run -d -n web -p 80:80 nginx:alpine       # bridge (default)
-dck run -d --network none alpine sleep infinity
-dck run -d --network host myvpn-container
+cardinal run -d -n web -p 80:80 nginx:alpine       # bridge (default)
+cardinal run -d --network none alpine sleep infinity
+cardinal run -d --network host myvpn-container
 
-dck network create --subnet 10.20.0.0/24 appnet
-dck network ls
-dck run -d --network appnet -n app alpine sleep infinity
-dck network inspect appnet
-dck network rm appnet   # only after containers using it are removed
+cardinal network create --subnet 10.20.0.0/24 appnet
+cardinal network ls
+cardinal run -d --network appnet -n app alpine sleep infinity
+cardinal network inspect appnet
+cardinal network rm appnet   # only after containers using it are removed
 ```
 
 ### Network layout
 
 ```
-Host:        dck0  10.0.2.1/24
+Host:        cardinal0  10.0.2.1/24
 Container A: eth0  10.0.2.2
 Container B: eth0  10.0.2.3
 
@@ -508,7 +508,7 @@ Port mapping uses iptables DNAT rules and supports UFW auto-configuration.
 ### Custom DNS
 
 ```bash
-dck run -d --dns 1.1.1.1 --dns 8.8.8.8 nginx
+cardinal run -d --dns 1.1.1.1 --dns 8.8.8.8 nginx
 ```
 
 ---
@@ -525,7 +525,7 @@ dck run -d --dns 1.1.1.1 --dns 8.8.8.8 nginx
 -v /host/path:/container/path:ro     # read-only
 -v /host/path:/container/path:shared # shared mount
 
-# Named volume (managed by dck)
+# Named volume (managed by cardinal)
 -v myvolume:/container/path
 
 # tmpfs (in-memory)
@@ -537,29 +537,29 @@ dck run -d --dns 1.1.1.1 --dns 8.8.8.8 nginx
 
 ### Named volumes
 
-dck can manage named volumes stored under `~/.dck/volumes/`.
+cardinal can manage named volumes stored under `~/.cardinal/volumes/`.
 
 ```bash
 # Create a volume
-dck volume create mydata
+cardinal volume create mydata
 
 # List volumes
-dck volume ls
+cardinal volume ls
 
 # Inspect a volume
-dck volume inspect mydata
+cardinal volume inspect mydata
 
 # Remove a volume
-dck volume rm mydata
+cardinal volume rm mydata
 
 # Remove unused volumes
-dck volume prune
+cardinal volume prune
 ```
 
 ### How storage works
 
 ```
-Storage: /root/.dck/
+Storage: /root/.cardinal/
 
 images/        OCI rootfs per tag (read-only)
 containers/    State JSON files
@@ -573,19 +573,19 @@ backups/       Scheduled container archives
 
 **Overlay:** Each container gets a writable overlay layer on top of the read-only image.
 Changes (installed packages, modified files, created files) live in the overlay.
-They persist across restarts (`dck stop` + `dck start`) but are **deleted** when the container is removed (`dck rm`).
+They persist across restarts (`cardinal stop` + `cardinal start`) but are **deleted** when the container is removed (`cardinal rm`).
 
-To save changes permanently, use `dck commit` to create an image from the container.
+To save changes permanently, use `cardinal commit` to create an image from the container.
 
-### Filesystem Browser — `dck fs`
+### Filesystem Browser — `cardinal fs`
 
 Browse container files without starting a shell. Works on both **running** and **stopped** containers — overlay stays mounted after `stop`.
 
 ```bash
-dck fs ls <container> [path]              # List files
-dck fs cat <container> <path>             # Show file content
-dck fs tree <container> [path]            # Directory tree
-dck fs find [container] [path] [flags]    # Find files
+cardinal fs ls <container> [path]              # List files
+cardinal fs cat <container> <path>             # Show file content
+cardinal fs tree <container> [path]            # Directory tree
+cardinal fs find [container] [path] [flags]    # Find files
   --name <pattern>    Filter by name (substring, e.g. "index")
   --grep <text>       Search inside files
   --type f|d          Files or directories only
@@ -594,21 +594,21 @@ dck fs find [container] [path] [flags]    # Find files
 
 Examples:
 ```bash
-dck fs ls web /etc/nginx
-dck fs cat web /etc/nginx/conf.d/default.conf
-dck fs tree mc-server /data --max-depth 2
-dck fs find web --name "*.conf" --grep "server_name"
-dck fs find --name "index"                              # search all containers
+cardinal fs ls web /etc/nginx
+cardinal fs cat web /etc/nginx/conf.d/default.conf
+cardinal fs tree mc-server /data --max-depth 2
+cardinal fs find web --name "*.conf" --grep "server_name"
+cardinal fs find --name "index"                              # search all containers
 ```
 
 ### Copying files
 
 ```bash
 # From container to host
-dck cp web:/etc/nginx/nginx.conf ./nginx.conf
+cardinal cp web:/etc/nginx/nginx.conf ./nginx.conf
 
 # From host to container
-dck cp ./app.py web:/app/
+cardinal cp ./app.py web:/app/
 ```
 
 ---
@@ -618,9 +618,9 @@ dck cp ./app.py web:/app/
 ### Memory
 
 ```bash
-dck run -d --memory 512m nginx    # 512 megabytes
-dck run -d --memory 1g nginx      # 1 gigabyte
-dck run -d --memory 2g nginx      # 2 gigabytes
+cardinal run -d --memory 512m nginx    # 512 megabytes
+cardinal run -d --memory 1g nginx      # 1 gigabyte
+cardinal run -d --memory 2g nginx      # 2 gigabytes
 ```
 
 Uses cgroups v2 memory controller. If the container exceeds the limit, it gets OOM-killed.
@@ -628,8 +628,8 @@ Uses cgroups v2 memory controller. If the container exceeds the limit, it gets O
 ### CPU
 
 ```bash
-dck run -d --cpus 1.5 nginx       # 1.5 CPU cores
-dck run -d --cpus 2 nginx         # 2 CPU cores
+cardinal run -d --cpus 1.5 nginx       # 1.5 CPU cores
+cardinal run -d --cpus 2 nginx         # 2 CPU cores
 ```
 
 Uses CFS quota via cgroups v2.
@@ -637,8 +637,8 @@ Uses CFS quota via cgroups v2.
 ### Disk
 
 ```bash
-dck run -d --disk 1G nginx        # 1 GB disk limit
-dck run -d --disk 10G nginx       # 10 GB disk limit
+cardinal run -d --disk 1G nginx        # 1 GB disk limit
+cardinal run -d --disk 10G nginx       # 10 GB disk limit
 ```
 
 Creates a sparse ext4 image mounted as the overlay's writable layer. Requires `mkfs.ext4`.
@@ -652,30 +652,30 @@ Creates a sparse ext4 image mounted as the overlay's writable layer. Requires `m
 Run the container as a non-root user:
 
 ```bash
-dck run -d --user 1000 nginx
-dck run -d --user 1000:1000 nginx   # UID:GID
+cardinal run -d --user 1000 nginx
+cardinal run -d --user 1000:1000 nginx   # UID:GID
 ```
 
 ### Capabilities
 
-By default, dck keeps the Docker-compatible safe capability set needed by common images (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `FSETID`, `KILL`, `SETGID`, `SETUID`, `SETPCAP`, `NET_BIND_SERVICE`, `NET_RAW`, `SYS_CHROOT`, `MKNOD`, `AUDIT_WRITE`, and `SETFCAP`). Dangerous capabilities such as `SYS_ADMIN` and `SYS_MODULE` remain dropped. This lets standard images such as `nginx:alpine` initialize their filesystems normally.
+By default, cardinal keeps the Docker-compatible safe capability set needed by common images (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `FSETID`, `KILL`, `SETGID`, `SETUID`, `SETPCAP`, `NET_BIND_SERVICE`, `NET_RAW`, `SYS_CHROOT`, `MKNOD`, `AUDIT_WRITE`, and `SETFCAP`). Dangerous capabilities such as `SYS_ADMIN` and `SYS_MODULE` remain dropped. This lets standard images such as `nginx:alpine` initialize their filesystems normally.
 
 ```bash
 # Add capabilities
-dck run -d --cap-add NET_ADMIN nginx
-dck run -d --cap-add NET_ADMIN --cap-add SYS_PTRACE nginx
+cardinal run -d --cap-add NET_ADMIN nginx
+cardinal run -d --cap-add NET_ADMIN --cap-add SYS_PTRACE nginx
 
 # Drop all capabilities (maximum restriction)
-dck run -d --cap-drop ALL nginx
+cardinal run -d --cap-drop ALL nginx
 
 # Add specific capabilities back after --cap-drop ALL
-dck run -d --cap-drop ALL --cap-add NET_BIND_SERVICE nginx
+cardinal run -d --cap-drop ALL --cap-add NET_BIND_SERVICE nginx
 ```
 
 ### Read-only rootfs
 
 ```bash
-dck run -d --readonly nginx
+cardinal run -d --readonly nginx
 ```
 
 Makes the container's root filesystem read-only. Writes to volumes still work.
@@ -683,7 +683,7 @@ Makes the container's root filesystem read-only. Writes to volumes still work.
 ### No new privileges
 
 ```bash
-dck run -d --no-new-privs nginx
+cardinal run -d --no-new-privs nginx
 ```
 
 Disables acquiring new privileges (setuid, setgid, capabilities) for all processes in the container.
@@ -691,31 +691,31 @@ Disables acquiring new privileges (setuid, setgid, capabilities) for all process
 ### Sysctls
 
 ```bash
-dck run -d --sysctl net.ipv4.ip_forward=1 nginx
+cardinal run -d --sysctl net.ipv4.ip_forward=1 nginx
 ```
 
 ### Seccomp Profile
 
-dck applies a default seccomp profile that blocks 30+ dangerous syscalls including `mount`, `ptrace`, `reboot`, `kexec_load`, `bpf`, and `init_module`.
+cardinal applies a default seccomp profile that blocks 30+ dangerous syscalls including `mount`, `ptrace`, `reboot`, `kexec_load`, `bpf`, and `init_module`.
 
 ```bash
 # Use default seccomp profile (automatic)
-dck run -d nginx
+cardinal run -d nginx
 
 # Use custom seccomp profile
-dck run -d --seccomp-profile /path/to/profile.json nginx
+cardinal run -d --seccomp-profile /path/to/profile.json nginx
 ```
 
 ### AppArmor Profile
 
-dck applies a default AppArmor profile (`dck-container`) that restricts access to sensitive host paths and limits container capabilities.
+cardinal applies a default AppArmor profile (`cardinal-container`) that restricts access to sensitive host paths and limits container capabilities.
 
 ```bash
 # Use default AppArmor profile (automatic)
-dck run -d nginx
+cardinal run -d nginx
 
 # Use custom AppArmor profile
-dck run -d --apparmor-profile my-profile nginx
+cardinal run -d --apparmor-profile my-profile nginx
 ```
 
 ### Network Isolation
@@ -723,10 +723,10 @@ dck run -d --apparmor-profile my-profile nginx
 Isolate a container from all other containers to prevent lateral movement:
 
 ```bash
-dck run -d --isolated nginx
+cardinal run -d --isolated nginx
 
 # Allow specific communication
-dck run -d --isolated --network appnet nginx
+cardinal run -d --isolated --network appnet nginx
 ```
 
 ### Audit Logging
@@ -734,10 +734,10 @@ dck run -d --isolated --network appnet nginx
 Enable audit logging to record all container lifecycle events:
 
 ```bash
-dck run -d --audit-log nginx
+cardinal run -d --audit-log nginx
 
-# Events are logged to ~/.dck/audit/audit-YYYY-MM-DD.log
-cat ~/.dck/audit/audit-$(date +%Y-%m-%d).log
+# Events are logged to ~/.cardinal/audit/audit-YYYY-MM-DD.log
+cat ~/.cardinal/audit/audit-$(date +%Y-%m-%d).log
 ```
 
 ### Backup Encryption
@@ -746,16 +746,16 @@ Encrypt backup archives with AES-256-GCM:
 
 ```bash
 # Generate encryption key
-dck backup generate-key
+cardinal backup generate-key
 
 # Set key via environment variable
-export DCK_BACKUP_KEY="your-hex-key"
+export CARDINAL_BACKUP_KEY="your-hex-key"
 
 # Create encrypted backup
-dck backup create nginx -e
+cardinal backup create nginx -e
 
 # Create encrypted backup with custom output
-dck backup create nginx -o /data/backups/nginx.enc -e
+cardinal backup create nginx -o /data/backups/nginx.enc -e
 ```
 
 ---
@@ -764,13 +764,13 @@ dck backup create nginx -o /data/backups/nginx.enc -e
 
 ```bash
 # Single variable
-dck run -e MY_VAR=value nginx
+cardinal run -e MY_VAR=value nginx
 
 # Multiple variables
-dck run -e DB_HOST=localhost -e DB_PORT=5432 nginx
+cardinal run -e DB_HOST=localhost -e DB_PORT=5432 nginx
 
 # From file
-dck run --env-file .env nginx
+cardinal run --env-file .env nginx
 ```
 
 **.env file format:**
@@ -780,27 +780,27 @@ DB_PORT=5432
 DB_USER=admin
 ```
 
-### Auto-injected DCK_* variables
+### Auto-injected CARDINAL_* variables
 
-When a container starts, dck injects the following environment variables:
+When a container starts, cardinal injects the following environment variables:
 
 | Variable | Description |
 |---|---|
-| `DCK_CONTAINER_ID` | Full container ID |
-| `DCK_CONTAINER_NAME` | Container name |
-| `DCK_IMAGE_NAME` | Image name (e.g. `library/alpine`) |
-| `DCK_IMAGE_TAG` | Image tag (e.g. `latest`) |
-| `DCK_HOSTNAME` | Container hostname |
-| `DCK_MEMORY` | Memory limit in bytes |
-| `DCK_CPU` | CPU limit in cores |
-| `DCK_IP` | Container IP address |
-| `DCK_RESTART` | Restart policy |
-| `DCK_PORT_TCP_80` | Port mappings (one per mapped port) |
+| `CARDINAL_CONTAINER_ID` | Full container ID |
+| `CARDINAL_CONTAINER_NAME` | Container name |
+| `CARDINAL_IMAGE_NAME` | Image name (e.g. `library/alpine`) |
+| `CARDINAL_IMAGE_TAG` | Image tag (e.g. `latest`) |
+| `CARDINAL_HOSTNAME` | Container hostname |
+| `CARDINAL_MEMORY` | Memory limit in bytes |
+| `CARDINAL_CPU` | CPU limit in cores |
+| `CARDINAL_IP` | Container IP address |
+| `CARDINAL_RESTART` | Restart policy |
+| `CARDINAL_PORT_TCP_80` | Port mappings (one per mapped port) |
 
-Inside the container, utility scripts are available at `/dck/`:
-- `/dck/info` — show container info
-- `/dck/env` — show DCK_* environment variables
-- `/dck/help` — show help
+Inside the container, utility scripts are available at `/cardinal/`:
+- `/cardinal/info` — show container info
+- `/cardinal/env` — show CARDINAL_* environment variables
+- `/cardinal/help` — show help
 
 ---
 
@@ -809,7 +809,7 @@ Inside the container, utility scripts are available at `/dck/`:
 Healthchecks run a command inside the container at a given interval. After `retries` consecutive failures, the container is killed and restarted.
 
 ```bash
-dck run -d \
+cardinal run -d \
   --healthcheck-cmd "curl -f http://localhost || exit 1" \
   --healthcheck-interval 30 \
   --healthcheck-retries 3 \
@@ -817,7 +817,7 @@ dck run -d \
   nginx
 ```
 
-Healthchecks can also be defined in compose files and dck.toml.
+Healthchecks can also be defined in compose files and cardinal.toml.
 
 ---
 
@@ -827,10 +827,10 @@ Use `--startup` to run a custom script instead of the image's default command:
 
 ```bash
 # Inline script
-dck run -d --startup "#!/bin/sh\necho 'Hello from startup'" alpine sleep infinity
+cardinal run -d --startup "#!/bin/sh\necho 'Hello from startup'" alpine sleep infinity
 
 # Load from file
-dck run -d --startup @./myscript.sh ubuntu
+cardinal run -d --startup @./myscript.sh ubuntu
 ```
 
 The script is written to `/startup.sh` inside the container and executed via `/bin/sh`.
@@ -838,9 +838,9 @@ When a startup script is present, it **overrides** the normal CMD/entrypoint.
 
 ---
 
-## dck.toml / Compose
+## cardinal.toml / Compose
 
-### dck.toml format
+### cardinal.toml format
 
 Define containers in a TOML file, start everything with one command.
 
@@ -861,18 +861,18 @@ restart = "always"
 
 ### compose.yaml / docker-compose.yaml
 
-dck supports standard Docker Compose YAML format. See [compose.md](compose.md) for full documentation.
+cardinal supports standard Docker Compose YAML format. See [compose.md](compose.md) for full documentation.
 
 ---
 
-## dck up / dck down
+## cardinal up / cardinal down
 
-### `dck up [name] [-f <file>]`
+### `cardinal up [name] [-f <file>]`
 
 Create and start containers from a compose file.
 
 Auto-detection order:
-1. `dck.toml`
+1. `cardinal.toml`
 2. `compose.yaml`
 3. `compose.yml`
 4. `docker-compose.yaml`
@@ -892,35 +892,35 @@ depends_on = { db = "service_healthy" }
 ```
 
 ```bash
-dck up                    # auto-detect
-dck up myapp              # start only the "myapp" service
-dck up -f compose.prod.yaml
-dck up myapp              # start only the "myapp" service
-dck bootstrap --install  # install boot recovery separately
-dck up --generate         # generate dck.toml from existing containers
+cardinal up                    # auto-detect
+cardinal up myapp              # start only the "myapp" service
+cardinal up -f compose.prod.yaml
+cardinal up myapp              # start only the "myapp" service
+cardinal bootstrap --install  # install boot recovery separately
+cardinal up --generate         # generate cardinal.toml from existing containers
 ```
 
-### `dck down [name] [-f <file>]`
+### `cardinal down [name] [-f <file>]`
 
 Stop and remove containers from a compose file.
 
 ```bash
-dck down                  # stop + remove
-dck down myapp            # stop + remove only "myapp"
-dck down -f dck.toml
-dck down -a               # remove ALL containers (ignore config)
+cardinal down                  # stop + remove
+cardinal down myapp            # stop + remove only "myapp"
+cardinal down -f cardinal.toml
+cardinal down -a               # remove ALL containers (ignore config)
 # Remove named volumes separately, only when safe:
-dck volume prune
+cardinal volume prune
 ```
 
 ---
 
-## dck serve
+## cardinal serve
 
 Start a Docker-compatible REST API server.
 
 ```bash
-dck serve -p 2375  # localhost only by default; use --token for external bind
+cardinal serve -p 2375  # localhost only by default; use --token for external bind
 ```
 
 Compatible with Docker clients, Portainer, VS Code Dev Containers, and CI tools.
@@ -931,22 +931,22 @@ Compatible with Docker clients, Portainer, VS Code Dev Containers, and CI tools.
 
 Detached containers with `--restart always` or `--restart unless-stopped` start automatically after reboot. The persistent supervisor does not adopt `on-failure` containers after the short-lived detached CLI exits.
 
-dck auto-installs and starts a persistent systemd supervisor when you:
-- `dck run --restart always <image>`
-- `dck set <container> --restart always`
-- `dck up` (if any container has restart: "always")
+cardinal auto-installs and starts a persistent systemd supervisor when you:
+- `cardinal run --restart always <image>`
+- `cardinal set <container> --restart always`
+- `cardinal up` (if any container has restart: "always")
 
 You can also manage it manually:
 
 ```bash
-dck bootstrap --install      # install systemd service
-dck bootstrap --remove       # remove systemd service
-dck bootstrap                # start all restart=always containers now
+cardinal bootstrap --install      # install systemd service
+cardinal bootstrap --remove       # remove systemd service
+cardinal bootstrap                # start all restart=always containers now
 ```
 
 Boot flow:
 ```
-System boot → systemd → dck-bootstrap.service → dck supervisor
+System boot → systemd → cardinal-bootstrap.service → cardinal supervisor
   └─ For each detached container with restart=always or unless-stopped:
       1. Setup overlayfs
       2. Run unshare with namespaces
@@ -957,42 +957,42 @@ System boot → systemd → dck-bootstrap.service → dck supervisor
 
 ## Cluster Orchestration
 
-dck supports multi-node clustering with service management, DNS-based service discovery,
+cardinal supports multi-node clustering with service management, DNS-based service discovery,
 and rolling updates.
 
 For full documentation, see [cluster.md](cluster.md).
 
 ```bash
 # Initialize a cluster
-dck cluster init --name prod --bind 0.0.0.0 --port 2375 --token '<strong-random-token>'
+cardinal cluster init --name prod --bind 0.0.0.0 --port 2375 --token '<strong-random-token>'
 
 # Join a cluster
-dck cluster join 10.0.0.1:2375
+cardinal cluster join 10.0.0.1:2375
 
 # Show connection address for other nodes
-dck cluster join-token
+cardinal cluster join-token
 
 # Cluster overview (name, nodes, services)
-dck cluster info
+cardinal cluster info
 
 # List nodes (with CPU, memory, labels)
-dck cluster node ls
+cardinal cluster node ls
 
 # Detailed node info
-dck cluster node inspect <id>
+cardinal cluster node inspect <id>
 
 # List nodes (short view)
-dck cluster ls
+cardinal cluster ls
 
 # Start API server (accepts remote replica requests)
-dck cluster serve -p 2375
+cardinal cluster serve -p 2375
 
 # Or start API server automatically on init/join
-dck cluster init --name prod --serve
-dck cluster join 10.0.0.1:7946 --serve
+cardinal cluster init --name prod --serve
+cardinal cluster join 10.0.0.1:7946 --serve
 
 # Leave cluster
-dck cluster leave
+cardinal cluster leave
 ```
 
 ---
@@ -1004,33 +1004,33 @@ Services allow running replicated containers across a cluster.
 For full documentation, see [cluster.md](cluster.md).
 
 ```bash
-dck service create --name web --replicas 3 --port 80:80 nginx:alpine
-dck service ls
-dck service scale web 5
-dck service update web --image nginx:1.25
-dck service rm web
+cardinal service create --name web --replicas 3 --port 80:80 nginx:alpine
+cardinal service ls
+cardinal service scale web 5
+cardinal service update web --image nginx:1.25
+cardinal service rm web
 ```
 
 ---
 
 ## FaaS / Serverless
 
-dck can deploy container images as serverless functions with auto-scaling and scale-to-zero.
+cardinal can deploy container images as serverless functions with auto-scaling and scale-to-zero.
 
 For full documentation, see [faas.md](faas.md).
 
 ```bash
 # Deploy a function
-dck fn deploy --name hello --port 8080 --timeout 30 --idle 300 ghcr.io/myorg/hello-func
+cardinal fn deploy --name hello --port 8080 --timeout 30 --idle 300 ghcr.io/myorg/hello-func
 
 # Invoke
-dck fn call hello --data '{"name": "dck"}'
+cardinal fn call hello --data '{"name": "cardinal"}'
 
 # List functions
-dck fn ls
+cardinal fn ls
 
 # Remove
-dck fn rm hello
+cardinal fn rm hello
 ```
 
 ---
@@ -1041,23 +1041,23 @@ Blueprints are pre-configured container templates that can be installed from rep
 
 ```bash
 # List available blueprints
-dck blueprint list
+cardinal blueprint list
 
 # Show blueprint details with examples
-dck blueprint info mysql-8
-dck blueprint info minecraft-server
+cardinal blueprint info mysql-8
+cardinal blueprint info minecraft-server
 
 # Install a blueprint
-dck blueprint install nginx-proxy
+cardinal blueprint install nginx-proxy
 
 # Add a custom blueprint repository
-dck blueprint repo add https://github.com/user/my-blueprints
+cardinal blueprint repo add https://github.com/user/my-blueprints
 
 # List repositories
-dck blueprint repo list
+cardinal blueprint repo list
 
 # Remove a repository
-dck blueprint repo remove my-blueprints
+cardinal blueprint repo remove my-blueprints
 ```
 
 ---
@@ -1067,8 +1067,8 @@ dck blueprint repo remove my-blueprints
 Stream container lifecycle events in JSON format.
 
 ```bash
-dck events                          # live stream
-dck events --since "2026-07-07 12:00:00"  # events since timestamp
+cardinal events                          # live stream
+cardinal events --since "2026-07-07 12:00:00"  # events since timestamp
 ```
 
 Events: `start`, `stop`, `kill`, `oom`, `healthcheck_failed`, etc.
@@ -1077,29 +1077,29 @@ Events: `start`, `stop`, `kill`, `oom`, `healthcheck_failed`, etc.
 
 ## System Commands
 
-### `dck system prune`
+### `cardinal system prune`
 
 Remove unused containers and images.
 
 ```bash
-dck system prune
+cardinal system prune
 ```
 
-### `dck update [--check]`
+### `cardinal update [--check]`
 
-Check for updates and self-update the dck binary.
+Check for updates and self-update the cardinal binary.
 
 ```bash
-dck update              # update to latest version
-dck update --check      # only check version
+cardinal update              # update to latest version
+cardinal update --check      # only check version
 ```
 
-### `dck version`
+### `cardinal version`
 
 Show version information.
 
 ```bash
-dck version
+cardinal version
 ```
 
 ---
@@ -1107,10 +1107,10 @@ dck version
 ## Architecture
 
 ```
-dck run -d
-  ├─ unshare --fork --pid --mount --net --uts --ipc dck init <id>
-  │   └─ dck init → pivot_root to overlay → setup /proc/lo/eth0 → exec CMD
-  └─ dck console-serve <id>
+cardinal run -d
+  ├─ unshare --fork --pid --mount --net --uts --ipc cardinal init <id>
+  │   └─ cardinal init → pivot_root to overlay → setup /proc/lo/eth0 → exec CMD
+  └─ cardinal console-serve <id>
       ├─ reads stdout pipe
       ├─ writes to log file
       ├─ listens on Unix socket
@@ -1121,38 +1121,38 @@ dck run -d
 
 | Concept | Description |
 |---|---|
-| **Image** | Read-only rootfs (`python:3.11-slim`, `nginx:alpine`). Pulled once via `dck pull`. |
+| **Image** | Read-only rootfs (`python:3.11-slim`, `nginx:alpine`). Pulled once via `cardinal pull`. |
 | **Container** | Image + writable overlay layer. Changes live in the overlay, not the image. |
 | **Overlay** | Diff layer on top of the image. Persists across restarts — packages stay installed. |
 | **Volume** | Host bind mount into the container. `-v /data/mybot:/bot` mounts `/data/mybot` as `/bot`. |
-| **Network** | Every container gets IP `10.0.2.X` on bridge `dck0`. Host at `10.0.2.1`. |
+| **Network** | Every container gets IP `10.0.2.X` on bridge `cardinal0`. Host at `10.0.2.1`. |
 
 ### Execution Flow
 
-1. `dck run` pulls the image (if not cached)
+1. `cardinal run` pulls the image (if not cached)
 2. Creates an overlay filesystem (lower=image rootfs, upper=container layer, merged=container root)
 3. Runs `unshare` with PID, mount, net, UTS, IPC namespaces
-4. Inside the namespace, `dck init` does `pivot_root` to the overlay, mounts /proc, sets up networking
+4. Inside the namespace, `cardinal init` does `pivot_root` to the overlay, mounts /proc, sets up networking
 5. Executes the container command (CMD or `--startup` script)
-6. If detached, `dck console-serve` captures stdout and serves it via Unix socket for `dck attach`
+6. If detached, `cardinal console-serve` captures stdout and serves it via Unix socket for `cardinal attach`
 
 ---
 
 ## Troubleshooting
 
-### dck rm -f <container> hangs
+### cardinal rm -f <container> hangs
 
 If a container won't stop, try:
 
 ```bash
 # Force kill the process
-kill -9 $(cat /root/.dck/containers/*.json | grep -o '"pid":[0-9]*' | grep -o '[0-9]*')
+kill -9 $(cat /root/.cardinal/containers/*.json | grep -o '"pid":[0-9]*' | grep -o '[0-9]*')
 
 # Then remove
-dck rm -f <container>
+cardinal rm -f <container>
 
 # Manual cleanup if state files are corrupt
-rm -f /root/.dck/containers/<id>.json
+rm -f /root/.cardinal/containers/<id>.json
 ```
 
 ### Overlay not mounting
@@ -1168,20 +1168,20 @@ modprobe overlay   # if not loaded
 
 ```bash
 # Check bridge exists
-ip link show dck0
+ip link show cardinal0
 
 # Ensure IP forwarding is enabled
 sysctl net.ipv4.ip_forward
 
 # Reinstall network base
-dck system prune && dck pull alpine && dck run --rm alpine ping 8.8.8.8
+cardinal system prune && cardinal pull alpine && cardinal run --rm alpine ping 8.8.8.8
 ```
 
 ### Port mapping not working
 
 ```bash
 # Check iptables rules
-iptables -t nat -L -n | grep dck
+iptables -t nat -L -n | grep cardinal
 
 # UFW may block ports — check ufw status
 ufw status
@@ -1189,17 +1189,17 @@ ufw status
 
 ### Rootless mode
 
-dck supports rootless execution on systems with `newuidmap`/`newgidmap`.
+cardinal supports rootless execution on systems with `newuidmap`/`newgidmap`.
 Rootless containers use userspace networking (slirp4netns-style).
 
 ### Comparison with Docker
 
-| Feature | dck | Docker |
+| Feature | cardinal | Docker |
 |---|---|---|
 | Daemon | No daemon | dockerd required |
 | Binary size | ~5 MB | ~100+ MB |
 | Namespaces | PID, Mount, Net, UTS, IPC | All |
-| Bridge network | dck0 (10.0.2.0/24) | docker0 |
+| Bridge network | cardinal0 (10.0.2.0/24) | docker0 |
 | Port mapping | iptables DNAT | iptables DNAT |
 | Auto-start | persistent systemd supervisor | systemd dockerd |
 | Image format | OCI/Docker V2 | OCI/Docker V2 |

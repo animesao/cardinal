@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func TestAutomaticBackupDefaults(t *testing.T) {

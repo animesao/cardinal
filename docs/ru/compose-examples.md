@@ -1,7 +1,7 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
 # Примеры Compose — 15 реальных конфигураций
 
@@ -78,8 +78,8 @@ services:
 ```
 
 - `:ro` — монтирование только для чтения (безопасность)
-- **Используйте папки, не файлы** — dck монтирует только директории (например, `./nginx-conf/`, не `./nginx.conf`)
-- `labels` — метки для фильтрации `dck ps --filter`
+- **Используйте папки, не файлы** — cardinal монтирует только директории (например, `./nginx-conf/`, не `./nginx.conf`)
+- `labels` — метки для фильтрации `cardinal ps --filter`
 - `healthcheck` — проверка каждые 30 секунд
 
 ---
@@ -156,7 +156,7 @@ networks:
     internal: true
 ```
 
-- **Монтируйте папки** — `./init-sql/` вместо `./init.sql` (ограничение dck)
+- **Монтируйте папки** — `./init-sql/` вместо `./init.sql` (ограничение cardinal)
 - `volumes: /app/node_modules` — безымянный том, защищает node_modules от перезаписи
 - `depends_on: condition: service_healthy` — ждать готовности БД
 - `secrets` — секретные файлы в `/run/secrets/<name>`
@@ -214,7 +214,7 @@ volumes:
 ```
 
 - **Обязателен `.env` файл**: создайте `.env` с `MYSQL_ROOT_PASS`, `MYSQL_APP_PASS`, `REDIS_PASS`
-- Используйте `./mysql-conf/` директорию (поместите `my.cnf` внутрь) — dck не монтирует одиночные файлы
+- Используйте `./mysql-conf/` директорию (поместите `my.cnf` внутрь) — cardinal не монтирует одиночные файлы
 - `cap_add: SYS_NICE` — нужно MySQL для приоритета потоков
 - Adminer — веб-интерфейс на порту 8080
 
@@ -316,7 +316,7 @@ services:
       - /var/run
 ```
 
-**Упрощён для dck** — без `user: "1000:1000"` + `read_only`, т.к. nginx должен писать кэш. Для повышенной безопасности используйте свой nginx.conf с переносом путей.
+**Упрощён для cardinal** — без `user: "1000:1000"` + `read_only`, т.к. nginx должен писать кэш. Для повышенной безопасности используйте свой nginx.conf с переносом путей.
 
 - `tmpfs` — временная ФС в памяти для логов/кэша
 - **Важно:** `security_opt` значения нужно брать в кавычки: `"no-new-privileges:true"`
@@ -326,9 +326,9 @@ services:
 
 ## 8. CI Runner (GitHub Actions, только справка)
 
-> **Это не готовый рецепт для запуска в dck.** Распространённый образ
+> **Это не готовый рецепт для запуска в cardinal.** Распространённый образ
 > `summerwind/actions-runner` ожидает Docker-in-Docker или доступ к Docker socket
-> хоста. dck блокирует защищённые host bind source вроде
+> хоста. cardinal блокирует защищённые host bind source вроде
 > `/var/run/docker.sock`, поэтому используйте отдельную host-side интеграцию
 > runner или образ, которому не нужен Docker socket. Ниже показаны только
 > настройки контейнера.
@@ -344,7 +344,7 @@ services:
       - RUNNER_NAME=my-runner
       - RUNNER_REPO=https://github.com/user/repo
       - RUNNER_TOKEN=${GITHUB_TOKEN}
-      - RUNNER_LABELS=dck,production
+      - RUNNER_LABELS=cardinal,production
     working_dir: /home/runner
     privileged: true
     dns:
@@ -355,7 +355,7 @@ volumes:
 ```
 
 - Одного `privileged: true` недостаточно для Docker-in-Docker.
-- В dck воспринимайте этот фрагмент как справку и используйте host-side интеграцию runner или образ, которому не нужен `/var/run/docker.sock`.
+- В cardinal воспринимайте этот фрагмент как справку и используйте host-side интеграцию runner или образ, которому не нужен `/var/run/docker.sock`.
 
 ---
 
@@ -534,7 +534,7 @@ volumes:
 
 ## 13. Prometheus + Grafana (мониторинг)
 
-**Важно:** dck монтирует только директории. Используйте папку для конфига.
+**Важно:** cardinal монтирует только директории. Используйте папку для конфига.
 
 ```yaml
 services:
@@ -577,7 +577,7 @@ scrape_configs:
 EOF
 ```
 
-- **Монтирование папки** `./prometheus-conf:/etc/prometheus:ro` работает (путь к файлу не работает в dck)
+- **Монтирование папки** `./prometheus-conf:/etc/prometheus:ro` работает (путь к файлу не работает в cardinal)
 - Grafana доступна на `http://host:3001`, admin / `GF_SECURITY_ADMIN_PASSWORD`
 
 ---
@@ -663,12 +663,12 @@ volumes:
 
 ---
 
-## Важные ограничения dck
+## Важные ограничения cardinal
 
 | Проблема | Почему | Решение |
 |---|---|---|
-| **Монтирование файла** не работает | dck монтирует только папки (bind mount файла → `mount bind exit 32`) | Используйте папку: `./dir/` вместо `./file` |
-| **Cgroup** предупреждение | `/sys/fs/cgroup/dck` read-only на VPS/LXC | Не критично, контейнер работает без лимитов |
+| **Монтирование файла** не работает | cardinal монтирует только папки (bind mount файла → `mount bind exit 32`) | Используйте папку: `./dir/` вместо `./file` |
+| **Cgroup** предупреждение | `/sys/fs/cgroup/cardinal` read-only на VPS/LXC | Не критично, контейнер работает без лимитов |
 | **`session.lock`** Minecraft | Paper оставляет лок-файлы на томе | Добавьте `rm -f world/*/session.lock` в start.sh |
 | **`security_opt`** YAML ошибка | `no-new-privileges:true` содержит два двоеточия | Кавычки: `"no-new-privileges:true"` |
 | **`.env`** не подхватывается | `${VAR}` берётся из `.env` файла | Создайте `.env` рядом с `compose.yaml` |

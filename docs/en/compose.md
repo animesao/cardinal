@@ -1,40 +1,40 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
 # Compose / Deployment
 
-## `dck up [name] [-f <file>]`
+## `cardinal up [name] [-f <file>]`
 
 Create and start containers from a compose file.
 
 Auto-detection order:
-1. `dck.toml`
+1. `cardinal.toml`
 2. `compose.yaml`
 3. `compose.yml`
 4. `docker-compose.yaml`
 5. `docker-compose.yml`
 
 ```
-dck up                    # auto-detect
-dck up myapp              # start only the "myapp" service
-dck up -f docker-compose.prod.yaml
-dck up myapp              # start only the "myapp" service
-dck bootstrap --install  # install boot recovery separately
+cardinal up                    # auto-detect
+cardinal up myapp              # start only the "myapp" service
+cardinal up -f docker-compose.prod.yaml
+cardinal up myapp              # start only the "myapp" service
+cardinal bootstrap --install  # install boot recovery separately
 ```
 
-## `dck down [name] [-f <file>]`
+## `cardinal down [name] [-f <file>]`
 
 Stop and remove containers from a compose file.
 
 ```
-dck down                  # stop + remove
-dck down myapp            # stop + remove only "myapp"
-dck down -f dck.toml
-dck down -a               # remove ALL containers (ignore config)
+cardinal down                  # stop + remove
+cardinal down myapp            # stop + remove only "myapp"
+cardinal down -f cardinal.toml
+cardinal down -a               # remove ALL containers (ignore config)
 # Remove named volumes separately, only when you are sure:
-dck volume prune
+cardinal volume prune
 ```
 
 ## compose.yaml reference
@@ -340,8 +340,8 @@ volumes:
 
 ```
 cd /data
-dck up           # start all 3 services
-dck up bot       # start only the bot
+cardinal up           # start all 3 services
+cardinal up bot       # start only the bot
 ```
 
 ---
@@ -450,7 +450,7 @@ volumes:
 ├── api/
 │   └── server.js
 /data/
-├── dck/
+├── cardinal/
 │   └── compose.yaml
 ├── secrets/
 │   ├── db_pass.txt
@@ -458,7 +458,7 @@ volumes:
 └── mysql/
 ```
 
-**compose.yaml (inside `/data/dck/`):**
+**compose.yaml (inside `/data/cardinal/`):**
 
 ```yaml
 services:
@@ -516,10 +516,10 @@ secrets:
 ```
 
 ```
-cd /data/dck
-dck up
+cd /data/cardinal
+cardinal up
 # Install boot recovery separately:
-dck bootstrap --install
+cardinal bootstrap --install
 ```
 
 ---
@@ -532,7 +532,7 @@ dck bootstrap --install
 |---|---|
 | `./site:/app` | Relative to compose.yaml location. `site/` folder next to compose.yaml |
 | `/data/site:/app` | Absolute path — works from anywhere |
-| `site-data:/app` | Named volume — managed by dck (`~/.dck/volumes/site-data/`) |
+| `site-data:/app` | Named volume — managed by cardinal (`~/.cardinal/volumes/site-data/`) |
 
 ### Container-to-container communication
 
@@ -568,16 +568,16 @@ depends_on:
 ### Auto-start on boot
 
 ```bash
-dck up                    # start the configured services
+cardinal up                    # start the configured services
 # install boot recovery separately:
-dck bootstrap --install  # install systemd service for existing containers
+cardinal bootstrap --install  # install systemd service for existing containers
 ```
 
-After reboot: `systemctl status dck-bootstrap` checks all containers with `restart: always` are running.
+After reboot: `systemctl status cardinal-bootstrap` checks all containers with `restart: always` are running.
 
-## dck.toml format
+## cardinal.toml format
 
-For backwards compatibility with existing dck projects:
+For backwards compatibility with existing cardinal projects:
 
 ```toml
 containers = ["web", "api"]

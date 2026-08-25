@@ -12,7 +12,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"dck/internal/orchestrator"
+	"cardinal/internal/orchestrator"
 )
 
 func Fn(args []string) {
@@ -41,7 +41,7 @@ func Fn(args []string) {
 }
 
 func printFnUsage() {
-	fmt.Println(`Usage: dck fn COMMAND
+	fmt.Println(`Usage: cardinal fn COMMAND
 
 Manage serverless functions
 
@@ -79,7 +79,7 @@ func fnDeploy(args []string) {
 	}
 
 	if *name == "" || image == "" {
-		fmt.Println("Usage: dck fn deploy --name <name> [--port N] [--timeout N] [--idle N] <image>")
+		fmt.Println("Usage: cardinal fn deploy --name <name> [--port N] [--timeout N] [--idle N] <image>")
 		os.Exit(1)
 	}
 
@@ -144,7 +144,7 @@ func fnList(args []string) {
 
 func fnRemove(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck fn rm <name> [<name>...]")
+		fmt.Println("Usage: cardinal fn rm <name> [<name>...]")
 		os.Exit(1)
 	}
 
@@ -159,7 +159,7 @@ func fnRemove(args []string) {
 
 func fnCall(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck fn call <name> [--data <payload>]")
+		fmt.Println("Usage: cardinal fn call <name> [--data <payload>]")
 		os.Exit(1)
 	}
 

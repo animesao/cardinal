@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func Stats(args []string) {

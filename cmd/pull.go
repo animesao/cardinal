@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"dck/internal/image"
+	"cardinal/internal/image"
 )
 
 func Pull(args []string) {
@@ -19,7 +19,7 @@ func Pull(args []string) {
 	}
 
 	if fs.NArg() < 1 {
-		fmt.Println("Usage: dck pull [--platform linux/amd64] <image>[:<tag>]")
+		fmt.Println("Usage: cardinal pull [--platform linux/amd64] <image>[:<tag>]")
 		os.Exit(1)
 	}
 

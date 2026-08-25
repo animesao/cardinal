@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"dck/internal/builder"
-	"dck/internal/container"
-	"dck/internal/image"
-	"dck/internal/log"
-	"dck/internal/state"
+	"cardinal/internal/builder"
+	"cardinal/internal/container"
+	"cardinal/internal/image"
+	"cardinal/internal/log"
+	"cardinal/internal/state"
 )
 
 // ScheduleReplica places a container on a node and starts it
@@ -102,7 +102,7 @@ func startLocalReplica(ctx context.Context, serviceName string, svc *Service) er
 	if labels == nil {
 		labels = make(map[string]string)
 	}
-	labels["dck.service"] = serviceName
+	labels["cardinal.service"] = serviceName
 
 	restart := svc.Restart
 	if restart == "" {

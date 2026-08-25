@@ -11,13 +11,13 @@ import (
 	"sync"
 	"syscall"
 
-	"dck/internal/container"
-	"dck/internal/state"
+	"cardinal/internal/container"
+	"cardinal/internal/state"
 )
 
 func Attach(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck attach <container>")
+		fmt.Println("Usage: cardinal attach <container>")
 		os.Exit(1)
 	}
 

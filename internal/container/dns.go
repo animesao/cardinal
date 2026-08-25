@@ -10,8 +10,8 @@ import (
 	"strings"
 	"sync"
 
-	"dck/internal/log"
-	"dck/internal/state"
+	"cardinal/internal/log"
+	"cardinal/internal/state"
 )
 
 type DNSRegistry struct {
@@ -146,11 +146,11 @@ func EnsureContainerHosts(mergedDir, containerName, containerIP string, dns []st
 	}
 	hostsContent := string(hostsData)
 
-	if !strings.Contains(hostsContent, "# dck-managed") {
+	if !strings.Contains(hostsContent, "# cardinal-managed") {
 		entries := ListDNSNames()
 		var sb strings.Builder
 		sb.WriteString(hostsContent)
-		sb.WriteString("\n# dck-managed names\n")
+		sb.WriteString("\n# cardinal-managed names\n")
 		for _, e := range entries {
 			if e.Name != containerName {
 				sb.WriteString(fmt.Sprintf("%s\t%s\n", e.IP, e.Name))

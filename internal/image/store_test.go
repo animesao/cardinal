@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 func TestParseRef(t *testing.T) {
@@ -35,9 +35,9 @@ func TestParseRef(t *testing.T) {
 
 func TestSaveAndLoadFromStore(t *testing.T) {
 	tmpDir := t.TempDir()
-	origDir := os.Getenv("DCK_DATA_DIR")
-	os.Setenv("DCK_DATA_DIR", tmpDir)
-	defer os.Setenv("DCK_DATA_DIR", origDir)
+	origDir := os.Getenv("CARDINAL_DATA_DIR")
+	os.Setenv("CARDINAL_DATA_DIR", tmpDir)
+	defer os.Setenv("CARDINAL_DATA_DIR", origDir)
 
 	img := &Image{Name: "nginx", Tag: "latest", Digest: "sha256:abc123"}
 
@@ -61,9 +61,9 @@ func TestSaveAndLoadFromStore(t *testing.T) {
 
 func TestListImages(t *testing.T) {
 	tmpDir := t.TempDir()
-	origDir := os.Getenv("DCK_DATA_DIR")
-	os.Setenv("DCK_DATA_DIR", tmpDir)
-	defer os.Setenv("DCK_DATA_DIR", origDir)
+	origDir := os.Getenv("CARDINAL_DATA_DIR")
+	os.Setenv("CARDINAL_DATA_DIR", tmpDir)
+	defer os.Setenv("CARDINAL_DATA_DIR", origDir)
 
 	images, err := ListImages()
 	if err != nil {
@@ -91,9 +91,9 @@ func TestListImages(t *testing.T) {
 
 func TestRemoveImage(t *testing.T) {
 	tmpDir := t.TempDir()
-	origDir := os.Getenv("DCK_DATA_DIR")
-	os.Setenv("DCK_DATA_DIR", tmpDir)
-	defer os.Setenv("DCK_DATA_DIR", origDir)
+	origDir := os.Getenv("CARDINAL_DATA_DIR")
+	os.Setenv("CARDINAL_DATA_DIR", tmpDir)
+	defer os.Setenv("CARDINAL_DATA_DIR", origDir)
 
 	img := &Image{Name: "test-img", Tag: "latest"}
 	if err := SaveToStore(img); err != nil {
@@ -124,9 +124,9 @@ func TestVerifyDigest(t *testing.T) {
 
 func TestSaveConfig(t *testing.T) {
 	tmpDir := t.TempDir()
-	origDir := os.Getenv("DCK_DATA_DIR")
-	os.Setenv("DCK_DATA_DIR", tmpDir)
-	defer os.Setenv("DCK_DATA_DIR", origDir)
+	origDir := os.Getenv("CARDINAL_DATA_DIR")
+	os.Setenv("CARDINAL_DATA_DIR", tmpDir)
+	defer os.Setenv("CARDINAL_DATA_DIR", origDir)
 
 	imgDir := state.ImageDir("myimg", "latest")
 	os.MkdirAll(imgDir, 0755)

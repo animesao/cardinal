@@ -36,14 +36,14 @@ func TestIsProtectedHostPath_SystemDirsAreBlocked(t *testing.T) {
 		{"/", true},
 		{"/etc", true},
 		{"/etc/passwd", true},
-		{"/var/run/dck", true},
+		{"/var/run/cardinal", true},
 		{"/var/run/docker.sock", true},
 		{"/root/.ssh", true},
 		{"/home", true},
 		{"/opt", true},
 		// Anything outside the blocklist is not protected by default.
 		{"/data", false},
-		{"/srv/dck", false},
+		{"/srv/cardinal", false},
 	}
 	for _, c := range cases {
 		if got := IsProtectedHostHostPathForTest(c.path); got != c.want {
@@ -59,7 +59,7 @@ func IsProtectedHostHostPathForTest(p string) bool { return IsProtectedHostPath(
 
 func TestIsProtectedHostPath_AllowlistOverridesBlocklist(t *testing.T) {
 	// /etc/by-allowlist should be permitted via the env-driven allowlist.
-	t.Setenv("DCK_ALLOWED_HOST_PATHS", "/etc:/var/run/dck")
+	t.Setenv("CARDINAL_ALLOWED_HOST_PATHS", "/etc:/var/run/cardinal")
 	// Reset both the global allowlist (which InitHostPathPolicy will
 	// append to) and the hostPolicyInited flag (so InitHostPathPolicy
 	// will re-read env). t.Cleanup restores the previous state so
@@ -77,7 +77,7 @@ func TestIsProtectedHostPath_AllowlistOverridesBlocklist(t *testing.T) {
 		t.Errorf("expected /etc/foo to be allowed; got protected")
 	}
 	if !IsProtectedHostPath("/var/foo") {
-		t.Errorf("expected /var/foo to remain protected (only /var/run/dck allowed)")
+		t.Errorf("expected /var/foo to remain protected (only /var/run/cardinal allowed)")
 	}
 }
 

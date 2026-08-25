@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 // ConfigDigest returns the digest from the manifest for display.

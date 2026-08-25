@@ -15,9 +15,9 @@ import (
 	"strings"
 	"time"
 
-	"dck/internal/image"
-	"dck/internal/overlayutil"
-	"dck/internal/state"
+	"cardinal/internal/image"
+	"cardinal/internal/overlayutil"
+	"cardinal/internal/state"
 )
 
 type buildState struct {
@@ -274,7 +274,7 @@ func (bs *buildState) handleFrom(inst Instruction, buildTmp string) error {
 		return nil
 	}
 
-	// dck does not reuse intermediate build layers, so every RUN/COPY
+	// cardinal does not reuse intermediate build layers, so every RUN/COPY
 	// instruction is already evaluated on each build. Keep the base image
 	// lookup on the normal content-addressed store; --no-cache controls build
 	// layers rather than deleting an image that may be used by running
@@ -1012,10 +1012,10 @@ func applyBuildCgroup(pid int, cpu float64, mem int64) {
 		return
 	}
 	basePath := "/sys/fs/cgroup"
-	dckCg := filepath.Join(basePath, "dck-build")
-	os.MkdirAll(dckCg, 0755)
+	cardinalCg := filepath.Join(basePath, "cardinal-build")
+	os.MkdirAll(cardinalCg, 0755)
 
-	cgPath := filepath.Join(basePath, "dck-build", fmt.Sprintf("run_%d", pid))
+	cgPath := filepath.Join(basePath, "cardinal-build", fmt.Sprintf("run_%d", pid))
 	os.MkdirAll(cgPath, 0755)
 
 	if mem > 0 {

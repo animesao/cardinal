@@ -1,16 +1,16 @@
 #!/bin/bash
 set -e
 
-echo "=== Updating dck CLI ==="
+echo "=== Updating cardinal CLI ==="
 cd /tmp
-rm -rf dck-update
-git clone https://github.com/animesao/dck.git dck-update
-cd dck-update
-CGO_ENABLED=0 go build -ldflags="-s -w" -o dck .
-pkill -f "dck " 2>/dev/null || true
-cp dck /usr/local/bin/dck
-rm -rf /tmp/dck-update
-echo "dck updated: $(dck version)"
+rm -rf cardinal-update
+git clone https://github.com/animesao/cardinal.git cardinal-update
+cd cardinal-update
+CGO_ENABLED=0 go build -ldflags="-s -w" -o cardinal .
+pkill -f "cardinal " 2>/dev/null || true
+cp cardinal /usr/local/bin/cardinal
+rm -rf /tmp/cardinal-update
+echo "cardinal updated: $(cardinal version)"
 
 echo ""
 echo "=== Updating dck-panel ==="
@@ -18,18 +18,18 @@ cd /opt/dck-panel
 git fetch origin
 git reset --hard origin/main
 cd /opt/dck-panel/server
-CGO_ENABLED=0 go build -ldflags="-s -w" -o /usr/local/bin/dck-server .
+CGO_ENABLED=0 go build -ldflags="-s -w" -o /usr/local/bin/cardinal-server .
 
-mkdir -p /root/.dck-panel /root/.dck
+mkdir -p /root/.dck-panel /root/.cardinal
 
 cat > /etc/systemd/system/dck-panel.service << 'SYSTEMD'
 [Unit]
-Description=dck Panel
+Description=cardinal Panel
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/dck-server --port 80 --sftp-port 2222 --data-dir /root/.dck-panel
+ExecStart=/usr/local/bin/cardinal-server --port 80 --sftp-port 2222 --data-dir /root/.dck-panel
 Restart=always
 RestartSec=5
 Environment=HOME=/root
@@ -45,10 +45,10 @@ systemctl daemon-reload
 if systemctl is-active --quiet dck-panel 2>/dev/null; then
   systemctl restart dck-panel
   echo "dck-panel restarted via systemd"
-elif systemctl is-active --quiet dck-server 2>/dev/null; then
-  systemctl stop dck-server 2>/dev/null || true
+elif systemctl is-active --quiet cardinal-server 2>/dev/null; then
+  systemctl stop cardinal-server 2>/dev/null || true
   systemctl enable --now dck-panel
-  echo "migrated from dck-server to dck-panel service"
+  echo "migrated from cardinal-server to dck-panel service"
 else
   systemctl enable --now dck-panel
   echo "dck-panel started via systemd"
@@ -56,4 +56,4 @@ fi
 
 echo ""
 echo "=== Done ==="
-dck blueprint list | head -5
+cardinal blueprint list | head -5

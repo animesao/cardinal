@@ -10,10 +10,10 @@ import (
 	"strconv"
 	"strings"
 
-	"dck/internal/network"
+	"cardinal/internal/network"
 )
 
-// IsRootless returns true if dck is running without root privileges
+// IsRootless returns true if cardinal is running without root privileges
 func IsRootless() bool {
 	return os.Geteuid() != 0
 }

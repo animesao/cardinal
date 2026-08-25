@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 // Event types

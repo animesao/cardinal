@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"os"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func Top(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck top <container>")
+		fmt.Println("Usage: cardinal top <container>")
 		os.Exit(1)
 	}
 

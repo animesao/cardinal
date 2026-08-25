@@ -1,36 +1,36 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Installing dck on Debian / Ubuntu
+# Installing cardinal on Debian / Ubuntu
 
 ## Option 1: APT Repository (Recommended)
 
-Add the official dck APT repository and install:
+Add the official cardinal APT repository and install:
 
 ```bash
 # Add repository
-curl -fsSL https://raw.githubusercontent.com/animesao/dck/main/scripts/install-apt.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/animesao/cardinal/main/scripts/install-apt.sh | sudo bash
 
 # Install
 sudo apt update
-sudo apt install dck
+sudo apt install cardinal
 ```
 
 ### What the Script Does
 
-1. Adds the GPG key to `/usr/share/keyrings/dck-archive-keyring.gpg`
-2. Adds the repository to `/etc/apt/sources.list.d/dck.list`
-3. Runs `apt update && apt install dck`
+1. Adds the GPG key to `/usr/share/keyrings/cardinal-archive-keyring.gpg`
+2. Adds the repository to `/etc/apt/sources.list.d/cardinal.list`
+3. Runs `apt update && apt install cardinal`
 
 ### Architecture Support
 
 | Architecture | Package |
 |-------------|---------|
-| amd64 | `dck` (default) |
-| arm64 | `dck` (auto-detected) |
-| armhf (armv6) | `dck` (auto-detected) |
+| amd64 | `cardinal` (default) |
+| arm64 | `cardinal` (auto-detected) |
+| armhf (armv6) | `cardinal` (auto-detected) |
 
 ## Option 2: Manual .deb Package
 
@@ -47,38 +47,38 @@ case "$ARCH" in
 esac
 
 # Get latest version
-TAG=$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')
+TAG=$(curl -fsSL https://api.github.com/repos/animesao/cardinal/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')
 VERSION="${TAG#v}"
 
 # Download and install
-curl -fL -o "dck-${VERSION}-linux-${SUFFIX}.deb" \
-  "https://github.com/animesao/dck/releases/download/${TAG}/dck-${VERSION}-linux-${SUFFIX}.deb"
-sudo dpkg -i "dck-${VERSION}-linux-${SUFFIX}.deb"
-rm "dck-${VERSION}-linux-${SUFFIX}.deb"
+curl -fL -o "cardinal-${VERSION}-linux-${SUFFIX}.deb" \
+  "https://github.com/animesao/cardinal/releases/download/${TAG}/cardinal-${VERSION}-linux-${SUFFIX}.deb"
+sudo dpkg -i "cardinal-${VERSION}-linux-${SUFFIX}.deb"
+rm "cardinal-${VERSION}-linux-${SUFFIX}.deb"
 ```
 
 ## Option 3: Universal Installer
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/animesao/dck/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/animesao/cardinal/main/install.sh | sudo bash
 ```
 
 ## Verify
 
 ```bash
-dck version
-dck doctor
+cardinal version
+cardinal doctor
 ```
 
 ## Uninstall
 
 ```bash
 # If installed via APT
-sudo apt remove dck
-sudo rm /etc/apt/sources.list.d/dck.list
-sudo rm /usr/share/keyrings/dck-archive-keyring.gpg
+sudo apt remove cardinal
+sudo rm /etc/apt/sources.list.d/cardinal.list
+sudo rm /usr/share/keyrings/cardinal-archive-keyring.gpg
 
 # Remove data
-dck bootstrap --remove
-sudo rm -rf ~/.dck
+cardinal bootstrap --remove
+sudo rm -rf ~/.cardinal
 ```

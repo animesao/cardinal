@@ -33,7 +33,7 @@ type commandSpec struct {
 }
 
 // allCommands is the registry of top-level cobra commands. Sub-commands
-// (e.g. `dck backup enable`, `dck network create`) are attached below
+// (e.g. `cardinal backup enable`, `cardinal network create`) are attached below
 // from a separate path; the cobra command-graph builder constructs them.
 var allCommands []*cobra.Command
 
@@ -42,12 +42,12 @@ var allCommands []*cobra.Command
 // print their own usage blocks without cobra double-reporting them.
 //
 // For the `run` command we additionally disable cobra's flag parsing so
-// every argument after `dck run` — including `--rm`, `--network`,
+// every argument after `cardinal run` — including `--rm`, `--network`,
 // `--memory`, `--cap-add`, `--label`, `--healthcheck-cmd` and 30+ other
 // legacy flags — is forwarded verbatim to `Run(args)`, where the legacy
 // stdlib `flag.NewFlagSet` already knows how to parse them. Without
 // this knob, cobra would reject any run-level flag that is not in its
-// own flag set, which historically means every dck invocation that we
+// own flag set, which historically means every cardinal invocation that we
 // wrote and tested before the cobra migration. Phased migration of
 // run flags into cobra is tracked as a follow-up.
 func register(spec commandSpec) *cobra.Command {
@@ -103,7 +103,7 @@ func init() {
 	register(commandSpec{"export", "Export an image to a tar.gz archive", Export, ""})
 
 	// Container operations
-	register(commandSpec{"run", "Create and run a container", Run, `Usage: dck run [opts] <image> [cmd...]
+	register(commandSpec{"run", "Create and run a container", Run, `Usage: cardinal run [opts] <image> [cmd...]
 
 Resource limits:
   --ram, --memory string     Memory limit (e.g. 512m, 8g)
@@ -166,15 +166,15 @@ Safety:
   --encrypted-backup         Encrypt backup archives
 
 Examples:
-  dck run -d --ram 8g --cpu 2 -p 8080:80 --name web nginx
-  dck run -it --rm alpine sh
-  dck run -d -v /data:/app -e DB_HOST=localhost myapp:latest`})
+  cardinal run -d --ram 8g --cpu 2 -p 8080:80 --name web nginx
+  cardinal run -it --rm alpine sh
+  cardinal run -d -v /data:/app -e DB_HOST=localhost myapp:latest`})
 	register(commandSpec{"start", "Start a stopped container", StartCmd, ""})
 	register(commandSpec{"stop", "Stop a running container", Stop, ""})
 	register(commandSpec{"restart", "Restart a container", Restart, ""})
 	register(commandSpec{"rm", "Remove a container", Rm, ""})
 	register(commandSpec{"rename", "Rename a container", Rename, ""})
-	register(commandSpec{"set", "Modify container parameters", Set, `Usage: dck set <container> [flags]
+	register(commandSpec{"set", "Modify container parameters", Set, `Usage: cardinal set <container> [flags]
 
 Flags:
   --ram, --memory string   Memory limit (e.g. 512m, 8g)
@@ -193,8 +193,8 @@ Flags:
   --startup string          Startup script or @filepath
 
 Example:
-  dck set myweb --ram 4g --cpu 2 --restart always
-  dck set myweb --startup @/opt/my-startup.sh`})
+  cardinal set myweb --ram 4g --cpu 2 --restart always
+  cardinal set myweb --startup @/opt/my-startup.sh`})
 	psCmd := register(commandSpec{"ps", "List containers", Ps, ""})
 	psCmd.Flags().BoolP("all", "a", false, "Show all containers (running + stopped)")
 	psCmd.Run = func(c *cobra.Command, args []string) {
@@ -242,33 +242,33 @@ Example:
 	// Diagnostics & lifecycle
 	register(commandSpec{"doctor", "Read-only host/runtime diagnostics", Doctor, ""})
 	register(commandSpec{"security", "Security-focused diagnostics (alias for 'doctor security')", Security, ""})
-	register(commandSpec{"serve", "Run the Docker-compatible HTTP API", Serve, `Usage: dck serve [flags] [on|off|status]
+	register(commandSpec{"serve", "Run the Docker-compatible HTTP API", Serve, `Usage: cardinal serve [flags] [on|off|status]
 
 Start the Docker-compatible HTTP API server.
 
 Subcommands:
-  dck serve on [--port 2375]   Install as systemd service (auto-start on boot)
-  dck serve off                Stop and remove systemd service
-  dck serve status             Show service status
+  cardinal serve on [--port 2375]   Install as systemd service (auto-start on boot)
+  cardinal serve off                Stop and remove systemd service
+  cardinal serve status             Show service status
 
 Flags:
   -p int                  API port (default 2375)
   -H string               API host (default 127.0.0.1)
   -d                      Run as daemon (foreground by default)
-  --token string          Auth token (or DCK_TOKEN env)
+  --token string          Auth token (or CARDINAL_TOKEN env)
   --tls-cert string       TLS certificate file
   --tls-key string        TLS private key file
 
 Examples:
-  dck serve                         # foreground, port 2375
-  dck serve -p 2376 -d              # daemon, port 2376
-  sudo dck serve on -p 2375         # systemd service, auto-start
-  sudo dck serve off                # stop and disable service
-  dck serve status                  # check if running
-  journalctl -u dck-serve -f        # tail logs`})
+  cardinal serve                         # foreground, port 2375
+  cardinal serve -p 2376 -d              # daemon, port 2376
+  sudo cardinal serve on -p 2375         # systemd service, auto-start
+  sudo cardinal serve off                # stop and disable service
+  cardinal serve status                  # check if running
+  journalctl -u cardinal-serve -f        # tail logs`})
 	register(commandSpec{"supervisor", "Run the container supervisor (foreground)", Supervisor, ""})
 	register(commandSpec{"bootstrap", "Install the systemd supervisor unit", Bootstrap, ""})
-	register(commandSpec{"update", "Self-update dck", Update, ""})
+	register(commandSpec{"update", "Self-update cardinal", Update, ""})
 	register(commandSpec{"version", "Print version information", versionCommand, ""})
 
 	// Volumes & images import
@@ -307,15 +307,15 @@ func hasLongHelpArgument(args []string) bool {
 	return false
 }
 
-// versionCommand is the cobra-shaped implementation of `dck version`.
+// versionCommand is the cobra-shaped implementation of `cardinal version`.
 // It is intentionally a tiny function so unit tests can override it.
 func versionCommand(_ []string) {
-	fmt.Println("dck version", version)
-	fmt.Println("Run 'dck update --check' to check for newer versions.")
+	fmt.Println("cardinal version", version)
+	fmt.Println("Run 'cardinal update --check' to check for newer versions.")
 }
 
 // attachBackupSubcommands adds explicit cobra sub-commands so that
-// `dck backup --help` lists the supported verbs. The legacy `Backup`
+// `cardinal backup --help` lists the supported verbs. The legacy `Backup`
 // function still dispatches on the first positional argument so the call
 // graph is unchanged; this only enriches the help UI.
 func attachBackupSubcommands() {
@@ -358,7 +358,7 @@ func attachBackupSubcommands() {
 	backup.AddCommand(restoreCmd)
 }
 
-// attachSecuritySubcommands adds `dck security check` so users see the
+// attachSecuritySubcommands adds `cardinal security check` so users see the
 // verb in --help. Same delegation pattern as backup.
 func attachSecuritySubcommands() {
 	sec := findCommand("security")
@@ -367,7 +367,7 @@ func attachSecuritySubcommands() {
 	}
 	sec.AddCommand(&cobra.Command{
 		Use:   "check",
-		Short: "Run security-focused diagnostics (alias for `dck doctor --strict`)",
+		Short: "Run security-focused diagnostics (alias for `cardinal doctor --strict`)",
 		Run: func(c *cobra.Command, args []string) {
 			Security(append([]string{"check"}, args...))
 		},

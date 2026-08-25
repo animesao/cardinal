@@ -44,8 +44,8 @@ func TestNewRoot_HasPersistentGitlobals(t *testing.T) {
 
 func TestNewRoot_HasVersionAndName(t *testing.T) {
 	root := NewRoot()
-	if root.Name() != "dck" {
-		t.Errorf("root name = %q; want %q", root.Name(), "dck")
+	if root.Name() != "cardinal" {
+		t.Errorf("root name = %q; want %q", root.Name(), "cardinal")
 	}
 	if root.Version == "" {
 		t.Errorf("root has empty version string")

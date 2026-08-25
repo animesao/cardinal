@@ -1,10 +1,10 @@
-Origin: dck
-Label: dck APT Repository
+Origin: cardinal
+Label: cardinal APT Repository
 Suite: stable
-Codename: dck
+Codename: cardinal
 Date: Sat, 13 Jun 2026 07:44:14 UTC
 Architectures: amd64
-Description: dck lightweight container runtime
+Description: cardinal lightweight container runtime
 SHA256:
  9a32a822dad27477a80e0a08238687acba042537c3b4ad053c9b6c796eb3035e 1570 Packages
  a62e66f3f9622c084c0cb3a7c24b5b0a2a1db6ace28957d5fa8680d9d60cf09a 475 Packages.gz

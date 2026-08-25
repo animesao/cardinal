@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 func SaveToStore(img *Image) error {

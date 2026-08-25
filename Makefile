@@ -3,19 +3,19 @@
 VERSION := $(shell cat VERSION 2>/dev/null || echo "dev")
 # Reproducible-build flags: strip paths and VCS info from the binary.
 GOFLAGS  := -trimpath
-LDFLAGS  := -s -w -buildid= -X dck/cmd.version=$(VERSION)
+LDFLAGS  := -s -w -buildid= -X cardinal/cmd.version=$(VERSION)
 
 build: build-amd64 build-arm64
 
 build-amd64:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 		go build -tags netgo -installsuffix netgo \
-		$(GOFLAGS) -ldflags="$(LDFLAGS)" -o dck-linux-amd64 .
+		$(GOFLAGS) -ldflags="$(LDFLAGS)" -o cardinal-linux-amd64 .
 
 build-arm64:
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
 		go build -tags netgo -installsuffix netgo \
-		$(GOFLAGS) -ldflags="$(LDFLAGS)" -o dck-linux-arm64 .
+		$(GOFLAGS) -ldflags="$(LDFLAGS)" -o cardinal-linux-arm64 .
 
 # Verify the cobra command tree compiles and matches the expected shape.
 # Run on every CI push so the registration stays in sync with the legacy
@@ -28,24 +28,24 @@ verify-cobra:
 # users piping into their .bashrc / .zshrc / fish-config / PowerShell
 # profile have a single entry point.
 completion:
-	@echo "dck completion bash | zsh | fish | powershell"
+	@echo "cardinal completion bash | zsh | fish | powershell"
 	@echo
 	@echo "Examples:"
-	@echo "  dck completion bash > ~/.local/share/bash-completion/completions/dck"
-	@echo "  dck completion zsh > \"\$${fpath[1]}/_dck\""
-	@echo "  dck completion fish > ~/.config/fish/completions/dck.fish"
+	@echo "  cardinal completion bash > ~/.local/share/bash-completion/completions/cardinal"
+	@echo "  cardinal completion zsh > \"\$${fpath[1]}/_cardinal\""
+	@echo "  cardinal completion fish > ~/.config/fish/completions/cardinal.fish"
 
 completion-bash:
-	@./dck-linux-amd64 completion bash
+	@./cardinal-linux-amd64 completion bash
 
 completion-zsh:
-	@./dck-linux-amd64 completion zsh
+	@./cardinal-linux-amd64 completion zsh
 
 completion-fish:
-	@./dck-linux-amd64 completion fish
+	@./cardinal-linux-amd64 completion fish
 
 completion-powershell:
-	@./dck-linux-amd64 completion powershell
+	@./cardinal-linux-amd64 completion powershell
 
 test:
 	go test ./... -count=1
@@ -82,8 +82,8 @@ deb: build
 	./scripts/build-deb.sh
 
 clean:
-	rm -f dck dck-linux-*
+	rm -f cardinal cardinal-linux-*
 	rm -rf dist/ coverage.out
 
 release: deb
-	@echo "Release v$(VERSION) ready: dist/dck_$(VERSION)_amd64.deb"
+	@echo "Release v$(VERSION) ready: dist/cardinal_$(VERSION)_amd64.deb"

@@ -21,7 +21,7 @@ import (
 var baseURL = getBaseURL()
 
 func getBaseURL() string {
-	if m := os.Getenv("DCK_UPDATE_MIRROR"); m != "" {
+	if m := os.Getenv("CARDINAL_UPDATE_MIRROR"); m != "" {
 		return strings.TrimRight(m, "/")
 	}
 	return repoURL
@@ -70,9 +70,9 @@ func Update(args []string) {
 	arch := runtime.GOARCH
 	goos := runtime.GOOS
 	releaseTag := "v" + latest
-	archiveBaseName := fmt.Sprintf("dck_%s_%s_%s", latest, goos, arch)
+	archiveBaseName := fmt.Sprintf("cardinal_%s_%s_%s", latest, goos, arch)
 	archiveName := archiveBaseName + ".tar.gz"
-	checksumFileName := fmt.Sprintf("dck_%s_checksums.txt", latest)
+	checksumFileName := fmt.Sprintf("cardinal_%s_checksums.txt", latest)
 	checksumURL := fmt.Sprintf("%s/releases/download/%s/%s", releaseURL, releaseTag, checksumFileName)
 	archiveURL := fmt.Sprintf("%s/releases/download/%s/%s", releaseURL, releaseTag, archiveName)
 
@@ -96,18 +96,18 @@ func Update(args []string) {
 	}
 	fmt.Println("Checksum verified.")
 
-	binaryData, err := extractBinaryFromTarGz(body, "dck")
+	binaryData, err := extractBinaryFromTarGz(body, "cardinal")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to extract binary from archive: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Optional: hard-fail unless the release is signed by cosign.
-	// Activated when DCK_REQUIRE_SIGNATURE=1 is set in the environment.
+	// Activated when CARDINAL_REQUIRE_SIGNATURE=1 is set in the environment.
 	// This protects supply-chain integrity on production deployment hosts
 	// where TLS-only trust is not acceptable. See SECURITY.md.
-	if strings.EqualFold(os.Getenv("DCK_REQUIRE_SIGNATURE"), "1") ||
-		strings.EqualFold(os.Getenv("DCK_REQUIRE_SIGNATURE"), "true") {
+	if strings.EqualFold(os.Getenv("CARDINAL_REQUIRE_SIGNATURE"), "1") ||
+		strings.EqualFold(os.Getenv("CARDINAL_REQUIRE_SIGNATURE"), "true") {
 		sigURL := checksumURL + ".sig"
 		bundleURL := sigURL + ".bundle"
 		if err := verifyCosignSignature(releaseTag, archiveName, actualHex, sigURL, bundleURL); err != nil {
@@ -125,7 +125,7 @@ func Update(args []string) {
 	}
 
 	// Write new binary to temp file
-	tmpFile, err := os.CreateTemp("", "dck-update-*")
+	tmpFile, err := os.CreateTemp("", "cardinal-update-*")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create temp file: %v\n", err)
 		os.Exit(1)
@@ -183,7 +183,7 @@ func Update(args []string) {
 	fmt.Println("Update complete!")
 }
 
-const appImageInstallPath = "/usr/local/bin/dck"
+const appImageInstallPath = "/usr/local/bin/cardinal"
 
 func updateInstallTarget(selfPath string) (string, bool) {
 	if strings.TrimSpace(os.Getenv("APPIMAGE")) != "" || strings.Contains(selfPath, "/.mount_") {
@@ -364,7 +364,7 @@ func fetchLatestVersion() (string, error) {
 
 func fetchVersionViaGit() (string, error) {
 	var stderr bytes.Buffer
-	cmd := exec.Command("git", "ls-remote", "--tags", "https://github.com/animesao/dck.git")
+	cmd := exec.Command("git", "ls-remote", "--tags", "https://github.com/animesao/cardinal.git")
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
@@ -452,7 +452,7 @@ func verifyCosignSignature(releaseTag, binaryName, _ string, sigURL, _ string) e
 	if err != nil {
 		return fmt.Errorf("could not re-fetch %s: %w", checksumURL, err)
 	}
-	tmp, err := os.CreateTemp("", "dck-verify-*.sha256")
+	tmp, err := os.CreateTemp("", "cardinal-verify-*.sha256")
 	if err != nil {
 		return err
 	}
@@ -464,7 +464,7 @@ func verifyCosignSignature(releaseTag, binaryName, _ string, sigURL, _ string) e
 
 	// Pin the certificate to the release workflow ref so a stolen key alone
 	// cannot re-sign a malicious build from a different workflow run.
-	idRegex := fmt.Sprintf("^https://github.com/animesao/dck/.github/workflows/release.yml@refs/tags/%s$",
+	idRegex := fmt.Sprintf("^https://github.com/animesao/cardinal/.github/workflows/release.yml@refs/tags/%s$",
 		regexpQuoteMeta(releaseTag))
 
 	cmd := exec.Command(cosign, "verify-blob",

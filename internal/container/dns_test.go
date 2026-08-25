@@ -94,8 +94,8 @@ func TestEnsureContainerHosts(t *testing.T) {
 	if strContains(content, "app1") {
 		t.Error("/etc/hosts should NOT contain own name")
 	}
-	if !strContains(content, "# dck-managed") {
-		t.Error("/etc/hosts should contain dck-managed marker")
+	if !strContains(content, "# cardinal-managed") {
+		t.Error("/etc/hosts should contain cardinal-managed marker")
 	}
 
 	// Check resolv.conf

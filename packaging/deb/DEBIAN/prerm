@@ -5,11 +5,11 @@ case "$1" in
     remove|purge)
         # Remove systemd service if installed
         if command -v systemctl >/dev/null 2>&1; then
-            if systemctl is-enabled dck-bootstrap 2>/dev/null | grep -q "enabled"; then
-                systemctl disable dck-bootstrap 2>/dev/null || true
+            if systemctl is-enabled cardinal-bootstrap 2>/dev/null | grep -q "enabled"; then
+                systemctl disable cardinal-bootstrap 2>/dev/null || true
             fi
-            if systemctl is-active dck-bootstrap 2>/dev/null | grep -q "active"; then
-                systemctl stop dck-bootstrap 2>/dev/null || true
+            if systemctl is-active cardinal-bootstrap 2>/dev/null | grep -q "active"; then
+                systemctl stop cardinal-bootstrap 2>/dev/null || true
             fi
             systemctl daemon-reload 2>/dev/null || true
         fi

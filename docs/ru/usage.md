@@ -1,11 +1,11 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
 # Команды и использование
 
-dck — лёгкий container runtime. Нет демона, нет Docker. Просто контейнеры.
+cardinal — лёгкий container runtime. Нет демона, нет Docker. Просто контейнеры.
 ~5 MB статический бинарник, OCI образы, bridge-сеть, кластеризация, FaaS.
 
 > Полный список команд, алиасов, префиксов и флагов находится в [полном справочнике CLI](commands.md). Практические рецепты — в [примерах команд](examples.md).
@@ -17,23 +17,23 @@ dck — лёгкий container runtime. Нет демона, нет Docker. Пр
 - [Руководство по запуску](running.md)
 - [Развёртывание сайтов](websites.md)
 - [Управление образами](#управление-образами)
-  - [dck pull](#dck-pull---platform-osarch-образтег)
-  - [dck search](#dck-search-термин)
-  - [dck images](#dck-images)
-  - [dck rmi](#dck-rmi-образтег)
-  - [dck export](#dck-export-образ--o-файлtargz)
-  - [dck import](#dck-import-файлtargz)
-  - [dck build](#dck-build--t-имятег-опции-)
-  - [dck commit](#dck-commit-контейнер-образтег)
-  - [dck push](#dck-push-образтег)
-  - [dck login / dck logout](#dck-login-registry--dck-logout-registry)
+  - [cardinal pull](#cardinal-pull---platform-osarch-образтег)
+  - [cardinal search](#cardinal-search-термин)
+  - [cardinal images](#cardinal-images)
+  - [cardinal rmi](#cardinal-rmi-образтег)
+  - [cardinal export](#cardinal-export-образ--o-файлtargz)
+  - [cardinal import](#cardinal-import-файлtargz)
+  - [cardinal build](#cardinal-build--t-имятег-опции-)
+  - [cardinal commit](#cardinal-commit-контейнер-образтег)
+  - [cardinal push](#cardinal-push-образтег)
+  - [cardinal login / cardinal logout](#cardinal-login-registry--cardinal-logout-registry)
 - [Жизненный цикл контейнера](#жизненный-цикл-контейнера)
-- [Запуск контейнеров (`dck run`)](#dck-run)
+- [Запуск контейнеров (`cardinal run`)](#cardinal-run)
 - [Работа с контейнерами](#работа-с-контейнерами)
 - [Exec & Attach](#exec--attach)
 - [Логи и мониторинг](#логи-и-мониторинг)
 - [Сеть](#сеть)
-- [Просмотр файлов](#просмотр-файлов--dck-fs)
+- [Просмотр файлов](#просмотр-файлов--cardinal-fs)
 - [Хранилище и тома](#хранилище-и-тома)
 - [Лимиты ресурсов](#лимиты-ресурсов)
 - [Безопасность](#безопасность)
@@ -42,8 +42,8 @@ dck — лёгкий container runtime. Нет демона, нет Docker. Пр
 - [Стартовые скрипты](#стартовые-скрипты)
 - [Проброс портов](#проброс-портов)
 - [Динамическое управление портами](#динамическое-управление-портами)
-- [dck.toml / Compose](#dcktoml--compose)
-- [dck up / dck down](#dck-up--dck-down)
+- [cardinal.toml / Compose](#cardinaltoml--compose)
+- [cardinal up / cardinal down](#cardinal-up--cardinal-down)
 - [Кластеризация](#кластеризация)
 - [Управление сервисами](#управление-сервисами)
 - [FaaS / Serverless](#faas--serverless)
@@ -59,79 +59,79 @@ dck — лёгкий container runtime. Нет демона, нет Docker. Пр
 
 ## Управление образами
 
-### `dck pull [--platform os/arch] <образ>[:тег]`
+### `cardinal pull [--platform os/arch] <образ>[:тег]`
 
 Скачать образ из registry (по умолчанию Docker Hub).
 
 ```bash
-dck pull nginx
-dck pull alpine:3.19
-dck pull --platform linux/arm64 eclipse-temurin:21-jre
-dck pull registry.example.com/myapp:v1.0
+cardinal pull nginx
+cardinal pull alpine:3.19
+cardinal pull --platform linux/arm64 eclipse-temurin:21-jre
+cardinal pull registry.example.com/myapp:v1.0
 ```
 
 Приватные registry: `DOCKER_USERNAME` / `DOCKER_PASSWORD`, или `-u user -p pass` на push.
 
-### `dck images`
+### `cardinal images`
 
 Список локально сохранённых образов.
 
 ```bash
-dck images
+cardinal images
 ```
 
-### `dck search <термин>`
+### `cardinal search <термин>`
 
 Поиск образов на Docker Hub.
 
 ```bash
-dck search nginx
-dck search python
-dck search alpine
-dck search python:3.11          # фильтр по тегу
+cardinal search nginx
+cardinal search python
+cardinal search alpine
+cardinal search python:3.11          # фильтр по тегу
 ```
 
 Показывает имя, описание, звёзды, загрузки и доступные теги. Можно фильтровать теги через `образ:тег`.
 
-### `dck rmi <образ>[:тег]`
+### `cardinal rmi <образ>[:тег]`
 
 Удалить образ.
 
 ```bash
-dck rmi nginx:alpine
+cardinal rmi nginx:alpine
 ```
 
-### `dck verify <образ>[:тег]`
+### `cardinal verify <образ>[:тег]`
 
 Проверить config и диджесты слоёв локального образа.
 
 ```bash
-dck verify nginx:alpine
+cardinal verify nginx:alpine
 ```
 
-### `dck export <образ> -o <файл.tar.gz>`
+### `cardinal export <образ> -o <файл.tar.gz>`
 
 Экспортировать образ в tar.gz (для бэкапа или переноса).
 
 ```bash
-dck export myapp:v1 -o myapp-v1.tar.gz
+cardinal export myapp:v1 -o myapp-v1.tar.gz
 ```
 
-### `dck import <файл.tar.gz>`
+### `cardinal import <файл.tar.gz>`
 
 Импортировать образ из tar.gz.
 
 ```bash
-dck import myapp-v1.tar.gz
+cardinal import myapp-v1.tar.gz
 ```
 
-### `dck build -t <имя>:<тег> [опции] .`
+### `cardinal build -t <имя>:<тег> [опции] .`
 
 Собрать образ из Dockerfile.
 
 ```bash
-dck build -t myapp:v1 .
-dck build -t myapp:v1 --build-arg VERSION=1.0 -f Dockerfile.prod .
+cardinal build -t myapp:v1 .
+cardinal build -t myapp:v1 --build-arg VERSION=1.0 -f Dockerfile.prod .
 ```
 
 **Поддерживаемые инструкции Dockerfile:**
@@ -142,78 +142,78 @@ VOLUME, SHELL, ARG, HEALTHCHECK, STOPSIGNAL, ONBUILD.
 - ✅ Многоэтапная сборка (`FROM ... AS alias`, `COPY --from=`)
 - ✅ Подстановка ARG (`$VAR` / `${VAR}` во всех инструкциях)
 - ✅ HEALTHCHECK с `--start-period`
-- `--no-cache` принимается для совместимости CLI; сейчас dck всё равно выполняет каждую инструкцию Dockerfile и не использует кэш результатов инструкций
+- `--no-cache` принимается для совместимости CLI; сейчас cardinal всё равно выполняет каждую инструкцию Dockerfile и не использует кэш результатов инструкций
 
-### `dck commit <контейнер> <образ>[:тег]`
+### `cardinal commit <контейнер> <образ>[:тег]`
 
 Создать образ из текущего состояния контейнера (со всеми изменениями в overlay).
 
 ```bash
-dck commit myproject myproject-snapshot:v1
+cardinal commit myproject myproject-snapshot:v1
 ```
 
 Сохраняет всё, что вы установили (пакеты, файлы, конфиги) в переиспользуемый образ.
 
-### `dck push <образ>[:тег]`
+### `cardinal push <образ>[:тег]`
 
 Отправить образ в registry.
 
 ```bash
-dck push myapp:v1
-dck push registry.example.com/myapp:v1
+cardinal push myapp:v1
+cardinal push registry.example.com/myapp:v1
 ```
 
 Авторизация: `-u user -p pass` или `DOCKER_USERNAME` / `DOCKER_PASSWORD`.
 
-### `dck login <registry>` / `dck logout <registry>`
+### `cardinal login <registry>` / `cardinal logout <registry>`
 
 Войти/выйти из registry для авторизованных pull/push.
 
 ```bash
-dck login registry.example.com
-dck logout registry.example.com
+cardinal login registry.example.com
+cardinal logout registry.example.com
 ```
 
 ---
 
 ## Жизненный цикл контейнера
 
-### `dck ps`
+### `cardinal ps`
 
 Список контейнеров.
 
 ```bash
-dck ps           # только запущенные
-dck ps -a        # все (включая остановленные)
+cardinal ps           # только запущенные
+cardinal ps -a        # все (включая остановленные)
 ```
 
-### `dck run [опции] <образ> [команда]`
+### `cardinal run [опции] <образ> [команда]`
 
 Создать и запустить контейнер. Главная команда.
 
 ```bash
 # Одноразовая команда
-dck run --rm alpine echo "hello"
+cardinal run --rm alpine echo "hello"
 
 # Веб-сервер в фоне
-dck run -d -n web -p 80:80 nginx:alpine
+cardinal run -d -n web -p 80:80 nginx:alpine
 
 # Интерактивный shell
-dck run -i -t --rm alpine sh
+cardinal run -i -t --rm alpine sh
 
 # С лимитами ресурсов
-dck run -d --memory 512m --cpus 1.5 node:20 node app.js
+cardinal run -d --memory 512m --cpus 1.5 node:20 node app.js
 
 # С томом и переменными
-dck run -d -v /data:/data -e DB_URL=postgres://... myapp
+cardinal run -d -v /data:/data -e DB_URL=postgres://... myapp
 
 # С длинными флагами и авто-перезапуском
-dck run -d --name myapp --ports 8080:80 --volume /app:/app --restart always --image nginx:alpine
+cardinal run -d --name myapp --ports 8080:80 --volume /app:/app --restart always --image nginx:alpine
 ```
 
-**Важно:** dck использует пакет `flag` из Go, поэтому флаги нужно передавать раздельно:
-- ✅ `dck run -i -t alpine sh` (правильно)
-- ❌ `dck run -it alpine sh` (ошибка — используйте `-i -t`)
+**Важно:** cardinal использует пакет `flag` из Go, поэтому флаги нужно передавать раздельно:
+- ✅ `cardinal run -i -t alpine sh` (правильно)
+- ❌ `cardinal run -it alpine sh` (ошибка — используйте `-i -t`)
 
 #### Флаги запуска
 
@@ -262,203 +262,203 @@ dck run -d --name myapp --ports 8080:80 --volume /app:/app --restart always --im
 | `--healthcheck-retries <n>` | Количество попыток | `--healthcheck-retries 5` |
 | `--healthcheck-timeout <s>` | Таймаут проверки (секунды) | `--healthcheck-timeout 10` |
 
-### `dck stop <контейнер>`
+### `cardinal stop <контейнер>`
 
 Остановить контейнер (SIGTERM, затем SIGKILL).
 
 ```bash
-dck stop web
-dck stop --all         # остановить все работающие контейнеры
+cardinal stop web
+cardinal stop --all         # остановить все работающие контейнеры
 ```
 
-### `dck start <контейнер>`
+### `cardinal start <контейнер>`
 
 Запустить остановленный контейнер. Все данные в overlay сохраняются.
 
 ```bash
-dck start web
+cardinal start web
 ```
 
-### `dck restart <контейнер>`
+### `cardinal restart <контейнер>`
 
 Перезапустить контейнер (stop + start).
 
 ```bash
-dck restart web
+cardinal restart web
 ```
 
-### `dck rm [-f] <контейнер>`
+### `cardinal rm [-f] <контейнер>`
 
 Удалить контейнер. `-f` принудительно удаляет работающий.
 
 ```bash
-dck rm web
-dck rm -f web         # удалить даже если запущен
+cardinal rm web
+cardinal rm -f web         # удалить даже если запущен
 ```
 
 **Важно:** При удалении контейнера стирается его overlay-слой — все изменения (установленные пакеты, файлы) пропадают.
 
-### `dck set <контейнер> [опции]`
+### `cardinal set <контейнер> [опции]`
 
 Изменить параметры контейнера без удаления (overlay сохраняется). Останавливает, меняет JSON и запускает заново.
 
 ```bash
-dck set mc --memory 4g --cpus 2
-dck set mc --restart always
-dck set mc -e DIFFICULTY=hard
-dck set mc --workdir /data-mc
+cardinal set mc --memory 4g --cpus 2
+cardinal set mc --restart always
+cardinal set mc -e DIFFICULTY=hard
+cardinal set mc --workdir /data-mc
 ```
 
-### `dck rename <контейнер> <новое-имя>`
+### `cardinal rename <контейнер> <новое-имя>`
 
 Переименовать контейнер.
 
 ```bash
-dck rename web web-new
+cardinal rename web web-new
 ```
 
-### `dck port <контейнер>`
+### `cardinal port <контейнер>`
 
 Показать проброс портов контейнера.
 
 ```bash
-dck port web
+cardinal port web
 ```
 
-### `dck port add <контейнер> <хост>:<контейнер>[/proto]`
+### `cardinal port add <контейнер> <хост>:<контейнер>[/proto]`
 
 Добавить проброс порта на работающий контейнер без перезапуска. Применяет iptables DNAT правила мгновенно. Порты сохраняются в состоянии контейнера и восстанавливаются после перезапуска.
 
 ```bash
-dck port add web 8080:80
-dck port add web 53:53/udp
+cardinal port add web 8080:80
+cardinal port add web 53:53/udp
 ```
 
-### `dck port remove <контейнер> <хост>[/proto]`
+### `cardinal port remove <контейнер> <хост>[/proto]`
 
 Удалить проброс порта.
 
 ```bash
-dck port remove web 8080
-dck port remove web 53/udp
+cardinal port remove web 8080
+cardinal port remove web 53/udp
 ```
 
-### `dck port rm <контейнер> <хост>[/proto]`
+### `cardinal port rm <контейнер> <хост>[/proto]`
 
-Алиас для `dck port remove`.
+Алиас для `cardinal port remove`.
 
 ```bash
-dck port rm web 8080
+cardinal port rm web 8080
 ```
 
-### `dck top <контейнер>`
+### `cardinal top <контейнер>`
 
 Показать процессы внутри контейнера.
 
 ```bash
-dck top web
+cardinal top web
 ```
 
 ---
 
 ## Exec & Attach
 
-### `dck exec [-i] [-t] <контейнер> <команда>`
+### `cardinal exec [-i] [-t] <контейнер> <команда>`
 
 Выполнить команду внутри работающего контейнера.
 
 ```bash
 # Неинтерактивная команда
-dck exec web nginx -s reload
+cardinal exec web nginx -s reload
 
 # Интерактивный shell с TTY
-dck exec -i -t myproject sh
+cardinal exec -i -t myproject sh
 
 # Интерактивный Python
-dck exec -i -t myproject python3
+cardinal exec -i -t myproject python3
 ```
 
 Создаёт **новый процесс** внутри контейнера. Входит в неймспейсы контейнера (PID, mount, network, IPC)
 и запускает команду прямо в корневой ФС контейнера (chroot не нужен — корень уже установлен через pivot_root).
 
-### `dck attach <контейнер>`
+### `cardinal attach <контейнер>`
 
 Подключиться к **главному процессу** контейнера (работает только для контейнеров с `-d`).
 
 ```bash
-dck run -d -i -t -n myproject alpine sh
-dck attach myproject    # подключиться к sh
+cardinal run -d -i -t -n myproject alpine sh
+cardinal attach myproject    # подключиться к sh
 ```
 
 > **exec vs attach:** `attach` подключается к stdin/stdout главного процесса. `exec` запускает новую команду внутри контейнера. `console` — сокращение для `exec -i -t` с автоопределением shell.
 
-`dck attach` **устойчив к Ctrl+C** — контейнер продолжает работать.
+`cardinal attach` **устойчив к Ctrl+C** — контейнер продолжает работать.
 
-### `dck console <контейнер>`
+### `cardinal console <контейнер>`
 
 Автоматически определить и запустить интерактивный shell внутри контейнера.
-Эквивалент `dck exec -i -t <контейнер> sh`.
+Эквивалент `cardinal exec -i -t <контейнер> sh`.
 
 ```bash
-dck console myproject
+cardinal console myproject
 ```
 
 ---
 
 ## Логи и мониторинг
 
-### `dck logs [-f] [--tail <n>] <контейнер>`
+### `cardinal logs [-f] [--tail <n>] <контейнер>`
 
 Показать stdout/stderr контейнера.
 
 ```bash
-dck logs web            # вывод текущего запуска
-dck logs -f web         # следить за новыми строками
-dck logs --tail 20 web  # последние 20 строк
-dck logs -f --tail 10 web  # последние 10 + следить
+cardinal logs web            # вывод текущего запуска
+cardinal logs -f web         # следить за новыми строками
+cardinal logs --tail 20 web  # последние 20 строк
+cardinal logs -f --tail 10 web  # последние 10 + следить
 ```
 
-При каждом новом запуске контейнера dck создаёт свежий лог, поэтому вывод прошлых циклов `stop`/`start` или `restart` не дописывается бесконечно. Логи, которые создаёт само приложение (например, Minecraft `/data/logs/latest.log`), остаются в подключённом хранилище приложения.
+При каждом новом запуске контейнера cardinal создаёт свежий лог, поэтому вывод прошлых циклов `stop`/`start` или `restart` не дописывается бесконечно. Логи, которые создаёт само приложение (например, Minecraft `/data/logs/latest.log`), остаются в подключённом хранилище приложения.
 
-Для root логи dck находятся в `/root/.dck/logs/<container-id>.log`; изменить каталог состояния можно через `DCK_DATA_DIR`. Практические примеры находятся в [руководстве по запуску](running.md).
+Для root логи cardinal находятся в `/root/.cardinal/logs/<container-id>.log`; изменить каталог состояния можно через `CARDINAL_DATA_DIR`. Практические примеры находятся в [руководстве по запуску](running.md).
 
-### `dck backup create|list|restore|enable|disable|status|verify`
+### `cardinal backup create|list|restore|enable|disable|status|verify`
 
-Создавайте разовые архивы или включайте постоянное расписание для конкретного контейнера. Авто-бэкап включает writable overlay и именованные тома, но не host bind mount — каталоги приложения на хосте нужно архивировать отдельно. Для согласованности dck ненадолго останавливает работающий контейнер, создаёт архив и запускает его снова. Первый автоматический архив создаётся после заданного интервала, а не сразу.
+Создавайте разовые архивы или включайте постоянное расписание для конкретного контейнера. Авто-бэкап включает writable overlay и именованные тома, но не host bind mount — каталоги приложения на хосте нужно архивировать отдельно. Для согласованности cardinal ненадолго останавливает работающий контейнер, создаёт архив и запускает его снова. Первый автоматический архив создаётся после заданного интервала, а не сразу.
 
 ```bash
-dck backup enable minecraft --interval 6h --retention 14
-dck backup status minecraft
-dck backup list
-dck backup disable minecraft
+cardinal backup enable minecraft --interval 6h --retention 14
+cardinal backup status minecraft
+cardinal backup list
+cardinal backup disable minecraft
 
 # Свой каталог (защищённые системные пути запрещены)
-dck backup enable minecraft --interval 24h --retention 7 --dir /data/backups/minecraft
+cardinal backup enable minecraft --interval 24h --retention 7 --dir /data/backups/minecraft
 ```
 
 Чтобы расписание продолжало работать после выхода из CLI, установите systemd supervisor:
 
 ```bash
-dck bootstrap --install
+cardinal bootstrap --install
 ```
 
-`dck backup create ИМЯ -o file.tar.gz` остаётся разовым ручным бэкапом. Восстановление выполняется только в остановленный контейнер: `dck backup restore ИМЯ file.tar.gz`. Архив можно проверить по контрольной сумме: `dck backup verify ФАЙЛ.tar.gz`; если checksum-файла рядом нет, dck сообщит, что архив не проверен.
+`cardinal backup create ИМЯ -o file.tar.gz` остаётся разовым ручным бэкапом. Восстановление выполняется только в остановленный контейнер: `cardinal backup restore ИМЯ file.tar.gz`. Архив можно проверить по контрольной сумме: `cardinal backup verify ФАЙЛ.tar.gz`; если checksum-файла рядом нет, cardinal сообщит, что архив не проверен.
 
-### `dck stats [контейнер]`
+### `cardinal stats [контейнер]`
 
 Использование CPU, памяти, I/O и PIDs в реальном времени. Через cgroups v2.
 
 ```bash
-dck stats               # все контейнеры
-dck stats web           # конкретный
+cardinal stats               # все контейнеры
+cardinal stats web           # конкретный
 ```
 
-### `dck info`
+### `cardinal info`
 
 Информация о системе: версия ядра, storage driver, директория данных, CPU, память, диск.
 
 ```bash
-dck info
+cardinal info
 ```
 
 ---
@@ -469,27 +469,27 @@ dck info
 
 | Режим | Описание |
 |---|---|
-| `bridge` (по умолч.) | Каждый контейнер получает IP `10.0.2.X` на bridge `dck0`. Хост: `10.0.2.1`. |
+| `bridge` (по умолч.) | Каждый контейнер получает IP `10.0.2.X` на bridge `cardinal0`. Хост: `10.0.2.1`. |
 | `none` | Без сети (только loopback) |
 | `host` | Общая сеть с хостом (для VPN, сниффинга) |
-| `<имя>` | Пользовательский Linux bridge, созданный через `dck network create` | `--network appnet` |
+| `<имя>` | Пользовательский Linux bridge, созданный через `cardinal network create` | `--network appnet` |
 
 ```bash
-dck run -d -n web -p 80:80 nginx:alpine       # bridge (по умолч.)
-dck run -d --network none alpine sleep infinity
-dck run -d --network host myvpn-container
+cardinal run -d -n web -p 80:80 nginx:alpine       # bridge (по умолч.)
+cardinal run -d --network none alpine sleep infinity
+cardinal run -d --network host myvpn-container
 
-dck network create --subnet 10.20.0.0/24 appnet
-dck network ls
-dck run -d --network appnet -n app alpine sleep infinity
-dck network inspect appnet
-dck network rm appnet   # только после удаления контейнеров сети
+cardinal network create --subnet 10.20.0.0/24 appnet
+cardinal network ls
+cardinal run -d --network appnet -n app alpine sleep infinity
+cardinal network inspect appnet
+cardinal network rm appnet   # только после удаления контейнеров сети
 ```
 
 ### Схема сети
 
 ```
-Хост:        dck0  10.0.2.1/24
+Хост:        cardinal0  10.0.2.1/24
 Контейнер A: eth0  10.0.2.2
 Контейнер B: eth0  10.0.2.3
 
@@ -518,7 +518,7 @@ A → порт B:    curl 10.0.2.1:8080 (DNAT: порт_хоста → порт_
 ### Свой DNS
 
 ```bash
-dck run -d --dns 1.1.1.1 --dns 8.8.8.8 nginx
+cardinal run -d --dns 1.1.1.1 --dns 8.8.8.8 nginx
 ```
 
 ---
@@ -529,16 +529,16 @@ dck run -d --dns 1.1.1.1 --dns 8.8.8.8 nginx
 
 ```bash
 # Добавить порт
-dck port add web 8080:80
+cardinal port add web 8080:80
 
 # Удалить порт
-dck port remove web 8080
+cardinal port remove web 8080
 
 # Алиас для remove
-dck port rm web 8080
+cardinal port rm web 8080
 ```
 
-Правила iptables DNAT применяются мгновенно. Порты сохраняются в состоянии контейнера (`~/.dck/containers/<id>.json`) и автоматически восстанавливаются при перезапуске контейнера (`dck start`).
+Правила iptables DNAT применяются мгновенно. Порты сохраняются в состоянии контейнера (`~/.cardinal/containers/<id>.json`) и автоматически восстанавливаются при перезапуске контейнера (`cardinal start`).
 
 ---
 
@@ -552,7 +552,7 @@ dck port rm web 8080
 -v /путь/на/хосте:/путь/в/контейнере:ro     # только чтение
 -v /путь/на/хосте:/путь/в/контейнере:shared # shared mount
 
-# Именованный том (управляется dck)
+# Именованный том (управляется cardinal)
 -v myvolume:/путь/в/контейнере
 
 # tmpfs (в памяти)
@@ -564,29 +564,29 @@ dck port rm web 8080
 
 ### Именованные тома
 
-Тома хранятся в `~/.dck/volumes/`.
+Тома хранятся в `~/.cardinal/volumes/`.
 
 ```bash
 # Создать том
-dck volume create mydata
+cardinal volume create mydata
 
 # Список томов
-dck volume ls
+cardinal volume ls
 
 # Информация о томе
-dck volume inspect mydata
+cardinal volume inspect mydata
 
 # Удалить том
-dck volume rm mydata
+cardinal volume rm mydata
 
 # Удалить неиспользуемые тома
-dck volume prune
+cardinal volume prune
 ```
 
 ### Как работает хранилище
 
 ```
-Хранилище: /root/.dck/
+Хранилище: /root/.cardinal/
 
 images/        OCI rootfs для каждого тега (только чтение)
 containers/    JSON-файлы состояния
@@ -601,20 +601,20 @@ backups/       Архивы автоматических бэкапов
 
 **Overlay:** Каждый контейнер получает слой поверх read-only образа.
 Изменения (установленные пакеты, файлы, правки) живут в overlay.
-Они сохраняются между перезапусками (`dck stop` + `dck start`), но **удаляются**
-при удалении контейнера (`dck rm`).
+Они сохраняются между перезапусками (`cardinal stop` + `cardinal start`), но **удаляются**
+при удалении контейнера (`cardinal rm`).
 
-Чтобы сохранить изменения навсегда — используйте `dck commit`.
+Чтобы сохранить изменения навсегда — используйте `cardinal commit`.
 
-### Просмотр файлов — `dck fs`
+### Просмотр файлов — `cardinal fs`
 
 Просмотр файлов контейнера без запуска shell. Работает на **запущенных** и **остановленных** контейнерах — overlay остаётся смонтированным после `stop`.
 
 ```bash
-dck fs ls <контейнер> [путь]              # Список файлов
-dck fs cat <контейнер> <путь>             # Содержимое файла
-dck fs tree <контейнер> [путь]            # Дерево директорий
-dck fs find [контейнер] [путь] [флаги]    # Поиск файлов
+cardinal fs ls <контейнер> [путь]              # Список файлов
+cardinal fs cat <контейнер> <путь>             # Содержимое файла
+cardinal fs tree <контейнер> [путь]            # Дерево директорий
+cardinal fs find [контейнер] [путь] [флаги]    # Поиск файлов
   --name <шаблон>     Фильтр по имени (подстрока, напр. "index")
   --grep <текст>      Поиск внутри файлов
   --type f|d          Только файлы или папки
@@ -623,21 +623,21 @@ dck fs find [контейнер] [путь] [флаги]    # Поиск фай�
 
 Примеры:
 ```bash
-dck fs ls web /etc/nginx
-dck fs cat web /etc/nginx/conf.d/default.conf
-dck fs tree mc-server /data --max-depth 2
-dck fs find web --name "*.conf" --grep "server_name"
-dck fs find --name "index"                              # искать во всех контейнерах
+cardinal fs ls web /etc/nginx
+cardinal fs cat web /etc/nginx/conf.d/default.conf
+cardinal fs tree mc-server /data --max-depth 2
+cardinal fs find web --name "*.conf" --grep "server_name"
+cardinal fs find --name "index"                              # искать во всех контейнерах
 ```
 
 ### Копирование файлов
 
 ```bash
 # Из контейнера на хост
-dck cp web:/etc/nginx/nginx.conf ./nginx.conf
+cardinal cp web:/etc/nginx/nginx.conf ./nginx.conf
 
 # С хоста в контейнер
-dck cp ./app.py web:/app/
+cardinal cp ./app.py web:/app/
 ```
 
 ---
@@ -647,9 +647,9 @@ dck cp ./app.py web:/app/
 ### Память
 
 ```bash
-dck run -d --memory 512m nginx    # 512 мегабайт
-dck run -d --memory 1g nginx      # 1 гигабайт
-dck run -d --memory 2g nginx      # 2 гигабайта
+cardinal run -d --memory 512m nginx    # 512 мегабайт
+cardinal run -d --memory 1g nginx      # 1 гигабайт
+cardinal run -d --memory 2g nginx      # 2 гигабайта
 ```
 
 Через cgroups v2 memory controller. При превышении — OOM kill.
@@ -657,8 +657,8 @@ dck run -d --memory 2g nginx      # 2 гигабайта
 ### CPU
 
 ```bash
-dck run -d --cpus 1.5 nginx       # 1.5 ядра
-dck run -d --cpus 2 nginx         # 2 ядра
+cardinal run -d --cpus 1.5 nginx       # 1.5 ядра
+cardinal run -d --cpus 2 nginx         # 2 ядра
 ```
 
 Через CFS quota в cgroups v2.
@@ -666,8 +666,8 @@ dck run -d --cpus 2 nginx         # 2 ядра
 ### Диск
 
 ```bash
-dck run -d --disk 1G nginx        # 1 GB
-dck run -d --disk 10G nginx       # 10 GB
+cardinal run -d --disk 1G nginx        # 1 GB
+cardinal run -d --disk 10G nginx       # 10 GB
 ```
 
 Создаёт sparse ext4 образ, который монтируется как overlay. Требует `mkfs.ext4`.
@@ -681,30 +681,30 @@ dck run -d --disk 10G nginx       # 10 GB
 Запуск от непривилегированного пользователя:
 
 ```bash
-dck run -d --user 1000 nginx
-dck run -d --user 1000:1000 nginx   # UID:GID
+cardinal run -d --user 1000 nginx
+cardinal run -d --user 1000:1000 nginx   # UID:GID
 ```
 
 ### Capabilities
 
-По умолчанию dck сохраняет безопасный Docker-совместимый набор capabilities, необходимый обычным образам (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `FSETID`, `KILL`, `SETGID`, `SETUID`, `SETPCAP`, `NET_BIND_SERVICE`, `NET_RAW`, `SYS_CHROOT`, `MKNOD`, `AUDIT_WRITE` и `SETFCAP`). Опасные capabilities, такие как `SYS_ADMIN` и `SYS_MODULE`, по-прежнему отключены. Поэтому стандартные образы вроде `nginx:alpine` могут нормально подготовить файловую систему.
+По умолчанию cardinal сохраняет безопасный Docker-совместимый набор capabilities, необходимый обычным образам (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `FSETID`, `KILL`, `SETGID`, `SETUID`, `SETPCAP`, `NET_BIND_SERVICE`, `NET_RAW`, `SYS_CHROOT`, `MKNOD`, `AUDIT_WRITE` и `SETFCAP`). Опасные capabilities, такие как `SYS_ADMIN` и `SYS_MODULE`, по-прежнему отключены. Поэтому стандартные образы вроде `nginx:alpine` могут нормально подготовить файловую систему.
 
 ```bash
 # Добавить capability
-dck run -d --cap-add NET_ADMIN nginx
-dck run -d --cap-add NET_ADMIN --cap-add SYS_PTRACE nginx
+cardinal run -d --cap-add NET_ADMIN nginx
+cardinal run -d --cap-add NET_ADMIN --cap-add SYS_PTRACE nginx
 
 # Отключить все capabilities (максимальное ограничение)
-dck run -d --cap-drop ALL nginx
+cardinal run -d --cap-drop ALL nginx
 
 # Вернуть конкретные после --cap-drop ALL
-dck run -d --cap-drop ALL --cap-add NET_BIND_SERVICE nginx
+cardinal run -d --cap-drop ALL --cap-add NET_BIND_SERVICE nginx
 ```
 
 ### Read-only rootfs
 
 ```bash
-dck run -d --readonly nginx
+cardinal run -d --readonly nginx
 ```
 
 Корневая ФС только для чтения. Запись в тома по-прежнему работает.
@@ -712,7 +712,7 @@ dck run -d --readonly nginx
 ### Запрет привилегий
 
 ```bash
-dck run -d --no-new-privs nginx
+cardinal run -d --no-new-privs nginx
 ```
 
 Запрещает получение новых привилегий (setuid, setgid, capability) всем процессам в контейнере.
@@ -720,31 +720,31 @@ dck run -d --no-new-privs nginx
 ### Sysctls
 
 ```bash
-dck run -d --sysctl net.ipv4.ip_forward=1 nginx
+cardinal run -d --sysctl net.ipv4.ip_forward=1 nginx
 ```
 
 ### Профиль Seccomp
 
-dck применяет профиль seccomp по умолчанию, который блокирует 30+ опасных syscalls, включая `mount`, `ptrace`, `reboot`, `kexec_load`, `bpf` и `init_module`.
+cardinal применяет профиль seccomp по умолчанию, который блокирует 30+ опасных syscalls, включая `mount`, `ptrace`, `reboot`, `kexec_load`, `bpf` и `init_module`.
 
 ```bash
 # Использовать профиль seccomp по умолчанию (автоматически)
-dck run -d nginx
+cardinal run -d nginx
 
 # Использовать кастомный профиль seccomp
-dck run -d --seccomp-profile /путь/к/профилю.json nginx
+cardinal run -d --seccomp-profile /путь/к/профилю.json nginx
 ```
 
 ### Профиль AppArmor
 
-dck применяет профиль AppArmor по умолчанию (`dck-container`), который ограничивает доступ к чувствительным путям хоста и ограничивает возможности контейнера.
+cardinal применяет профиль AppArmor по умолчанию (`cardinal-container`), который ограничивает доступ к чувствительным путям хоста и ограничивает возможности контейнера.
 
 ```bash
 # Использовать профиль AppArmor по умолчанию (автоматически)
-dck run -d nginx
+cardinal run -d nginx
 
 # Использовать кастомный профиль AppArmor
-dck run -d --apparmor-profile мой-профиль nginx
+cardinal run -d --apparmor-profile мой-профиль nginx
 ```
 
 ### Сетевая изоляция
@@ -752,10 +752,10 @@ dck run -d --apparmor-profile мой-профиль nginx
 Изолировать контейнер от всех других контейнеров для предотвращения lateral movement:
 
 ```bash
-dck run -d --isolated nginx
+cardinal run -d --isolated nginx
 
 # Разрешить конкретную коммуникацию
-dck run -d --isolated --network appnet nginx
+cardinal run -d --isolated --network appnet nginx
 ```
 
 ### Аудит-логирование
@@ -763,10 +763,10 @@ dck run -d --isolated --network appnet nginx
 Включить аудит-логирование для записи всех событий жизненного цикла контейнера:
 
 ```bash
-dck run -d --audit-log nginx
+cardinal run -d --audit-log nginx
 
-# События логируются в ~/.dck/audit/audit-YYYY-MM-DD.log
-cat ~/.dck/audit/audit-$(date +%Y-%m-%d).log
+# События логируются в ~/.cardinal/audit/audit-YYYY-MM-DD.log
+cat ~/.cardinal/audit/audit-$(date +%Y-%m-%d).log
 ```
 
 ### Шифрование бэкапов
@@ -775,16 +775,16 @@ cat ~/.dck/audit/audit-$(date +%Y-%m-%d).log
 
 ```bash
 # Сгенерировать ключ шифрования
-dck backup generate-key
+cardinal backup generate-key
 
 # Установить ключ через переменную окружения
-export DCK_BACKUP_KEY="ваш-hex-ключ"
+export CARDINAL_BACKUP_KEY="ваш-hex-ключ"
 
 # Создать зашифрованный бэкап
-dck backup create nginx -e
+cardinal backup create nginx -e
 
 # Создать зашифрованный бэкап с кастомным путём
-dck backup create nginx -o /data/backups/nginx.enc -e
+cardinal backup create nginx -o /data/backups/nginx.enc -e
 ```
 
 ---
@@ -793,13 +793,13 @@ dck backup create nginx -o /data/backups/nginx.enc -e
 
 ```bash
 # Одна переменная
-dck run -e MY_VAR=value nginx
+cardinal run -e MY_VAR=value nginx
 
 # Несколько
-dck run -e DB_HOST=localhost -e DB_PORT=5432 nginx
+cardinal run -e DB_HOST=localhost -e DB_PORT=5432 nginx
 
 # Из файла
-dck run --env-file .env nginx
+cardinal run --env-file .env nginx
 ```
 
 **Формат .env файла:**
@@ -809,27 +809,27 @@ DB_PORT=5432
 DB_USER=admin
 ```
 
-### Авто-внедрённые DCK_* переменные
+### Авто-внедрённые CARDINAL_* переменные
 
-При запуске контейнера dck внедряет:
+При запуске контейнера cardinal внедряет:
 
 | Переменная | Описание |
 |---|---|
-| `DCK_CONTAINER_ID` | ID контейнера |
-| `DCK_CONTAINER_NAME` | Имя контейнера |
-| `DCK_IMAGE_NAME` | Имя образа (например `library/alpine`) |
-| `DCK_IMAGE_TAG` | Тег образа (например `latest`) |
-| `DCK_HOSTNAME` | Hostname контейнера |
-| `DCK_MEMORY` | Лимит памяти в байтах |
-| `DCK_CPU` | Лимит CPU в ядрах |
-| `DCK_IP` | IP адрес контейнера |
-| `DCK_RESTART` | Политика рестарта |
-| `DCK_PORT_TCP_80` | Проброс портов |
+| `CARDINAL_CONTAINER_ID` | ID контейнера |
+| `CARDINAL_CONTAINER_NAME` | Имя контейнера |
+| `CARDINAL_IMAGE_NAME` | Имя образа (например `library/alpine`) |
+| `CARDINAL_IMAGE_TAG` | Тег образа (например `latest`) |
+| `CARDINAL_HOSTNAME` | Hostname контейнера |
+| `CARDINAL_MEMORY` | Лимит памяти в байтах |
+| `CARDINAL_CPU` | Лимит CPU в ядрах |
+| `CARDINAL_IP` | IP адрес контейнера |
+| `CARDINAL_RESTART` | Политика рестарта |
+| `CARDINAL_PORT_TCP_80` | Проброс портов |
 
-Внутри контейнера доступны скрипты в `/dck/`:
-- `/dck/info` — информация о контейнере
-- `/dck/env` — переменные DCK_*
-- `/dck/help` — справка
+Внутри контейнера доступны скрипты в `/cardinal/`:
+- `/cardinal/info` — информация о контейнере
+- `/cardinal/env` — переменные CARDINAL_*
+- `/cardinal/help` — справка
 
 ---
 
@@ -838,7 +838,7 @@ DB_USER=admin
 Запускает команду внутри контейнера через заданный интервал. После `retries` неудач контейнер убивается и перезапускается.
 
 ```bash
-dck run -d \
+cardinal run -d \
   --healthcheck-cmd "curl -f http://localhost || exit 1" \
   --healthcheck-interval 30 \
   --healthcheck-retries 3 \
@@ -846,7 +846,7 @@ dck run -d \
   nginx
 ```
 
-Healthchecks можно также задавать в compose-файлах и dck.toml.
+Healthchecks можно также задавать в compose-файлах и cardinal.toml.
 
 ---
 
@@ -856,10 +856,10 @@ Healthchecks можно также задавать в compose-файлах и d
 
 ```bash
 # Скрипт строкой
-dck run -d --startup "#!/bin/sh\necho 'Hello from startup'" alpine sleep infinity
+cardinal run -d --startup "#!/bin/sh\necho 'Hello from startup'" alpine sleep infinity
 
 # Из файла
-dck run -d --startup @./myscript.sh ubuntu
+cardinal run -d --startup @./myscript.sh ubuntu
 ```
 
 Скрипт записывается в `/startup.sh` и выполняется через `/bin/sh`.
@@ -867,9 +867,9 @@ dck run -d --startup @./myscript.sh ubuntu
 
 ---
 
-## dck.toml / Compose
+## cardinal.toml / Compose
 
-### Формат dck.toml
+### Формат cardinal.toml
 
 Определите контейнеры в TOML-файле, запускайте всё одной командой.
 
@@ -890,18 +890,18 @@ restart = "always"
 
 ### compose.yaml / docker-compose.yaml
 
-dck поддерживает стандартный формат Docker Compose YAML. Полная документация — в [compose.md](compose.md).
+cardinal поддерживает стандартный формат Docker Compose YAML. Полная документация — в [compose.md](compose.md).
 
 ---
 
-## dck up / dck down
+## cardinal up / cardinal down
 
-### `dck up [имя] [-f <файл>]`
+### `cardinal up [имя] [-f <файл>]`
 
 Создать и запустить контейнеры из compose-файла.
 
 Автоопределение (по порядку):
-1. `dck.toml`
+1. `cardinal.toml`
 2. `compose.yaml`
 3. `compose.yml`
 4. `docker-compose.yaml`
@@ -922,36 +922,36 @@ depends_on = { db = "service_healthy" }
 ```
 
 ```bash
-dck up                    # автоопределение
-dck up myapp              # только сервис "myapp"
-dck up -f compose.prod.yaml
-dck up                    # запустить конфигурацию
-dck up -f compose.prod.yaml
-dck up myapp              # только сервис "myapp"
-dck up --generate         # создать dck.toml из существующих контейнеров
+cardinal up                    # автоопределение
+cardinal up myapp              # только сервис "myapp"
+cardinal up -f compose.prod.yaml
+cardinal up                    # запустить конфигурацию
+cardinal up -f compose.prod.yaml
+cardinal up myapp              # только сервис "myapp"
+cardinal up --generate         # создать cardinal.toml из существующих контейнеров
 ```
 
-### `dck down [имя] [-f <файл>]`
+### `cardinal down [имя] [-f <файл>]`
 
 Остановить и удалить контейнеры из compose-файла.
 
 ```bash
-dck down                  # stop + remove
-dck down myapp            # только "myapp"
-dck down -f dck.toml
-dck down -a               # удалить ВСЕ контейнеры
+cardinal down                  # stop + remove
+cardinal down myapp            # только "myapp"
+cardinal down -f cardinal.toml
+cardinal down -a               # удалить ВСЕ контейнеры
 # Для удаления всех контейнеров без чтения конфигурации:
-dck down -a
+cardinal down -a
 ```
 
 ---
 
-## dck serve
+## cardinal serve
 
 Запустить Docker-совместимый REST API сервер.
 
 ```bash
-dck serve -p 2375  # по умолчанию только localhost; для внешнего bind нужен --token
+cardinal serve -p 2375  # по умолчанию только localhost; для внешнего bind нужен --token
 ```
 
 Совместим с Docker-клиентами, Portainer, VS Code Dev Containers и CI.
@@ -962,22 +962,22 @@ dck serve -p 2375  # по умолчанию только localhost; для вн
 
 Detached-контейнеры с `--restart always` или `--restart unless-stopped` запускаются автоматически после перезагрузки. Persistent supervisor не подхватывает `on-failure` после завершения короткого detached-процесса CLI.
 
-dck сам устанавливает systemd-сервис когда:
-- `dck run --restart always <образ>`
-- `dck set <контейнер> --restart always`
-- `dck up` (если в конфиге есть restart: "always")
+cardinal сам устанавливает systemd-сервис когда:
+- `cardinal run --restart always <образ>`
+- `cardinal set <контейнер> --restart always`
+- `cardinal up` (если в конфиге есть restart: "always")
 
 Также можно управлять вручную:
 
 ```bash
-dck bootstrap --install      # установить systemd-сервис
-dck bootstrap --remove       # удалить systemd-сервис
-dck bootstrap                # запустить все restart=always контейнеры сейчас
+cardinal bootstrap --install      # установить systemd-сервис
+cardinal bootstrap --remove       # удалить systemd-сервис
+cardinal bootstrap                # запустить все restart=always контейнеры сейчас
 ```
 
 Схема:
 ```
-Загрузка → systemd → dck-bootstrap.service → dck supervisor
+Загрузка → systemd → cardinal-bootstrap.service → cardinal supervisor
   └─ Для каждого detached-контейнера с restart=always или unless-stopped:
       1. Настройка overlayfs
       2. Запуск unshare с неймспейсами
@@ -988,40 +988,40 @@ dck bootstrap                # запустить все restart=always конт
 
 ## Кластеризация
 
-dck поддерживает multi-node кластеризацию с управлением сервисами, DNS-обнаружением
+cardinal поддерживает multi-node кластеризацию с управлением сервисами, DNS-обнаружением
 и rolling updates. Полная документация — [cluster.md](cluster.md).
 
 ```bash
 # Инициализировать кластер
-dck cluster init --name prod --bind 0.0.0.0 --port 2375 --token '<strong-random-token>'
+cardinal cluster init --name prod --bind 0.0.0.0 --port 2375 --token '<strong-random-token>'
 
 # Присоединиться
-dck cluster join 10.0.0.1:2375
+cardinal cluster join 10.0.0.1:2375
 
 # Показать адрес для подключения других нод
-dck cluster join-token
+cardinal cluster join-token
 
 # Общая информация о кластере (имя, ноды, сервисы)
-dck cluster info
+cardinal cluster info
 
 # Список нод (с CPU, памятью, лейблами)
-dck cluster node ls
+cardinal cluster node ls
 
 # Детальная информация о ноде
-dck cluster node inspect <id>
+cardinal cluster node inspect <id>
 
 # Список нод (кратко)
-dck cluster ls
+cardinal cluster ls
 
 # Запустить API-сервер (принимает запросы на реплики от других нод)
-dck cluster serve -p 2375
+cardinal cluster serve -p 2375
 
 # Или запустить API-сервер автоматически при init/join
-dck cluster init --name prod --serve
-dck cluster join 10.0.0.1:7946 --serve
+cardinal cluster init --name prod --serve
+cardinal cluster join 10.0.0.1:7946 --serve
 
 # Покинуть кластер
-dck cluster leave
+cardinal cluster leave
 ```
 
 ---
@@ -1032,32 +1032,32 @@ dck cluster leave
 Полная документация — [cluster.md](cluster.md).
 
 ```bash
-dck service create --name web --replicas 3 --port 80:80 nginx:alpine
-dck service ls
-dck service scale web 5
-dck service update web --image nginx:1.25
-dck service rm web
+cardinal service create --name web --replicas 3 --port 80:80 nginx:alpine
+cardinal service ls
+cardinal service scale web 5
+cardinal service update web --image nginx:1.25
+cardinal service rm web
 ```
 
 ---
 
 ## FaaS / Serverless
 
-dck может запускать образы как serverless-функции с авто-масштабированием.
+cardinal может запускать образы как serverless-функции с авто-масштабированием.
 Полная документация — [faas.md](faas.md).
 
 ```bash
 # Развернуть функцию
-dck fn deploy --name hello --port 8080 --timeout 30 --idle 300 ghcr.io/myorg/hello-func
+cardinal fn deploy --name hello --port 8080 --timeout 30 --idle 300 ghcr.io/myorg/hello-func
 
 # Вызвать
-dck fn call hello --data '{"name": "dck"}'
+cardinal fn call hello --data '{"name": "cardinal"}'
 
 # Список
-dck fn ls
+cardinal fn ls
 
 # Удалить
-dck fn rm hello
+cardinal fn rm hello
 ```
 
 ---
@@ -1068,23 +1068,23 @@ dck fn rm hello
 
 ```bash
 # Список доступных
-dck blueprint list
+cardinal blueprint list
 
 # Информация о блюпринте с примерами
-dck blueprint info mysql-8
-dck blueprint info minecraft-server
+cardinal blueprint info mysql-8
+cardinal blueprint info minecraft-server
 
 # Установить
-dck blueprint install nginx-proxy
+cardinal blueprint install nginx-proxy
 
 # Добавить свой репозиторий
-dck blueprint repo add https://github.com/user/my-blueprints
+cardinal blueprint repo add https://github.com/user/my-blueprints
 
 # Список репозиториев
-dck blueprint repo list
+cardinal blueprint repo list
 
 # Удалить репозиторий
-dck blueprint repo remove my-blueprints
+cardinal blueprint repo remove my-blueprints
 ```
 
 ---
@@ -1094,8 +1094,8 @@ dck blueprint repo remove my-blueprints
 Поток событий жизненного цикла контейнеров в JSON.
 
 ```bash
-dck events                          # в реальном времени
-dck events --since "2026-07-07 12:00:00"  # события с указанного времени
+cardinal events                          # в реальном времени
+cardinal events --since "2026-07-07 12:00:00"  # события с указанного времени
 ```
 
 События: `start`, `stop`, `kill`, `oom`, `healthcheck_failed` и другие.
@@ -1104,29 +1104,29 @@ dck events --since "2026-07-07 12:00:00"  # события с указанног
 
 ## Системные команды
 
-### `dck system prune`
+### `cardinal system prune`
 
 Удалить неиспользуемые контейнеры и образы.
 
 ```bash
-dck system prune
+cardinal system prune
 ```
 
-### `dck update [--check]`
+### `cardinal update [--check]`
 
-Проверить обновления и обновить dck.
+Проверить обновления и обновить cardinal.
 
 ```bash
-dck update              # обновить
-dck update --check      # только проверить
+cardinal update              # обновить
+cardinal update --check      # только проверить
 ```
 
-### `dck version`
+### `cardinal version`
 
 Версия.
 
 ```bash
-dck version
+cardinal version
 ```
 
 ---
@@ -1134,10 +1134,10 @@ dck version
 ## Архитектура
 
 ```
-dck run -d
-  ├─ unshare --fork --pid --mount --net --uts --ipc dck init <id>
-  │   └─ dck init → pivot_root в overlay → настройка /proc/lo/eth0 → exec CMD
-  └─ dck console-serve <id>
+cardinal run -d
+  ├─ unshare --fork --pid --mount --net --uts --ipc cardinal init <id>
+  │   └─ cardinal init → pivot_root в overlay → настройка /proc/lo/eth0 → exec CMD
+  └─ cardinal console-serve <id>
       ├─ читает stdout pipe
       ├─ пишет в лог-файл
       ├─ слушает Unix сокет
@@ -1148,36 +1148,36 @@ dck run -d
 
 | Понятие | Описание |
 |---|---|
-| **Образ (Image)** | Read-only rootfs (`python:3.11-slim`, `nginx:alpine`). Скачивается один раз через `dck pull`. |
+| **Образ (Image)** | Read-only rootfs (`python:3.11-slim`, `nginx:alpine`). Скачивается один раз через `cardinal pull`. |
 | **Контейнер** | Образ + слой записи (overlay). Изменения живут в overlay, не в образе. |
 | **Overlay** | Дифф-слой поверх образа. Сохраняется между перезапусками — пакеты остаются установленными. |
 | **Том (Volume)** | Bind mount с хоста в контейнер. `-v /data/mybot:/bot` монтирует `/data/mybot` как `/bot`. |
-| **Сеть** | Каждый контейнер получает IP `10.0.2.X` на bridge `dck0`. Хост: `10.0.2.1`. |
+| **Сеть** | Каждый контейнер получает IP `10.0.2.X` на bridge `cardinal0`. Хост: `10.0.2.1`. |
 
 ### Как это работает
 
-1. `dck run` скачивает образ (если нет в кеше)
+1. `cardinal run` скачивает образ (если нет в кеше)
 2. Создаёт overlay ФС (lower=rootfs образа, upper=слой контейнера, merged=корень контейнера)
 3. Запускает `unshare` с неймспейсами PID, mount, net, UTS, IPC
-4. Внутри неймспейса `dck init` делает `pivot_root` в overlay, монтирует /proc, настраивает сеть
+4. Внутри неймспейса `cardinal init` делает `pivot_root` в overlay, монтирует /proc, настраивает сеть
 5. Запускает команду контейнера (CMD или `--startup` скрипт)
-6. Если в фоне — `dck console-serve` перехватывает stdout и раздаёт через Unix сокет для `dck attach`
+6. Если в фоне — `cardinal console-serve` перехватывает stdout и раздаёт через Unix сокет для `cardinal attach`
 
 ---
 
 ## Решение проблем
 
-### dck rm -f <контейнер> зависает
+### cardinal rm -f <контейнер> зависает
 
 ```bash
 # Принудительно убить процесс
-kill -9 $(grep -o '"pid":[0-9]*' /root/.dck/containers/*.json | grep -o '[0-9]*')
+kill -9 $(grep -o '"pid":[0-9]*' /root/.cardinal/containers/*.json | grep -o '[0-9]*')
 
 # Затем удалить
-dck rm -f <контейнер>
+cardinal rm -f <контейнер>
 
 # Ручная очистка если файлы состояния битые
-rm -f /root/.dck/containers/<id>.json
+rm -f /root/.cardinal/containers/<id>.json
 ```
 
 ### Overlay не монтируется
@@ -1191,20 +1191,20 @@ modprobe overlay   # если не загружен
 
 ```bash
 # Проверить bridge
-ip link show dck0
+ip link show cardinal0
 
 # Включить IP forwarding
 sysctl net.ipv4.ip_forward
 
 # Переустановить
-dck system prune && dck pull alpine && dck run --rm alpine ping 8.8.8.8
+cardinal system prune && cardinal pull alpine && cardinal run --rm alpine ping 8.8.8.8
 ```
 
 ### Проброс портов не работает
 
 ```bash
 # Проверить iptables
-iptables -t nat -L -n | grep dck
+iptables -t nat -L -n | grep cardinal
 
 # UFW может блокировать — проверить
 ufw status
@@ -1212,17 +1212,17 @@ ufw status
 
 ### Rootless режим
 
-dck поддерживает rootless-запуск на системах с `newuidmap`/`newgidmap`.
+cardinal поддерживает rootless-запуск на системах с `newuidmap`/`newgidmap`.
 Rootless контейнеры используют userspace networking.
 
 ### Сравнение с Docker
 
-| Возможность | dck | Docker |
+| Возможность | cardinal | Docker |
 |---|---|---|
 | Демон | Нет демона | dockerd обязателен |
 | Размер | ~5 MB | ~100+ MB |
 | Неймспейсы | PID, Mount, Net, UTS, IPC | Все |
-| Bridge сеть | dck0 (10.0.2.0/24) | docker0 |
+| Bridge сеть | cardinal0 (10.0.2.0/24) | docker0 |
 | Проброс портов | iptables DNAT | iptables DNAT |
 | Автозапуск | постоянный systemd supervisor | systemd dockerd |
 | Формат образов | OCI/Docker V2 | OCI/Docker V2 |

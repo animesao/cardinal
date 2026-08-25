@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dck/internal/image"
-	"dck/internal/log"
-	"dck/internal/state"
+	"cardinal/internal/image"
+	"cardinal/internal/log"
+	"cardinal/internal/state"
 )
 
 func SystemPrune() error {

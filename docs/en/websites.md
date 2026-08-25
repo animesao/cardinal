@@ -1,16 +1,16 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Deploying Websites with dck
+# Deploying Websites with cardinal
 
 Complete examples of deploying websites with various stacks — static sites,
 Python, Node.js, PHP, Java, and full-stack apps with databases.
 
-All examples assume you have dck installed on a Linux server with a public IP.
+All examples assume you have cardinal installed on a Linux server with a public IP.
 
-> **Resource limits:** Add `--memory 512m --cpus 0.5 --disk 2G` to any `dck run` command
+> **Resource limits:** Add `--memory 512m --cpus 0.5 --disk 2G` to any `cardinal run` command
 > to limit RAM, CPU, and disk usage. Prevents one container from eating all VPS resources.
 > Adjust values per app: bots → 256m/0.25, sites → 512m/0.5, databases → 1g/1.
 
@@ -49,10 +49,10 @@ The simplest — serve HTML/CSS/JS files with nginx.
 ```bash
 # Create site directory
 mkdir -p /data/www/mysite
-echo "<h1>Hello from dck!</h1>" > /data/www/mysite/index.html
+echo "<h1>Hello from cardinal!</h1>" > /data/www/mysite/index.html
 
 # Run nginx with mounted files (limit: 256MB RAM, 0.5 CPU, 1GB disk)
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n mysite -p 80:80 \
   -v /data/www/mysite:/usr/share/nginx/html \
   --memory 256m --cpus 0.5 --disk 1G \
@@ -79,7 +79,7 @@ server {
 }
 EOF
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n mysite -p 80:80 \
   -v /data/www/mysite:/usr/share/nginx/html \
   -v /data/nginx-conf:/etc/nginx/conf.d \
@@ -120,7 +120,7 @@ server {
 EOF
 
 # Run nginx
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n mysite -p 80:80 -p 443:443 \
   -v /data/www/mysite:/usr/share/nginx/html \
   -v /data/nginx-ssl:/etc/nginx/conf.d \
@@ -156,7 +156,7 @@ server {
 EOF
 
 # Run
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n mysite -p 443:443 \
   -v /data/www/mysite:/usr/share/nginx/html \
   -v /data/nginx-conf:/etc/nginx/conf.d \
@@ -167,25 +167,25 @@ dck run -d --restart always \
 
 ## File Operations
 
-Copy files between your host machine and containers using `dck cp`:
+Copy files between your host machine and containers using `cardinal cp`:
 
 ```bash
 # Copy from host into container
-dck cp ./index.html web:/usr/share/nginx/html/
-dck cp ./app.py flask-app:/app/
-dck cp ./config.yml mycontainer:/etc/app/config.yml
-dck cp ./mybot.py discord-bot:/bot/
+cardinal cp ./index.html web:/usr/share/nginx/html/
+cardinal cp ./app.py flask-app:/app/
+cardinal cp ./config.yml mycontainer:/etc/app/config.yml
+cardinal cp ./mybot.py discord-bot:/bot/
 
 # Copy from container to host
-dck cp web:/etc/nginx/nginx.conf ./nginx.conf
-dck cp flask-app:/app/app.py ./backup-app.py
+cardinal cp web:/etc/nginx/nginx.conf ./nginx.conf
+cardinal cp flask-app:/app/app.py ./backup-app.py
 
 # Copy entire directories
-dck cp ./static/ web:/usr/share/nginx/html/static/
-dck cp django-app:/app/media/ ./media-backup/
+cardinal cp ./static/ web:/usr/share/nginx/html/static/
+cardinal cp django-app:/app/media/ ./media-backup/
 
 # Copy with container ID instead of name
-dck cp ./file.txt abc123def456:/tmp/
+cardinal cp ./file.txt abc123def456:/tmp/
 ```
 
 This is useful for:
@@ -197,7 +197,7 @@ This is useful for:
 You can also use bind mounts (`-v`) for persistent file sharing — changes on the host are immediately visible inside the container:
 
 ```bash
-dck run -d -n web -p 80:80 \
+cardinal run -d -n web -p 80:80 \
   -v /data/www/mysite:/usr/share/nginx/html \
   nginx:alpine
 
@@ -222,11 +222,11 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return '<h1>Hello from Flask on dck!</h1>'
+    return '<h1>Hello from Flask on cardinal!</h1>'
 
 @app.route('/api')
 def api():
-    return {'message': 'Hello from dck!'}
+    return {'message': 'Hello from cardinal!'}
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
@@ -238,7 +238,7 @@ gunicorn==22.0.0
 EOF
 
 # Run with gunicorn via startup script
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n flask-app -p 5000:5000 \
   -v /data/flask-app:/app \
   --workdir /app \
@@ -272,7 +272,7 @@ server {
 EOF
 
 # Run flask app (no port needed - access via nginx)
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n flask-backend \
   -v /data/flask-app:/app \
   --workdir /app \
@@ -280,13 +280,13 @@ dck run -d --restart always \
   python:3.11-slim
 
 # Run nginx pointing to flask container by IP
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n flask-web -p 80:80 \
   -v /data/flask-nginx:/etc/nginx/conf.d \
   nginx:alpine
 
 # Find flask IP
-dck inspect flask-backend | grep IP
+cardinal inspect flask-backend | grep IP
 # Then update nginx config with flask IP (10.0.2.x)
 ```
 
@@ -304,7 +304,7 @@ app = FastAPI()
 
 @app.get("/")
 async def root():
-    return {"message": "Hello from FastAPI on dck!"}
+    return {"message": "Hello from FastAPI on cardinal!"}
 
 @app.get("/items/{item_id}")
 async def read_item(item_id: int):
@@ -316,7 +316,7 @@ fastapi==0.109.0
 uvicorn==0.27.0
 EOF
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n fastapi-app -p 8000:8000 \
   -v /data/fastapi-app:/app \
   --workdir /app \
@@ -354,13 +354,13 @@ gunicorn myproject.wsgi:application -w 4 -b 0.0.0.0:8000
 SCRIPT
 
 # Create Django project (or copy existing)
-dck run --rm \
+cardinal run --rm \
   -v /data/django-app:/app \
   --workdir /app \
   python:3.11-slim sh -c "pip install django && django-admin startproject myproject ."
 
 # Run with DB
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n django-db -p 5432:5432 \
   -v django-pgdata:/var/lib/postgresql/data \
   -e POSTGRES_DB=django \
@@ -369,7 +369,7 @@ dck run -d --restart always \
   postgres:16
 
 # Wait for DB, then run Django
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n django-app -p 8000:8000 \
   -v /data/django-app:/app \
   --workdir /app \
@@ -395,11 +395,11 @@ const app = express();
 const port = 3000;
 
 app.get('/', (req, res) => {
-  res.send('<h1>Hello from Express on dck!</h1>');
+  res.send('<h1>Hello from Express on cardinal!</h1>');
 });
 
 app.get('/api', (req, res) => {
-  res.json({ message: 'Hello from dck!' });
+  res.json({ message: 'Hello from cardinal!' });
 });
 
 app.listen(port, () => {
@@ -415,7 +415,7 @@ cat > package.json << 'EOF'
 }
 EOF
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n express-app -p 3000:3000 \
   -v /data/express-app:/app \
   --workdir /app \
@@ -453,12 +453,12 @@ EOF
 mkdir -p pages
 cat > pages/index.js << 'EOF'
 export default function Home() {
-  return <h1>Hello from Next.js on dck!</h1>;
+  return <h1>Hello from Next.js on cardinal!</h1>;
 }
 EOF
 
 # Development mode (with hot reload)
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n next-dev -p 3000:3000 \
   -v /data/next-app:/app \
   --workdir /app \
@@ -466,12 +466,12 @@ dck run -d --restart always \
   node:20
 
 # Production build
-dck run --rm \
+cardinal run --rm \
   -v /data/next-app:/app \
   --workdir /app \
   node:20 sh -c "npm install && npm run build"
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n next-prod -p 3000:3000 \
   -v /data/next-app:/app \
   --workdir /app \
@@ -489,7 +489,7 @@ cd /data/php-app
 
 cat > index.php << 'EOF'
 <?php
-echo '<h1>Hello from PHP on dck!</h1>';
+echo '<h1>Hello from PHP on cardinal!</h1>';
 echo '<p>PHP version: ' . phpversion() . '</p>';
 EOF
 
@@ -510,19 +510,19 @@ server {
 EOF
 
 # Run PHP-FPM container
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n php-fpm \
   -v /data/php-app:/var/www/html \
   php:8.2-fpm
 
 # Run nginx with PHP-FPM (find PHP container IP)
-PHP_IP=$(dck inspect php-fpm | grep -o '"ip":"[^"]*"' | grep -o '[0-9.]*')
+PHP_IP=$(cardinal inspect php-fpm | grep -o '"ip":"[^"]*"' | grep -o '[0-9.]*')
 echo "PHP container IP: $PHP_IP"
 
 # Update nginx config with actual PHP IP
 sed -i "s/127.0.0.1:9000/$PHP_IP:9000/" /data/php-nginx/default.conf
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n php-web -p 80:80 \
   -v /data/php-app:/var/www/html \
   -v /data/php-nginx:/etc/nginx/conf.d \
@@ -554,8 +554,8 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 EOF
 
 # Build and run
-dck build -t spring-app:v1 .
-dck run -d --restart always \
+cardinal build -t spring-app:v1 .
+cardinal run -d --restart always \
   -n spring-app -p 8080:8080 \
   spring-app:v1
 
@@ -573,7 +573,7 @@ public class HttpServer {
         com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer.create(
             new InetSocketAddress(8080), 0);
         server.createContext("/", exchange -> {
-            String resp = "<h1>Hello from Java on dck!</h1>";
+            String resp = "<h1>Hello from Java on cardinal!</h1>";
             exchange.sendResponseHeaders(200, resp.length());
             exchange.getResponseBody().write(resp.getBytes());
             exchange.close();
@@ -586,7 +586,7 @@ public class HttpServer {
 }
 EOF
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n java-app -p 8080:8080 \
   -v /data/spring-app:/app \
   --workdir /app \
@@ -612,13 +612,13 @@ import (
 
 func main() {
     http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprintf(w, "<h1>Hello from Go on dck!</h1>")
+        fmt.Fprintf(w, "<h1>Hello from Go on cardinal!</h1>")
     })
     http.ListenAndServe(":8080", nil)
 }
 EOF
 
-# Multi-stage build with dck
+# Multi-stage build with cardinal
 cat > Dockerfile << 'EOF'
 FROM golang:1.22 AS build
 WORKDIR /app
@@ -631,8 +631,8 @@ EXPOSE 8080
 CMD ["/server"]
 EOF
 
-dck build -t go-app:v1 .
-dck run -d --restart always \
+cardinal build -t go-app:v1 .
+cardinal run -d --restart always \
   -n go-app -p 8080:8080 \
   go-app:v1
 
@@ -649,7 +649,7 @@ curl http://localhost:8080
 # 1. PostgreSQL
 mkdir -p /data/postgres-data
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n pg -p 5432:5432 \
   -v /data/postgres-data:/var/lib/postgresql/data \
   -e POSTGRES_DB=myapp \
@@ -677,7 +677,7 @@ def get_db():
 
 @app.route('/')
 def home():
-    return '<h1>Flask + PostgreSQL on dck!</h1>'
+    return '<h1>Flask + PostgreSQL on cardinal!</h1>'
 
 @app.route('/db')
 def db_test():
@@ -711,7 +711,7 @@ psycopg2-binary==2.9.9
 EOF
 
 # Wait for PostgreSQL to be ready, then run Flask
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n flask-app -p 5000:5000 \
   -v /data/flask-fullstack:/app \
   --workdir /app \
@@ -733,7 +733,7 @@ curl http://localhost:5000/db
 # 1. MySQL
 mkdir -p /data/mysql-data
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n mysql -p 3306:3306 \
   -v /data/mysql-data:/var/lib/mysql \
   -e MYSQL_ROOT_PASSWORD=rootpass \
@@ -759,7 +759,7 @@ const dbConfig = {
 };
 
 app.get('/', async (req, res) => {
-    res.send('<h1>Node.js + MySQL on dck!</h1>');
+    res.send('<h1>Node.js + MySQL on cardinal!</h1>');
 });
 
 app.get('/db', async (req, res) => {
@@ -781,7 +781,7 @@ express@^4.18.2
 mysql2@^3.6.0
 EOF
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n node-app -p 3000:3000 \
   -v /data/node-mysql:/app \
   --workdir /app \
@@ -797,7 +797,7 @@ dck run -d --restart always \
 
 ```bash
 # 1. PostgreSQL
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n pg -p 5432:5432 \
   -v pgdata:/var/lib/postgresql/data \
   -e POSTGRES_DB=myapp \
@@ -806,7 +806,7 @@ dck run -d --restart always \
   postgres:16
 
 # 2. Redis
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n redis -p 6379:6379 \
   redis:7
 
@@ -833,7 +833,7 @@ async def startup():
 
 @app.get('/')
 async def root():
-    return {'message': 'FastAPI + PostgreSQL + Redis on dck!'}
+    return {'message': 'FastAPI + PostgreSQL + Redis on cardinal!'}
 
 @app.get('/db')
 async def db_check():
@@ -854,7 +854,7 @@ asyncpg==0.29.0
 redis==5.0.0
 EOF
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n fastapi-app -p 8000:8000 \
   -v /data/fastapi-stack:/app \
   --workdir /app \
@@ -910,7 +910,7 @@ volumes:
 ```
 
 ```bash
-dck up
+cardinal up
 ```
 
 ### Python API + PostgreSQL + Nginx
@@ -962,21 +962,21 @@ volumes:
 ```
 
 ```bash
-dck up
+cardinal up
 ```
 
 ---
 
 ## Minecraft Server
 
-Run a Minecraft server inside a dck container.
+Run a Minecraft server inside a cardinal container.
 
 ### Quick start (itzg/minecraft-server)
 
 The easiest way — use the pre-built `itzg/minecraft-server` image:
 
 ```bash
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n mc -p 25565:25565 \
   -v mc_data:/data \
   -e EULA=TRUE \
@@ -985,7 +985,7 @@ dck run -d --restart always \
   -e MEMORY=2G \
   -e DIFFICULTY=normal \
   -e MAX_PLAYERS=20 \
-  -e MOTD="Welcome to dck Minecraft!" \
+  -e MOTD="Welcome to cardinal Minecraft!" \
   itzg/minecraft-server
 ```
 
@@ -1001,7 +1001,7 @@ cat > /data/mc/start.sh << 'EOF'
 set -e
 SERVER_DIR="/data"
 SERVER_JAR="server.jar"
-MAX_MEM="${DCK_MEMORY:-2G}"
+MAX_MEM="${CARDINAL_MEMORY:-2G}"
 echo "eula=true" > "$SERVER_DIR/eula.txt"
 if [ ! -f "$SERVER_DIR/$SERVER_JAR" ]; then
   curl -fsSL -o "$SERVER_DIR/$SERVER_JAR" \
@@ -1010,7 +1010,7 @@ fi
 exec java -Xms512M -Xmx$MAX_MEM -jar "$SERVER_DIR/$SERVER_JAR" nogui
 EOF
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n mc-paper -p 25565:25565 \
   -v /data/mc:/data --memory 4G \
   --startup @/data/mc/start.sh \
@@ -1024,12 +1024,12 @@ mkdir -p /data/mc-config
 cat > /data/mc-config/server.properties << 'EOF'
 max-players=50
 difficulty=hard
-motd=A dck Minecraft Server
+motd=A cardinal Minecraft Server
 pvp=true
 online-mode=true
 EOF
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n mc -p 25565:25565 \
   -v /data/mc-config:/data \
   -e EULA=TRUE -e TYPE=PAPER -e VERSION=1.20.4 \
@@ -1040,7 +1040,7 @@ dck run -d --restart always \
 ### Modded (Forge/Fabric)
 
 ```bash
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n mc-forge -p 25565:25565 \
   -v mc_forge_data:/data \
   -e EULA=TRUE -e TYPE=FORGE -e VERSION=1.20.1 \
@@ -1052,17 +1052,17 @@ dck run -d --restart always \
 
 ```bash
 # Copy world files from container to host
-dck cp mc:/data/world ./world-backup
+cardinal cp mc:/data/world ./world-backup
 
 # Or backup the entire volume
-tar -czf mc-backup.tar.gz /root/.dck/volumes/mc_data/
+tar -czf mc-backup.tar.gz /root/.cardinal/volumes/mc_data/
 ```
 
 ---
 
 ## Bots
 
-Run bots (Telegram, Discord, Slack, etc.) in dck containers with persistent storage.
+Run bots (Telegram, Discord, Slack, etc.) in cardinal containers with persistent storage.
 
 ### Telegram Bot
 
@@ -1078,7 +1078,7 @@ from telegram.ext import Application, CommandHandler
 TOKEN = os.environ["BOT_TOKEN"]
 
 async def start(update: Update, context):
-    await update.message.reply_text("Hello from dck Telegram bot!")
+    await update.message.reply_text("Hello from cardinal Telegram bot!")
 
 async def ping(update: Update, context):
     await update.message.reply_text("pong")
@@ -1105,7 +1105,7 @@ pip install --no-cache-dir --disable-pip-version-check -r /bot/requirements.txt
 exec python /bot/bot.py
 EOF
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n tg-bot \
   -v /data/tg-bot:/bot \
   --workdir /bot \
@@ -1156,7 +1156,7 @@ pip install --no-cache-dir --disable-pip-version-check -r /bot/requirements.txt
 exec python /bot/bot.py
 EOF
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n discord-bot \
   -v /data/discord-bot:/bot \
   --workdir /bot \
@@ -1170,7 +1170,7 @@ dck run -d --restart always \
 
 ```bash
 # 1. Start PostgreSQL (limit: 1GB RAM, 1 CPU, 10GB disk)
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n bot-db \
   -v bot_pgdata:/var/lib/postgresql/data \
   --memory 1g --cpus 1 --disk 10G \
@@ -1210,7 +1210,7 @@ discord.py==2.4.0
 asyncpg==0.29.0
 EOF
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n db-bot \
   -v /data/bot-db:/bot \
   --workdir /bot \
@@ -1224,16 +1224,16 @@ dck run -d --restart always \
 
 ```bash
 # Check bot logs
-dck logs -f tg-bot
+cardinal logs -f tg-bot
 
 # Check if bot is running
-dck ps | grep bot
+cardinal ps | grep bot
 
 # Restart bot if needed
-dck restart discord-bot
+cardinal restart discord-bot
 
 # Auto-restart on failure (already set with --restart always)
-dck run -d --restart always \
+cardinal run -d --restart always \
   --healthcheck-cmd "curl -f http://localhost || exit 1" \
   --healthcheck-interval 30 \
   --healthcheck-retries 3 \
@@ -1244,13 +1244,13 @@ dck run -d --restart always \
 
 ## Databases
 
-Run database servers inside dck containers with persistent storage.
+Run database servers inside cardinal containers with persistent storage.
 
 ### PostgreSQL
 
 ```bash
 # Quick start
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n pg -p 5432:5432 \
   -v pgdata:/var/lib/postgresql/data \
   -e POSTGRES_DB=myapp \
@@ -1262,20 +1262,20 @@ dck run -d --restart always \
 PGPASSWORD=secret psql -h 10.0.2.1 -U myapp -d myapp
 
 # Import SQL dump
-cat dump.sql | dck exec -i pg psql -U myapp -d myapp
+cat dump.sql | cardinal exec -i pg psql -U myapp -d myapp
 
 # Backup
-dck exec pg pg_dump -U myapp myapp > backup.sql
+cardinal exec pg pg_dump -U myapp myapp > backup.sql
 
 # Restore backup
-cat backup.sql | dck exec -i pg psql -U myapp -d myapp
+cat backup.sql | cardinal exec -i pg psql -U myapp -d myapp
 ```
 
 ### MySQL
 
 ```bash
 # Quick start
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n mysql -p 3306:3306 \
   -v mysqldata:/var/lib/mysql \
   -e MYSQL_ROOT_PASSWORD=rootpass \
@@ -1288,13 +1288,13 @@ dck run -d --restart always \
 mysql -h 10.0.2.1 -u myapp -psecret myapp
 
 # Import SQL
-dck exec -i mysql mysql -u root -prootpass myapp < dump.sql
+cardinal exec -i mysql mysql -u root -prootpass myapp < dump.sql
 
 # Backup
-dck exec mysql mysqldump -u root -prootpass myapp > backup.sql
+cardinal exec mysql mysqldump -u root -prootpass myapp > backup.sql
 
 # Interactive shell
-dck exec -i -t mysql mysql -u root -prootpass
+cardinal exec -i -t mysql mysql -u root -prootpass
 ```
 
 ### phpMyAdmin
@@ -1303,7 +1303,7 @@ Run phpMyAdmin connected to your MySQL/PostgreSQL container:
 
 ```bash
 # Connect to MySQL
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n phpmyadmin -p 8080:80 \
   -e PMA_HOST=10.0.2.1 \
   -e PMA_PORT=3306 \
@@ -1311,29 +1311,29 @@ dck run -d --restart always \
   phpmyadmin:latest
 
 # Connect to PostgreSQL
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n pgadmin -p 8080:80 \
   -e PMA_HOST=10.0.2.1 \
   -e PMA_PORT=5432 \
   phpmyadmin:latest
 
 # With custom server (via environment)
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n phpmyadmin -p 8080:80 \
   -e PMA_ARBITRARY=1 \
   phpmyadmin:latest
 # Then enter any server IP in the web UI
 
 # phpMyAdmin + MySQL together
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n mysql -p 3306:3306 \
   -v mysqldata:/var/lib/mysql \
   -e MYSQL_ROOT_PASSWORD=rootpass \
   mysql:8
 
 # Wait for MySQL, then get its IP and run phpMyAdmin
-MYSQL_IP=$(dck inspect mysql | grep -o '"ip":"[^"]*"' | grep -o '[0-9.]*')
-dck run -d --restart always \
+MYSQL_IP=$(cardinal inspect mysql | grep -o '"ip":"[^"]*"' | grep -o '[0-9.]*')
+cardinal run -d --restart always \
   -n phpmyadmin -p 8080:80 \
   -e PMA_HOST=$MYSQL_IP \
   -e PMA_PORT=3306 \
@@ -1345,7 +1345,7 @@ dck run -d --restart always \
 **Примечание:** Для PostgreSQL используйте pgAdmin вместо phpMyAdmin:
 
 ```bash
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n pgadmin -p 8080:80 \
   -e PGADMIN_DEFAULT_EMAIL=admin@example.com \
   -e PGADMIN_DEFAULT_PASSWORD=admin \
@@ -1360,14 +1360,14 @@ Add or remove port mappings on running containers without restart:
 
 ```bash
 # Add a port
-dck port add player1 25566:25566
+cardinal port add player1 25566:25566
 
 # Add UDP port
-dck port add player1 27015:27015/udp
+cardinal port add player1 27015:27015/udp
 
 # Remove a port
-dck port remove player1 25566
-dck port rm player1 25566       # alias
+cardinal port remove player1 25566
+cardinal port rm player1 25566       # alias
 ```
 
 - Applies iptables DNAT rules instantly — no restart needed
@@ -1405,24 +1405,24 @@ dck port rm player1 25566       # alias
 
 ```bash
 # Check container resource usage
-dck stats
+cardinal stats
 
 # Follow logs
-dck logs -f web
+cardinal logs -f web
 
 # Check health
-dck ps
+cardinal ps
 ```
 
 ### Backup
 
 ```bash
 # Backup a container's overlay (all changes)
-tar -czf container-backup.tar.gz /root/.dck/overlay/<container-id>/
+tar -czf container-backup.tar.gz /root/.cardinal/overlay/<container-id>/
 
 # Backup volumes
-tar -czf volume-backup.tar.gz /root/.dck/volumes/<volume-name>/
+tar -czf volume-backup.tar.gz /root/.cardinal/volumes/<volume-name>/
 
 # Export an image
-dck export myapp:v1 -o myapp-backup.tar.gz
+cardinal export myapp:v1 -o myapp-backup.tar.gz
 ```

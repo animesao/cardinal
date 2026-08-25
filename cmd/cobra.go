@@ -1,6 +1,6 @@
 //go:build linux
 
-// Package cmd hosts the cobra command tree for dck.
+// Package cmd hosts the cobra command tree for cardinal.
 //
 // Cobra replaces the legacy hand-rolled dispatcher in root.go (a single
 // 130-line switch statement) so we get free shell completion, structured
@@ -19,7 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"dck/internal/log"
+	"cardinal/internal/log"
 )
 
 // NewRoot constructs the cobra root command. Splitting construction from
@@ -35,9 +35,9 @@ func NewRoot() *cobra.Command {
 	)
 
 	rootCmd := &cobra.Command{
-		Use:   "dck",
+		Use:   "cardinal",
 		Short: "Lightweight Linux container runtime",
-		Long: `dck — Lightweight Linux container runtime.
+		Long: `cardinal — Lightweight Linux container runtime.
 
 A daemonless, OCI-compatible runtime for Linux that uses namespaces,
 overlayfs, cgroups, capability dropping and seccomp filtering to isolate
@@ -53,143 +53,143 @@ GLOBAL FLAGS:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 IMAGE COMMANDS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  dck pull <image>              Pull an image (--platform linux/amd64)
-  dck push <image>              Push an image (-u user -p pass)
-  dck images                    List local images
-  dck rmi <image>               Remove an image
-  dck build -t name:tag .       Build from Dockerfile (-f, --no-cache, --build-arg)
-  dck export -o file.tar.gz c   Export image to tar.gz
-  dck import file.tar.gz        Import image from tar.gz
-  dck commit <container>        Create image from container
-  dck search <query>            Search Docker Hub
-  dck verify <image>            Verify image manifest and digests
+  cardinal pull <image>              Pull an image (--platform linux/amd64)
+  cardinal push <image>              Push an image (-u user -p pass)
+  cardinal images                    List local images
+  cardinal rmi <image>               Remove an image
+  cardinal build -t name:tag .       Build from Dockerfile (-f, --no-cache, --build-arg)
+  cardinal export -o file.tar.gz c   Export image to tar.gz
+  cardinal import file.tar.gz        Import image from tar.gz
+  cardinal commit <container>        Create image from container
+  cardinal search <query>            Search Docker Hub
+  cardinal verify <image>            Verify image manifest and digests
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CONTAINER COMMANDS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  dck run [opts] <image> [cmd]  Create and run a container (see below)
-  dck start <container>         Start a stopped container
-  dck stop <container>          Stop a running container (--all for all)
-  dck restart <container>       Restart a container
-  dck rm <container>            Remove a container (-f to force)
-  dck rename <old> <new>        Rename a container
-  dck ps                        List containers (-a for all)
-  dck inspect <container>       Inspect container JSON (--sensitive for secrets)
-  dck logs <container>          Show logs (-f follow, --tail N, --previous)
-  dck stats                     Show CPU/memory/IO (--no-stream)
-  dck top <container>           Show running processes
-  dck attach <container>        Attach to main process
+  cardinal run [opts] <image> [cmd]  Create and run a container (see below)
+  cardinal start <container>         Start a stopped container
+  cardinal stop <container>          Stop a running container (--all for all)
+  cardinal restart <container>       Restart a container
+  cardinal rm <container>            Remove a container (-f to force)
+  cardinal rename <old> <new>        Rename a container
+  cardinal ps                        List containers (-a for all)
+  cardinal inspect <container>       Inspect container JSON (--sensitive for secrets)
+  cardinal logs <container>          Show logs (-f follow, --tail N, --previous)
+  cardinal stats                     Show CPU/memory/IO (--no-stream)
+  cardinal top <container>           Show running processes
+  cardinal attach <container>        Attach to main process
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EXECUTION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  dck exec -it <container> sh   Execute command in container
-  dck console <container>       Open web terminal
-  dck cp <src> <dst>            Copy files between host and container
-  dck fs ls <container> <path>  List files in container
-  dck fs cat <container> <file> Read file in container
-  dck fs tree <container> <dir> Show directory tree
-  dck fs find <container>       Find files (--name, --grep, --type f/d)
+  cardinal exec -it <container> sh   Execute command in container
+  cardinal console <container>       Open web terminal
+  cardinal cp <src> <dst>            Copy files between host and container
+  cardinal fs ls <container> <path>  List files in container
+  cardinal fs cat <container> <file> Read file in container
+  cardinal fs tree <container> <dir> Show directory tree
+  cardinal fs find <container>       Find files (--name, --grep, --type f/d)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 NETWORKING
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  dck network create <name>     Create bridge network (--subnet)
-  dck network ls                List networks
-  dck network inspect <name>    Inspect network
-  dck network rm <name>         Remove network
-  dck port <container>          Show/modify port mappings
+  cardinal network create <name>     Create bridge network (--subnet)
+  cardinal network ls                List networks
+  cardinal network inspect <name>    Inspect network
+  cardinal network rm <name>         Remove network
+  cardinal port <container>          Show/modify port mappings
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VOLUMES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  dck volume create <name>      Create volume (-d driver, -l label)
-  dck volume ls                 List volumes
-  dck volume inspect <name>     Inspect volume
-  dck volume rm <name>          Remove volume
-  dck volume prune              Remove unused volumes
+  cardinal volume create <name>      Create volume (-d driver, -l label)
+  cardinal volume ls                 List volumes
+  cardinal volume inspect <name>     Inspect volume
+  cardinal volume rm <name>          Remove volume
+  cardinal volume prune              Remove unused volumes
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 COMPOSE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  dck up -f dck.toml            Start from config file
-  dck down -f dck.toml          Stop and remove (-a for all)
-  dck up --generate             Generate dck.toml from containers
+  cardinal up -f cardinal.toml            Start from config file
+  cardinal down -f cardinal.toml          Stop and remove (-a for all)
+  cardinal up --generate             Generate cardinal.toml from containers
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 API SERVER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  dck serve                     Run API server foreground (-p port)
-  dck serve -d                  Run as daemon
-  dck serve on -p 2375          Install systemd service (auto-start on boot)
-  dck serve off                 Stop and remove systemd service
-  dck serve status              Check service status
-  journalctl -u dck-serve -f    Tail logs
+  cardinal serve                     Run API server foreground (-p port)
+  cardinal serve -d                  Run as daemon
+  cardinal serve on -p 2375          Install systemd service (auto-start on boot)
+  cardinal serve off                 Stop and remove systemd service
+  cardinal serve status              Check service status
+  journalctl -u cardinal-serve -f    Tail logs
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 REGISTRY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  dck login -u user -p pass     Log in to registry (--password-stdin)
-  dck logout                    Log out
-  dck registry add <host>       Add to registry allowlist
-  dck registry rm <host>        Remove from allowlist
-  dck registry list             List allowlist
+  cardinal login -u user -p pass     Log in to registry (--password-stdin)
+  cardinal logout                    Log out
+  cardinal registry add <host>       Add to registry allowlist
+  cardinal registry rm <host>        Remove from allowlist
+  cardinal registry list             List allowlist
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 BACKUPS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  dck backup create <name>      Create backup (-o path, -e encrypt)
-  dck backup list               List backups
-  dck backup restore <name>     Restore from backup
-  dck backup enable <name>      Enable scheduled backup (--interval, --retention)
-  dck backup disable <name>     Disable scheduled backup
-  dck backup status <name>      Show backup status
-  dck backup verify <file>      Verify SHA-256 checksum
-  dck backup generate-key       Generate encryption key
+  cardinal backup create <name>      Create backup (-o path, -e encrypt)
+  cardinal backup list               List backups
+  cardinal backup restore <name>     Restore from backup
+  cardinal backup enable <name>      Enable scheduled backup (--interval, --retention)
+  cardinal backup disable <name>     Disable scheduled backup
+  cardinal backup status <name>      Show backup status
+  cardinal backup verify <file>      Verify SHA-256 checksum
+  cardinal backup generate-key       Generate encryption key
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CLUSTER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  dck cluster init              Initialize cluster (--name, --bind, --port)
-  dck cluster join              Join cluster (--bind, --port, --token)
-  dck cluster leave             Leave cluster
-  dck cluster info              Cluster overview
-  dck cluster ls                List nodes
-  dck cluster serve             Start cluster API (-p, -H, --token)
+  cardinal cluster init              Initialize cluster (--name, --bind, --port)
+  cardinal cluster join              Join cluster (--bind, --port, --token)
+  cardinal cluster leave             Leave cluster
+  cardinal cluster info              Cluster overview
+  cardinal cluster ls                List nodes
+  cardinal cluster serve             Start cluster API (-p, -H, --token)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SERVICES & FAAS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  dck service create            Create service (--name, --replicas, -p, -e)
-  dck service ls                List services
-  dck service rm <name>         Remove service
-  dck service scale <name> N    Scale to N replicas
-  dck service update            Update service (--name, --image)
-  dck fn deploy                 Deploy function (--name, --port, --handler)
-  dck fn ls                     List functions
-  dck fn rm <name>              Remove function
-  dck fn call <name>            Call function (--data/-d)
+  cardinal service create            Create service (--name, --replicas, -p, -e)
+  cardinal service ls                List services
+  cardinal service rm <name>         Remove service
+  cardinal service scale <name> N    Scale to N replicas
+  cardinal service update            Update service (--name, --image)
+  cardinal fn deploy                 Deploy function (--name, --port, --handler)
+  cardinal fn ls                     List functions
+  cardinal fn rm <name>              Remove function
+  cardinal fn call <name>            Call function (--data/-d)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DIAGNOSTICS & SYSTEM
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  dck doctor                    Host/runtime diagnostics (--strict)
-  dck security                  Security diagnostics
-  dck info                      System information
-  dck events                    Stream events (--since)
-  dck system df                 Show disk usage by images, containers, volumes
-  dck system prune              Remove unused data
-  dck version                   Print version
-  dck update                    Self-update (--check for dry run)
-  dck bootstrap                 Install systemd unit (--install/-i, --remove/-r)
+  cardinal doctor                    Host/runtime diagnostics (--strict)
+  cardinal security                  Security diagnostics
+  cardinal info                      System information
+  cardinal events                    Stream events (--since)
+  cardinal system df                 Show disk usage by images, containers, volumes
+  cardinal system prune              Remove unused data
+  cardinal version                   Print version
+  cardinal update                    Self-update (--check for dry run)
+  cardinal bootstrap                 Install systemd unit (--install/-i, --remove/-r)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 MODIFY RUNNING CONTAINER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  dck set <container> [flags]   Modify parameters (see below)
+  cardinal set <container> [flags]   Modify parameters (see below)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-dck run — FULL FLAG REFERENCE
+cardinal run — FULL FLAG REFERENCE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 RESOURCE LIMITS:
@@ -253,7 +253,7 @@ SAFETY:
   --encrypted-backup         Encrypt backup archives
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-dck set — MODIFY RUNNING CONTAINER
+cardinal set — MODIFY RUNNING CONTAINER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   --ram, --memory string   Memory limit (e.g. 512m, 8g)
@@ -274,26 +274,26 @@ dck set — MODIFY RUNNING CONTAINER
 EXAMPLES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  dck run -d --ram 8g --cpu 2 -p 8080:80 --name web nginx
-  dck run -it --rm alpine sh
-  dck run -d -v /data:/app -e DB_HOST=localhost --network mynet myapp
+  cardinal run -d --ram 8g --cpu 2 -p 8080:80 --name web nginx
+  cardinal run -it --rm alpine sh
+  cardinal run -d -v /data:/app -e DB_HOST=localhost --network mynet myapp
 
-  sudo dck serve on -p 2375
-  dck serve status
-  sudo dck serve off
+  sudo cardinal serve on -p 2375
+  cardinal serve status
+  sudo cardinal serve off
 
-  dck up -f dck.toml
-  dck down -f dck.toml
+  cardinal up -f cardinal.toml
+  cardinal down -f cardinal.toml
 
-  dck backup create web -o /backup/web.tar.gz -e
-  dck backup enable web --interval 24h --retention 7
+  cardinal backup create web -o /backup/web.tar.gz -e
+  cardinal backup enable web --interval 24h --retention 7
 
-  dck set web --ram 16g --cpu 4 --restart on-failure
-  dck logs -f --tail 50 web
-  dck cp ./config.yaml web:/app/config.yaml
+  cardinal set web --ram 16g --cpu 4 --restart on-failure
+  cardinal logs -f --tail 50 web
+  cardinal cp ./config.yaml web:/app/config.yaml
 
-  dck cluster init --name prod --port 7946
-  dck fn deploy --name api --port 8080 --handler /handler`,
+  cardinal cluster init --name prod --port 7946
+  cardinal fn deploy --name api --port 8080 --handler /handler`,
 		Version:      version,
 		SilenceUsage: true,
 		// Disable cobra's auto-generated "Available Commands" and "Flags"
@@ -322,7 +322,7 @@ EXAMPLES
 }
 
 // applyLogOptions funnels global logging flags into the log package. The
-// package-level state is sufficient because dck is a single-process CLI
+// package-level state is sufficient because cardinal is a single-process CLI
 // (no concurrent goroutines that need to race on the logger).
 func applyLogOptions(level string, jsonOut, quiet bool) {
 	switch strings.ToLower(level) {

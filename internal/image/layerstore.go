@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 // EnsureLayer stores a layer file in the shared content-addressable cache.
@@ -142,8 +142,8 @@ func EnsureAllLayers(name, tag string) error {
 func ReadManifest(name, tag string) *ManifestV2 {
 	imgDir := state.ImageDir(name, tag)
 
-	// The OCI/Docker manifest is kept separate from dck's internal image.json metadata.
-	// Keep a read-only fallback for images written by older dck versions.
+	// The OCI/Docker manifest is kept separate from cardinal's internal image.json metadata.
+	// Keep a read-only fallback for images written by older cardinal versions.
 	for _, f := range []string{"manifest.json", "oci-manifest.json"} {
 		p := filepath.Join(imgDir, f)
 		if !state.FileExists(p) {

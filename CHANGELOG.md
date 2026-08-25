@@ -1,7 +1,7 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
 ## 1.60.11 (2026-08-18)
 
@@ -13,7 +13,7 @@
 
 ### Backup restore
 
-- Fix `dck backup restore --rebind` flag parsing when invoked through Cobra subcommands.
+- Fix `cardinal backup restore --rebind` flag parsing when invoked through Cobra subcommands.
 
 ## 1.60.9 (2026-08-18)
 
@@ -31,7 +31,7 @@
 
 ### CLI help and CI stability
 
-- Handle `dck run --help` and `dck serve --help` before forwarding arguments to legacy flag parsers.
+- Handle `cardinal run --help` and `cardinal serve --help` before forwarding arguments to legacy flag parsers.
 - Prevent the legacy flag parser from calling `os.Exit(0)` during Cobra smoke tests.
 - Add regression coverage for help handling on commands with disabled Cobra flag parsing.
 
@@ -39,7 +39,7 @@
 
 ### Backup restore safety
 
-- Accept the explicit root `data` directory entry produced by DCK backup archives during restore.
+- Accept the explicit root `data` directory entry produced by CARDINAL backup archives during restore.
 - Keep archive namespace, traversal, absolute-path, and symlink safety checks enabled.
 - Add regression coverage for restoring a backup containing `data` and `data/...` entries.
 
@@ -47,20 +47,20 @@
 
 ### Backup and transfer support
 
-- Add `dck backup restore --rebind` so verified backup data can be restored into a newly created container during cross-machine transfers.
+- Add `cardinal backup restore --rebind` so verified backup data can be restored into a newly created container during cross-machine transfers.
 - Include persistent bind-mount data in backups under a target-scoped archive namespace while retaining symlink and host-path safety checks.
-- Add `dck backup remove` (with `rm` and `delete` aliases) for removing an archive and its checksum sidecar safely.
-- Support DCK Desktop backup management and container transfer with configuration, volumes, writable data, and lifecycle state preserved.
+- Add `cardinal backup remove` (with `rm` and `delete` aliases) for removing an archive and its checksum sidecar safely.
+- Support CARDINAL Desktop backup management and container transfer with configuration, volumes, writable data, and lifecycle state preserved.
 
 ## 1.60.4 (2026-08-18)
 
 ### Desktop integration
 
-- Document the current container inspection and mount metadata used by DCK Desktop to scope per-container SFTP access.
-- Keep the DCK API mount targets as the source of truth for integrations that expose container filesystems.
+- Document the current container inspection and mount metadata used by CARDINAL Desktop to scope per-container SFTP access.
+- Keep the CARDINAL API mount targets as the source of truth for integrations that expose container filesystems.
 
 <p align="center">
-  <img src="img/dck.png" alt="dck logo" width="100">
+  <img src="img/cardinal.png" alt="cardinal logo" width="100">
 </p>
 
 # Changelog
@@ -69,7 +69,7 @@
 
 ### Interactive console fixes
 
-- Preserve the container stdin when running startup scripts, so Paper, Minecraft, and other interactive servers receive commands from `dck attach` and the desktop console.
+- Preserve the container stdin when running startup scripts, so Paper, Minecraft, and other interactive servers receive commands from `cardinal attach` and the desktop console.
 - Restore command responses such as `tps`, `pl`, and `help` instead of leaving the console with input-only output.
 
 ## 1.60.2 (2026-08-18)
@@ -100,7 +100,7 @@
 
 ### Runtime fixes
 
-- Resolve the container init process through `/proc` process metadata and an exact `dck init` command-line fallback, preventing valid stopped containers from failing to start on some kernels.
+- Resolve the container init process through `/proc` process metadata and an exact `cardinal init` command-line fallback, preventing valid stopped containers from failing to start on some kernels.
 - Add regression coverage for safe init-process matching.
 
 ## 1.25.8 (2026-08-18)
@@ -114,12 +114,12 @@
 ### API and CLI
 
 - Add container startup-command updates through `POST /containers/<id>/update`.
-- Add `dck set <container> --startup` with inline and `@file` script support.
+- Add `cardinal set <container> --startup` with inline and `@file` script support.
 - Accept canonical and compatibility JSON field names for startup scripts.
 
-<!-- dck-current-release:start -->
+<!-- cardinal-current-release:start -->
 > Current release: **v1.60.11**. Detailed release notes below are maintained manually.
-<!-- dck-current-release:end -->
+<!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
 
@@ -133,8 +133,8 @@
 
 ### Bug fixes
 
-- Fix `dck ps -a` / `dck ps --all` flag parsing: register `-a`/`--all` via cobra instead of DisableFlagParsing so the flag is correctly handled.
-- Fix `dck cp` stdin support: `dck cp - <container>:/path` now works as source.
+- Fix `cardinal ps -a` / `cardinal ps --all` flag parsing: register `-a`/`--all` via cobra instead of DisableFlagParsing so the flag is correctly handled.
+- Fix `cardinal cp` stdin support: `cardinal cp - <container>:/path` now works as source.
 - Restore `Ps(args []string)` function signature for audit compliance.
 
 ## 1.25.0 (2026-08-17)
@@ -161,7 +161,7 @@
 
 ### Desktop integration
 
-- Added support for live resource reporting consumed by DCK Desktop.
+- Added support for live resource reporting consumed by CARDINAL Desktop.
 
 ## 1.24.16 (2026-08-16)
 
@@ -181,8 +181,8 @@
 
 - Migrated the top-level dispatch from a hand-rolled switch / flag-parser in `cmd/root.go` to `spf13/cobra v1.8.1` with `spf13/pflag v1.0.5`. Every previously-working invocation (52 commands + 7 backup sub-commands + `security check`) is preserved as a thin cobra wrapper around the legacy free function, so existing tests and call sites stay green.
 - New global flags on every sub-command: `--log-level debug|info|warn|error`, `--json`, `--quiet`.
-- `dck completion` now generates shell scripts for **bash / zsh / fish / powershell** out of the box; installation instructions added to `docs/en/commands.md` and `docs/ru/commands.md`.
-- Discovered and fixed a regression where `dck run --rm --network none alpine:latest …` exited silently with empty stderr. The legacy flag-parsing path inside `Run()` is reachable again via `DisableFlagParsing: true` on the `run` cobra command. A regression test (`TestRunCommand_DisablesFlagParsing`) guards against future removal of that knob.
+- `cardinal completion` now generates shell scripts for **bash / zsh / fish / powershell** out of the box; installation instructions added to `docs/en/commands.md` and `docs/ru/commands.md`.
+- Discovered and fixed a regression where `cardinal run --rm --network none alpine:latest …` exited silently with empty stderr. The legacy flag-parsing path inside `Run()` is reachable again via `DisableFlagParsing: true` on the `run` cobra command. A regression test (`TestRunCommand_DisablesFlagParsing`) guards against future removal of that knob.
 - Surfaced cobra's runtime errors to stderr in `cmd/cobra.go` (`Execute()`), guaranteeing that any future unknown-flag / wrong-arity error is at least actionable instead of leaving a single newline and exit code 1.
 
 ### CI/CD
@@ -190,7 +190,7 @@
 - Rebuilt the GitHub Actions pipeline around a single `build.yml` orchestrator that runs the full `lint → test → build matrix → SBOM → cosign → GitHub Release` flow. Replaces nine reusable workflows plus five orchestrators with three files: `build.yml`, `e2e.yml`, `scheduled.yml`.
 - Pinned action versions to known-good majors (`actions/checkout@v4`, `actions/setup-go@v5`, `actions/upload-artifact@v4`, `anchore/sbom-action@v0`, `softprops/action-gh-release@v2`); dependabot now ignores semver-major bumps in `.github/dependabot.yml` so the pipeline does not silently flip to a breaking major.
 - `build.yml` runs `golangci-lint`, `go vet`, `govulncheck`, `shellcheck`, `scripts/sync-docs-version.sh --check`, and `bash scripts/audit.sh --strict` on every push and PR; the build matrix produces reproducible `linux/amd64` and `linux/arm64` artefacts with `-trimpath -buildid=`, sha256 sidecars, SPDX-JSON SBOM, optional `cosign` signing, and a GitHub Release on tag pushes.
-- `e2e.yml` (privileged) now always uploads a diagnostic bundle (`dck-e2e-diag-<run-id>`) with the captured stdout/stderr buffer, preflight dump of id / env / mount / cgroup / overlay / data-dir / df, and `if: always()` artifact upload so a future maintainer can post-mortem a failed run without re-executing it.
+- `e2e.yml` (privileged) now always uploads a diagnostic bundle (`cardinal-e2e-diag-<run-id>`) with the captured stdout/stderr buffer, preflight dump of id / env / mount / cgroup / overlay / data-dir / df, and `if: always()` artifact upload so a future maintainer can post-mortem a failed run without re-executing it.
 - `scheduled.yml` runs daily govulncheck + gitleaks + `scripts/audit.sh`; dependabot.yml groups minor+patch bumps and ignores major version updates.
 
 ### Documentation
@@ -208,7 +208,7 @@
 
 ### Runtime fixes
 
-- Fixed `dck run` options placed after the image, including `--workdir`, being passed to the container command.
+- Fixed `cardinal run` options placed after the image, including `--workdir`, being passed to the container command.
 - Preserved the safe default Linux capability set so standard images such as `nginx:alpine` can perform required startup filesystem operations while dangerous capabilities remain dropped.
 - Cleaned up container resources when the init process exits before namespace registration.
 
@@ -227,10 +227,10 @@
 ### Highlights since 1.22.0
 
 - Persistent restart supervisor: detached `always` and `unless-stopped` containers are recovered after reboot or crash via systemd, with configurable `--restart-delay` and crash-loop protection (`--restart-max-attempts`, `--restart-window`, `restart_blocked`).
-- Per-container scheduled backups with `dck backup enable/disable/status`, configurable intervals and retention, safe destinations, and checksum verification with `dck backup verify`.
-- Offline image verification with `dck verify IMAGE[:TAG]` — config and layer digests are checked against the locally stored manifest.
-- Reliable `dck update`: five-minute download timeout, per-method error reporting, bounded curl/wget fallbacks.
-- Runtime hardening: zombie-exit detection, `dck rm` tombstones against supervisor restart races, safe OCI layer extraction (path traversal, absolute and symlink targets), protected bind sources, and volume mount modes (`:ro`/`:rw`, propagation, tmpfs, NFS).
+- Per-container scheduled backups with `cardinal backup enable/disable/status`, configurable intervals and retention, safe destinations, and checksum verification with `cardinal backup verify`.
+- Offline image verification with `cardinal verify IMAGE[:TAG]` — config and layer digests are checked against the locally stored manifest.
+- Reliable `cardinal update`: five-minute download timeout, per-method error reporting, bounded curl/wget fallbacks.
+- Runtime hardening: zombie-exit detection, `cardinal rm` tombstones against supervisor restart races, safe OCI layer extraction (path traversal, absolute and symlink targets), protected bind sources, and volume mount modes (`:ro`/`:rw`, propagation, tmpfs, NFS).
 - Instant startup for `--network none`/`host` containers (no eth0 wait).
 - Docker-compatible REST API with optional HTTPS and bearer-token auth, cluster orchestration, FaaS, services, blueprints, and Compose support.
 - Complete bilingual (EN/RU) documentation: command references, usage guides, practical examples, and per-application guides, including the pull → verify → run workflow and a fully synchronized Russian websites guide.
@@ -239,11 +239,11 @@
 
 ### CLI
 
-- `dck --help` no longer duplicates the backup, inspect, doctor, and security check entries in the System section (they remain listed under Container).
+- `cardinal --help` no longer duplicates the backup, inspect, doctor, and security check entries in the System section (they remain listed under Container).
 
 ### Documentation
 
-- Documented the previously undocumented `dck verify IMAGE[:TAG]` (offline config and layer digest verification) and `dck backup verify FILE.tar.gz` (checksum verification) commands, plus `-v SRC:DST` mount modes (`:ro`/`:rw`, propagation flags, tmpfs and NFS specs).
+- Documented the previously undocumented `cardinal verify IMAGE[:TAG]` (offline config and layer digest verification) and `cardinal backup verify FILE.tar.gz` (checksum verification) commands, plus `-v SRC:DST` mount modes (`:ro`/`:rw`, propagation flags, tmpfs and NFS specs).
 
 ## 1.22.39 (2026-08-11)
 
@@ -255,7 +255,7 @@
 
 ### Update reliability
 
-- `dck update` now allows up to five minutes for the release download instead of timing out after ten seconds, which was too short for multi-megabyte binaries on slow links.
+- `cardinal update` now allows up to five minutes for the release download instead of timing out after ten seconds, which was too short for multi-megabyte binaries on slow links.
 - The opaque `all methods failed` message is gone: each download method (Go HTTP client, curl, wget) now reports its own error so a failure can be diagnosed.
 - The curl/wget fallbacks get explicit connect and max-time limits so the updater can never hang indefinitely.
 
@@ -263,15 +263,15 @@
 
 ### Runtime fixes
 
-- Container startup no longer spends up to 20 seconds polling for an `eth0` address. The wait is skipped entirely for `--network none` (no interface exists) and `--network host` (the host interface is already up), and capped at five seconds for bridge mode. Crash-loop restart cycles now run on schedule, and simple containers such as `sh -c sleep 5` start immediately after `dck run -d` returns.
+- Container startup no longer spends up to 20 seconds polling for an `eth0` address. The wait is skipped entirely for `--network none` (no interface exists) and `--network host` (the host interface is already up), and capped at five seconds for bridge mode. Crash-loop restart cycles now run on schedule, and simple containers such as `sh -c sleep 5` start immediately after `cardinal run -d` returns.
 
 ## 1.22.36 (2026-08-11)
 
 ### Runtime fixes
 
 - Detached container processes that become zombies (defunct, reparented to systemd after the CLI exits) are now detected as dead: process liveness reads `/proc/<pid>/stat` and treats `Z`/`X` states as exited. A plain `/proc/<pid>` existence check counted zombies as alive, stalling exit detection — containers stuck on `running`, cgroup/network cleanup not running, and crash-loop restarts almost never firing.
-- `dck rm` writes a tombstone marker as its first action, so a supervisor automatic restart racing a slow removal can no longer resurrect a container mid-delete.
-- The supervisor re-loads fresh container state before an automatic restart and skips containers being removed; `dck start` aborts cleanly (killing spawned processes and releasing the DNS record) if the state file vanished or a removal is in progress.
+- `cardinal rm` writes a tombstone marker as its first action, so a supervisor automatic restart racing a slow removal can no longer resurrect a container mid-delete.
+- The supervisor re-loads fresh container state before an automatic restart and skips containers being removed; `cardinal start` aborts cleanly (killing spawned processes and releasing the DNS record) if the state file vanished or a removal is in progress.
 
 ## 1.22.35 (2026-08-11)
 
@@ -290,9 +290,9 @@
 
 ### Added
 
-- Added configurable automatic restart delays with `--restart-delay` / `dck set --restart-delay` (for example, `10s` or `1m`).
+- Added configurable automatic restart delays with `--restart-delay` / `cardinal set --restart-delay` (for example, `10s` or `1m`).
 - Added a persistent systemd supervisor for detached `always` and `unless-stopped` containers; `on-failure` remains a foreground-process policy and is not adopted after the detached CLI exits.
-- Added per-container scheduled backups with `dck backup enable/disable/status`, configurable intervals, retention, safe destinations, and supervisor-based recovery after reboot.
+- Added per-container scheduled backups with `cardinal backup enable/disable/status`, configurable intervals, retention, safe destinations, and supervisor-based recovery after reboot.
 
 ## 1.22.30 (2026-08-11)
 
@@ -316,13 +316,13 @@
 
 ### Runtime fixes documented
 
-- Container dck stdout/stderr logs start fresh on every new container run instead of accumulating across restarts.
+- Container cardinal stdout/stderr logs start fresh on every new container run instead of accumulating across restarts.
 - OCI extraction accepts forward symlink targets and standard root entries while preserving traversal protection.
 - Bind mounts reject protected host paths and require absolute container targets.
 
 ## 1.22.7 (2026-08-06)
 
-- Isolated tests with `DCK_DATA_DIR` and made JSON state writes atomic.
+- Isolated tests with `CARDINAL_DATA_DIR` and made JSON state writes atomic.
 - Secured API defaults, Bearer authentication, and image metadata storage.
 - Standardized Go 1.25 across CI and release tooling.
 
@@ -330,7 +330,7 @@
 
 - CI auto-bump after install script fix
 - Single `VERSION` source of truth (removed `cmd/VERSION`)
-- Removed `//go:embed VERSION`, injected via `-X dck/cmd.version` only
+- Removed `//go:embed VERSION`, injected via `-X cardinal/cmd.version` only
 
 ## 1.22.3 (2026-07-14)
 
@@ -347,67 +347,67 @@
 ## 1.22.0 (2026-07-14)
 
 ### Features
-- **Cluster orchestration**: `dck cluster init/join/leave/info/ls/node` — multi-node container orchestration
-- **Services**: `dck service create/ls/rm/scale/update` — replicated services with rolling updates
-- **FaaS / Serverless**: `dck fn deploy/ls/rm/call` — auto-scaling serverless functions with scale-to-zero
-- **Blueprints**: `dck blueprint list/info/install` + `blueprint repo add/remove/list` — pre-configured templates
-- **Docker-compatible REST API**: `dck serve [-d] [--token]` — works with Portainer, VS Code Dev Containers
-- **Compose secrets & configs**: Docker-style secret/config injection via `dck.toml` / `compose.yaml`
-- **Container events**: `dck events [--since <time>]` — real-time lifecycle event streaming
-- **Dynamic port management**: `dck port add/rm` — hot-add/remove port mappings without restart
-- **Container FS browser**: `dck fs ls/cat/tree/find` — browse stopped/running container filesystems
+- **Cluster orchestration**: `cardinal cluster init/join/leave/info/ls/node` — multi-node container orchestration
+- **Services**: `cardinal service create/ls/rm/scale/update` — replicated services with rolling updates
+- **FaaS / Serverless**: `cardinal fn deploy/ls/rm/call` — auto-scaling serverless functions with scale-to-zero
+- **Blueprints**: `cardinal blueprint list/info/install` + `blueprint repo add/remove/list` — pre-configured templates
+- **Docker-compatible REST API**: `cardinal serve [-d] [--token]` — works with Portainer, VS Code Dev Containers
+- **Compose secrets & configs**: Docker-style secret/config injection via `cardinal.toml` / `compose.yaml`
+- **Container events**: `cardinal events [--since <time>]` — real-time lifecycle event streaming
+- **Dynamic port management**: `cardinal port add/rm` — hot-add/remove port mappings without restart
+- **Container FS browser**: `cardinal fs ls/cat/tree/find` — browse stopped/running container filesystems
 - **Healthchecks**: `--healthcheck-*` flags — auto-restart on failure
-- **Startup scripts**: `--startup` flag with `@file` support, `DCK_*` env vars injection
-- **Named volumes**: `dck volume create/ls/rm/inspect/prune`
-- **Container export/import**: `dck export/import` — save and load container images
-- **Registry auth**: `dck login/logout` — authenticated registry access + `dck push`
+- **Startup scripts**: `--startup` flag with `@file` support, `CARDINAL_*` env vars injection
+- **Named volumes**: `cardinal volume create/ls/rm/inspect/prune`
+- **Container export/import**: `cardinal export/import` — save and load container images
+- **Registry auth**: `cardinal login/logout` — authenticated registry access + `cardinal push`
 
 ### Improvements
 - Rootless mode support (`internal/container/rootless.go`)
 - DNS service discovery for cluster (UDP 5353)
-- Systemd bootstrap auto-install on `dck run --restart always`
-- `dck set` now supports `--memory`, `--cpus`, `--disk`, `--restart`, `--workdir`, `-e`, `--entrypoint`, `--user`, `--readonly`, `--no-new-privs`, `-h`, `--network`
-- `dck up --generate` — generate dck.toml from existing containers
+- Systemd bootstrap auto-install on `cardinal run --restart always`
+- `cardinal set` now supports `--memory`, `--cpus`, `--disk`, `--restart`, `--workdir`, `-e`, `--entrypoint`, `--user`, `--readonly`, `--no-new-privs`, `-h`, `--network`
+- `cardinal up --generate` — generate cardinal.toml from existing containers
 - Multi-arch image resolution (`--platform`)
 - cgroups v2 resource limits for CPU, memory, disk
 
 ## 1.21.0 (2026-07-01)
 
 ### Features
-- Container commit: `dck commit <container> <image>:<tag>`
-- `dck build` — Dockerfile builder with `--no-cache`, `--build-arg`, multi-stage support
-- `dck system prune` — cleanup unused containers and images
-- `dck stop --all` — stop all running containers
-- `dck exec -i/-t` flags properly handled
-- `dck console` — auto-detect shell inside container
+- Container commit: `cardinal commit <container> <image>:<tag>`
+- `cardinal build` — Dockerfile builder with `--no-cache`, `--build-arg`, multi-stage support
+- `cardinal system prune` — cleanup unused containers and images
+- `cardinal stop --all` — stop all running containers
+- `cardinal exec -i/-t` flags properly handled
+- `cardinal console` — auto-detect shell inside container
 - Improved attach with Unix socket (Ctrl+C safe)
 
 ## 1.20.0 (2026-06-20)
 
 ### Features
-- Dynamic port management: `dck port add/rm` — hot-add/remove iptables DNAT rules
+- Dynamic port management: `cardinal port add/rm` — hot-add/remove iptables DNAT rules
 - Russian (ru) documentation mirror
 - `--ulimit` support in run flags
 
 ### Bug Fixes
 - Fixed overlay mount ordering for disk limits
-- Fixed `dck exec` TTY handling
+- Fixed `cardinal exec` TTY handling
 
 ## 1.19.0 (2026-06-17)
 
 ### Features
-- Container FS browser: `dck fs ls/cat/tree/find`
+- Container FS browser: `cardinal fs ls/cat/tree/find`
 - `--healthcheck-*` flags with auto-restart on failure
 - `--startup` flag with `@file` inline script support
-- `DCK_*` environment variables injected for startup scripts
+- `CARDINAL_*` environment variables injected for startup scripts
 
 ## 1.18.0 (2026-06-15)
 
 ### Features
-- `dck events` — real-time container event streaming
-- `dck volume create/ls/rm/inspect/prune` — named volume management
-- `dck export/import` — save/load images as tar.gz
-- `dck login/logout` — authenticated registry access
+- `cardinal events` — real-time container event streaming
+- `cardinal volume create/ls/rm/inspect/prune` — named volume management
+- `cardinal export/import` — save/load images as tar.gz
+- `cardinal login/logout` — authenticated registry access
 - Multi-arch image resolution with `--platform` flag
 
 ### Security
@@ -437,15 +437,15 @@
 - **RCON**: мёртвый код помечен комментарием
 
 ### Features
-- **`dck stop --all`**: остановка всех запущенных контейнеров
-- **`dck exec -i/-t`**: флаги парсятся и применяются корректно
-- **`dck console`**: TTY handling через ExecOpts
+- **`cardinal stop --all`**: остановка всех запущенных контейнеров
+- **`cardinal exec -i/-t`**: флаги парсятся и применяются корректно
+- **`cardinal console`**: TTY handling через ExecOpts
 
 ### Maintenance
 - Debian control version синхронизирована с VERSION (1.15.0)
 
 ## 1.14.0 (Previous)
 - DiskLimit support + loop device quota enforcement
-- dck run --disk human-readable format
+- cardinal run --disk human-readable format
 - Fix overlay mount ordering
 - Multi-arch image resolution

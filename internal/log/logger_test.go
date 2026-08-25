@@ -15,7 +15,7 @@ func TestLogger_JSONModeProtectsAgainstLogInjection(t *testing.T) {
 	l.SetJSON(true)
 
 	// Newline + a fake log line in one message. If the logger were to print
-	// this verbatim into a JSON line, an attacker who controls `format` (DCK
+	// this verbatim into a JSON line, an attacker who controls `format` (CARDINAL
 	// info-level messages sometimes include user-supplied values) could
 	// inject arbitrary sibling records. With the fix, the result must parse
 	// as a single valid JSON object.

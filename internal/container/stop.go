@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"dck/internal/log"
-	"dck/internal/state"
+	"cardinal/internal/log"
+	"cardinal/internal/state"
 )
 
 func findUnsharePID(childPID int) int {
@@ -35,7 +35,7 @@ func findUnsharePID(childPID int) int {
 }
 
 // stopGracePeriod is how long the container init gets to shut down gracefully
-// after SIGTERM before dck escalates to SIGKILL. Long enough for servers such
+// after SIGTERM before cardinal escalates to SIGKILL. Long enough for servers such
 // as Minecraft/Paper to flush worlds and databases.
 const stopGracePeriod = 10 * time.Second
 
@@ -60,7 +60,7 @@ func (c *Container) Stop() error {
 			cleanupContainerCgroup(c.ID, c.CgroupPath)
 		}
 		// A stopped container may still have a delayed automatic restart pending.
-		// Treat dck stop as an explicit cancellation instead of reporting an
+		// Treat cardinal stop as an explicit cancellation instead of reporting an
 		// error, so the pending restart cannot bring it back unexpectedly.
 		if status == Stopped && c.Restart != "" && c.Restart != "no" {
 			c.dataMu.Lock()

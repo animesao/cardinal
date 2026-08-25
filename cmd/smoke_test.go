@@ -1,7 +1,7 @@
 //go:build linux
 
 // Smoke-test for every registered command: it walks the cobra command
-// tree, invokes `dck <name> --help` for each top-level command, and
+// tree, invokes `cardinal <name> --help` for each top-level command, and
 // asserts that cobra prints a generated help block. Failures (panic, empty
 // output, registration gap) surface as test failures without needing a
 // real Linux runtime (no namespaces, no overlayfs, no registry needed
@@ -24,7 +24,7 @@ func TestCmdSmoke_HelpForEveryTopLevelCommand(t *testing.T) {
 	root := NewRoot()
 
 	// Cobra auto-installs a `completion` sub-command at NewRoot time; the
-	// user already gets it via `dck --help`, so it does not need a
+	// user already gets it via `cardinal --help`, so it does not need a
 	// separate test entry.
 	for _, sub := range root.Commands() {
 		if sub.Name() == "completion" || sub.Name() == "help" {
@@ -72,7 +72,7 @@ func TestCmdSmoke_RootHelpSplash(t *testing.T) {
 	out := stream.String()
 
 	expect := []string{
-		"dck",            // root command
+		"cardinal",            // root command
 		"Lightweight",    // tagline word
 		"Available Commands",
 	}

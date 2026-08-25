@@ -42,7 +42,7 @@ type ContainerStats struct {
 func ReadContainerStats(c *Container) (*ContainerStats, error) {
 	cgPath := c.CgroupPath
 	if cgPath == "" {
-		cgPath = filepath.Join("/sys/fs/cgroup/dck", c.ID)
+		cgPath = filepath.Join("/sys/fs/cgroup/cardinal", c.ID)
 	}
 
 	s := &ContainerStats{

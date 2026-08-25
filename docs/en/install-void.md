@@ -1,14 +1,14 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Installing dck on Void Linux
+# Installing cardinal on Void Linux
 
 Void uses **xbps** (the `xbps-install` family of tools) and a
 community-maintained source tree called
 [`void-packages`](https://github.com/void-linux/void-packages).
-The canonical drop-in for `dck` lives under
+The canonical drop-in for `cardinal` lives under
 [`contrib/void/`](../../contrib/void/); you copy the `template`
 into your local fork of `void-packages` and build there.
 
@@ -20,45 +20,45 @@ git clone https://github.com/void-linux/void-packages
 cd void-packages
 
 # 2. Place the template at the canonical xbps-src path
-mkdir -p srcpkgs/dck
-cp path/to/dck/contrib/void/template srcpkgs/dck/template
+mkdir -p srcpkgs/cardinal
+cp path/to/cardinal/contrib/void/template srcpkgs/cardinal/template
 
 # 3. Compute the distfile SHA and patch the `checksum=` line in-place.
 #    xbps-src updates the template with the correct sha256:
-./xbps-src update-sums dck
+./xbps-src update-sums cardinal
 
 # 4. Build (this also fetches dependencies via the void-packages repo)
-./xbps-src pkg dck
-#   Produces: hostdir/binpkgs/dck-1.24.15_1.x86_64.xbps
+./xbps-src pkg cardinal
+#   Produces: hostdir/binpkgs/cardinal-1.24.15_1.x86_64.xbps
 
 # 5. (Local) install the produced package
-sudo xbps-install --repository=hostdir/binpkags dck
+sudo xbps-install --repository=hostdir/binpkags cardinal
 
 # 6. Verify
-dck version
-sudo dck doctor
+cardinal version
+sudo cardinal doctor
 ```
 
 ## Important: replace the SHA256 placeholder
 
 The `template` ships with `checksum="sha256-PLACEHOLDER-..."` so
-that your first `./xbps-src pkg dck` correctly fails with a "bad
-checksum" error and `./xbps-src update-sums dck` can edit the file
+that your first `./xbps-src pkg cardinal` correctly fails with a "bad
+checksum" error and `./xbps-src update-sums cardinal` can edit the file
 in place with the verified `sha256-...` digest. Don't hand-edit the
 checksum; always use `update-sums` (it handles both the tarball and
 any future vendor-check) so you don't miss updates.
 
 ## Build for musl
 
-Void ships both glibc and musl variants. `dck` is a pure-Go binary
+Void ships both glibc and musl variants. `cardinal` is a pure-Go binary
 and works on both, but you need to pick:
 
 ```bash
 # glibc (default on x86_64)
-./xbps-src pkg dck
+./xbps-src pkg cardinal
 
 # musl
-./xbps-src -a x86_64-musl pkg dck
+./xbps-src -a x86_64-musl pkg cardinal
 ```
 
 The `env = { CGO_ENABLED = "0"; }` baked into the upstream build
@@ -68,10 +68,10 @@ re-compiling per arch.
 ## Required kernel configuration
 
 ```bash
-dck doctor
+cardinal doctor
 ```
 
-If `dck doctor` reports `WARN` on `user namespaces`:
+If `cardinal doctor` reports `WARN` on `user namespaces`:
 
 ```
 # In /boot/grub/grub.cfg add to linux command line:
@@ -88,25 +88,25 @@ none /sys/fs/cgroup cgroup2 defaults 0 0
 
 ## Submitting to void-packages
 
-Once you have a green `./xbps-src pkg dck` for `x86_64-glibc`,
+Once you have a green `./xbps-src pkg cardinal` for `x86_64-glibc`,
 `x86_64-musl`, and `aarch64-*` matrices:
 
 1. Fork https://github.com/void-linux/void-packages
-2. Add dck maintainership request first (a one-line `maintainers.md` PR)
-3. PR the `srcpkgs/dck/template` + computed checksum
+2. Add cardinal maintainership request first (a one-line `maintainers.md` PR)
+3. PR the `srcpkgs/cardinal/template` + computed checksum
 
 The `maintainers.md` line should read:
 
 ```
-animesao <animesao@users.noreply.github.com> dck
+animesao <animesao@users.noreply.github.com> cardinal
 ```
 
 ## Solving the rare "pivot_root" failure on Void
 
 Void's default `runit` PID-1 does not need a real `init` daemon —
-`dck run` just exec's the container entrypoint and works fine on
+`cardinal run` just exec's the container entrypoint and works fine on
 Void hosts. If you do hit a pivot_root failure inside a container,
-add to the upstream `cmd/run` invocation `--no-pivot` (a dck flag
+add to the upstream `cmd/run` invocation `--no-pivot` (a cardinal flag
 that swaps to `chroot` semantics) — this is supported in void out
 of the box.
 

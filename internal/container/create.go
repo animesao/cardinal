@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"dck/internal/image"
-	"dck/internal/log"
-	"dck/internal/state"
+	"cardinal/internal/image"
+	"cardinal/internal/log"
+	"cardinal/internal/state"
 )
 
 func New(img *image.Image, opts CreateOpts) *Container {

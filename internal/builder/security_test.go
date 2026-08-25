@@ -63,7 +63,7 @@ func TestSafeBuildDestinationRejectsSymlinkAncestor(t *testing.T) {
 }
 
 func TestBuildEnvironmentDoesNotReadHostEnvironment(t *testing.T) {
-	const key = "DCK_SECURITY_TEST_HOST_SECRET"
+	const key = "CARDINAL_SECURITY_TEST_HOST_SECRET"
 	if err := os.Setenv(key, "must-not-leak"); err != nil {
 		t.Fatal(err)
 	}

@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"dck/internal/container"
-	"dck/internal/state"
+	"cardinal/internal/container"
+	"cardinal/internal/state"
 )
 
 func handleSystemPrune(w http.ResponseWriter, r *http.Request) {

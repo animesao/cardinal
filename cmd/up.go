@@ -15,11 +15,11 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"dck/internal/builder"
-	"dck/internal/config"
-	"dck/internal/container"
-	"dck/internal/image"
-	"dck/internal/network"
+	"cardinal/internal/builder"
+	"cardinal/internal/config"
+	"cardinal/internal/container"
+	"cardinal/internal/image"
+	"cardinal/internal/network"
 )
 
 const depTimeout = 120 * time.Second
@@ -28,7 +28,7 @@ const depPollInterval = 2 * time.Second
 func Up(args []string) {
 	fs := flag.NewFlagSet("up", flag.ExitOnError)
 	configPath := fs.String("f", "", "Path to config file")
-	generate := fs.Bool("generate", false, "Generate dck.toml from existing containers")
+	generate := fs.Bool("generate", false, "Generate cardinal.toml from existing containers")
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing up options: %v\n", err)
 		os.Exit(1)
@@ -37,7 +37,7 @@ func Up(args []string) {
 	if *generate {
 		outPath := *configPath
 		if outPath == "" {
-			outPath = "dck.toml"
+			outPath = "cardinal.toml"
 		}
 		all, err := container.List(true)
 		if err != nil {

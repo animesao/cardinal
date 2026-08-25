@@ -1,4 +1,4 @@
-# dck compose example — development stack.
+# cardinal compose example — development stack.
 #
 # Sensitive values (passwords, tokens) must be provided through a local .env file
 # (never commit real credentials; copy .env.example -> .env on your host).

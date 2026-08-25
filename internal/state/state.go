@@ -11,17 +11,17 @@ import (
 )
 
 func DataDir() string {
-	if dir := strings.TrimSpace(os.Getenv("DCK_DATA_DIR")); dir != "" {
+	if dir := strings.TrimSpace(os.Getenv("CARDINAL_DATA_DIR")); dir != "" {
 		return filepath.Clean(dir)
 	}
 	if os.Getuid() == 0 {
-		return "/root/.dck"
+		return "/root/.cardinal"
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		home = "/root"
 	}
-	return filepath.Join(home, ".dck")
+	return filepath.Join(home, ".cardinal")
 }
 
 func init() {
@@ -126,7 +126,7 @@ func WriteFileAtomic(path string, data []byte, mode os.FileMode) error {
 	if err := os.Chmod(dir, 0700); err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(dir, ".dck-atomic-*")
+	tmp, err := os.CreateTemp(dir, ".cardinal-atomic-*")
 	if err != nil {
 		return err
 	}

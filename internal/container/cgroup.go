@@ -11,12 +11,12 @@ import (
 	"syscall"
 	"time"
 
-	"dck/internal/log"
+	"cardinal/internal/log"
 )
 
 const (
 	cgroupRoot = "/sys/fs/cgroup"
-	dckCgroup  = "dck"
+	cardinalCgroup  = "cardinal"
 	cpuPeriod  = 100000
 )
 
@@ -49,12 +49,12 @@ func enableCgroupController(ctrl string) error {
 }
 
 func setupContainerCgroup(id string, pid int, memoryLimit int64, cpuCount float64) (string, error) {
-	basePath := filepath.Join(cgroupRoot, dckCgroup)
+	basePath := filepath.Join(cgroupRoot, cardinalCgroup)
 	if err := os.MkdirAll(basePath, 0755); err != nil {
 		return "", fmt.Errorf("cgroup base: %w", err)
 	}
 
-	// Enable controllers for dck cgroup's children (container cgroups)
+	// Enable controllers for cardinal cgroup's children (container cgroups)
 	if cgroupV2Enabled() {
 		for _, ctrl := range []string{"memory", "cpu", "pids"} {
 			if err := enableCgroupController(ctrl); err != nil {
@@ -62,16 +62,16 @@ func setupContainerCgroup(id string, pid int, memoryLimit int64, cpuCount float6
 			}
 		}
 
-		// Also enable in dck's own subtree so children inherit controllers
-		dckSub := filepath.Join(basePath, "cgroup.subtree_control")
+		// Also enable in cardinal's own subtree so children inherit controllers
+		cardinalSub := filepath.Join(basePath, "cgroup.subtree_control")
 		for _, ctrl := range []string{"memory", "cpu", "pids"} {
-			data, readErr := os.ReadFile(dckSub)
+			data, readErr := os.ReadFile(cardinalSub)
 			if readErr != nil {
 				log.Warn("read subtree_control: %v", readErr)
 				continue
 			}
 			if !strings.Contains(string(data), ctrl) {
-				if err := os.WriteFile(dckSub, []byte("+"+ctrl+"\n"), 0644); err != nil {
+				if err := os.WriteFile(cardinalSub, []byte("+"+ctrl+"\n"), 0644); err != nil {
 					log.Warn("enable cgroup controller %s: %v", ctrl, err)
 				}
 			}

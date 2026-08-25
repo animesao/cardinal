@@ -16,12 +16,12 @@
 }:
 
 pkgs.buildGoModule {
-  pname = "dck";
+  pname = "cardinal";
   inherit version;
 
   src = pkgs.fetchFromGitHub {
     owner = "animesao";
-    repo = "dck";
+    repo = "cardinal";
     rev = "refs/tags/v${version}";
     sha256 = srcSha;
   };
@@ -33,14 +33,14 @@ pkgs.buildGoModule {
   env = { CGO_ENABLED = "0"; };
   ldflags = [
     "-s" "-w" "-buildid="
-    "-X dck/cmd.version=${version}"
+    "-X cardinal/cmd.version=${version}"
   ];
 
   meta = with pkgs.lib; {
     description = "Lightweight, daemonless, OCI-compatible container runtime.";
-    homepage = "https://github.com/animesao/dck";
+    homepage = "https://github.com/animesao/cardinal";
     license = licenses.mit;
     platforms = platforms.linux;
-    mainProgram = "dck";
+    mainProgram = "cardinal";
   };
 }

@@ -1,9 +1,9 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Установка dck — Ручная установка бинарника
+# Установка cardinal — Ручная установка бинарника
 
 Скачайте бинарник и установите вручную.
 
@@ -20,38 +20,38 @@ case "$ARCH" in
 esac
 
 # Получить последнюю версию
-TAG=$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')
+TAG=$(curl -fsSL https://api.github.com/repos/animesao/cardinal/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')
 VERSION="${TAG#v}"
 
 # Скачать
-curl -fL -o "dck-${VERSION}-linux-${SUFFIX}.tar.gz" \
-  "https://github.com/animesao/dck/releases/download/${TAG}/dck-${VERSION}-linux-${SUFFIX}.tar.gz"
+curl -fL -o "cardinal-${VERSION}-linux-${SUFFIX}.tar.gz" \
+  "https://github.com/animesao/cardinal/releases/download/${TAG}/cardinal-${VERSION}-linux-${SUFFIX}.tar.gz"
 ```
 
 ## Вариант 1: Распаковка и установка
 
 ```bash
-tar xzf "dck-${VERSION}-linux-${SUFFIX}.tar.gz"
-sudo mv "dck-${VERSION}/dck" /usr/local/bin/dck
-chmod +x /usr/local/bin/dck
-rm -rf "dck-${VERSION}" "dck-${VERSION}-linux-${SUFFIX}.tar.gz"
+tar xzf "cardinal-${VERSION}-linux-${SUFFIX}.tar.gz"
+sudo mv "cardinal-${VERSION}/cardinal" /usr/local/bin/cardinal
+chmod +x /usr/local/bin/cardinal
+rm -rf "cardinal-${VERSION}" "cardinal-${VERSION}-linux-${SUFFIX}.tar.gz"
 ```
 
 ## Вариант 2: Прямое скачивание бинарника
 
 ```bash
-curl -fL -o /usr/local/bin/dck \
-  "https://github.com/animesao/dck/releases/download/${TAG}/dck-linux-${SUFFIX}"
-chmod +x /usr/local/bin/dck
+curl -fL -o /usr/local/bin/cardinal \
+  "https://github.com/animesao/cardinal/releases/download/${TAG}/cardinal-linux-${SUFFIX}"
+chmod +x /usr/local/bin/cardinal
 ```
 
 ## Вариант 3: Из исходников
 
 ```bash
 # Требуется Go 1.26+
-git clone https://github.com/animesao/dck.git
-cd dck
-go build -tags netgo -ldflags="-s -w" -o /usr/local/bin/dck .
+git clone https://github.com/animesao/cardinal.git
+cd cardinal
+go build -tags netgo -ldflags="-s -w" -o /usr/local/bin/cardinal .
 ```
 
 ## Включить супервизор (Опционально)
@@ -59,20 +59,20 @@ go build -tags netgo -ldflags="-s -w" -o /usr/local/bin/dck .
 Для автозапуска при загрузке и запланированных бэкапов:
 
 ```bash
-dck bootstrap --install
+cardinal bootstrap --install
 ```
 
 ## Проверка
 
 ```bash
-dck version
-dck doctor
+cardinal version
+cardinal doctor
 ```
 
 ## Удаление
 
 ```bash
-dck bootstrap --remove 2>/dev/null || true
-sudo rm /usr/local/bin/dck
-sudo rm -rf ~/.dck
+cardinal bootstrap --remove 2>/dev/null || true
+sudo rm /usr/local/bin/cardinal
+sudo rm -rf ~/.cardinal
 ```

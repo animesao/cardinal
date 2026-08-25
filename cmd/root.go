@@ -1,6 +1,6 @@
 //go:build linux
 
-// Package cmd hosts the cobra command tree for dck.
+// Package cmd hosts the cobra command tree for cardinal.
 //
 // The actual command-line dispatch is implemented in cobra.go (NewRoot,
 // Execute, applyLogOptions) and cobra_commands.go (per-command wrappers
@@ -9,7 +9,7 @@
 package cmd
 
 var (
-	repoURL          = "https://raw.githubusercontent.com/animesao/dck"
-	releaseURL       = "https://github.com/animesao/dck"
+	repoURL          = "https://raw.githubusercontent.com/animesao/cardinal"
+	releaseURL       = "https://github.com/animesao/cardinal"
 	blueprintRepoURL = "https://raw.githubusercontent.com/dck-organization/dck-blueprints"
 )

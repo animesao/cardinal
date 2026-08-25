@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"testing"
 
-	"dck/internal/image"
+	"cardinal/internal/image"
 )
 
 func TestContainerLifecycleE2E(t *testing.T) {
@@ -21,9 +21,9 @@ func TestContainerLifecycleE2E(t *testing.T) {
 		t.Skip("requires mount")
 	}
 
-	ref := os.Getenv("DCK_E2E_IMAGE")
+	ref := os.Getenv("CARDINAL_E2E_IMAGE")
 	if ref == "" {
-		t.Skip("set DCK_E2E_IMAGE to an already pulled image to run lifecycle e2e")
+		t.Skip("set CARDINAL_E2E_IMAGE to an already pulled image to run lifecycle e2e")
 	}
 	name, tag := parseE2EReference(ref)
 	img := image.LoadFromStore(name, tag)
@@ -31,7 +31,7 @@ func TestContainerLifecycleE2E(t *testing.T) {
 		t.Skipf("image %s:%s is not present locally", name, tag)
 	}
 
-	// Use the configured dck data directory so the already-pulled image and its
+	// Use the configured cardinal data directory so the already-pulled image and its
 	// rootfs remain available to the runtime. The generated container is removed
 	// during cleanup.
 	c := New(img, CreateOpts{

@@ -1,9 +1,9 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Установка dck на Arch Linux
+# Установка cardinal на Arch Linux
 
 ## Вариант 1: Pacman-пакет (Рекомендуется)
 
@@ -20,33 +20,33 @@ case "$ARCH" in
 esac
 
 # Получить последнюю версию
-TAG=$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')
+TAG=$(curl -fsSL https://api.github.com/repos/animesao/cardinal/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')
 VERSION="${TAG#v}"
 
 # Скачать и установить
-curl -fL -o "dck-${VERSION}-linux-${SUFFIX}.pkg.tar.zst" \
-  "https://github.com/animesao/dck/releases/download/${TAG}/dck-${VERSION}-linux-${SUFFIX}.pkg.tar.zst"
-sudo pacman -U --noconfirm "dck-${VERSION}-linux-${SUFFIX}.pkg.tar.zst"
-rm "dck-${VERSION}-linux-${SUFFIX}.pkg.tar.zst"
+curl -fL -o "cardinal-${VERSION}-linux-${SUFFIX}.pkg.tar.zst" \
+  "https://github.com/animesao/cardinal/releases/download/${TAG}/cardinal-${VERSION}-linux-${SUFFIX}.pkg.tar.zst"
+sudo pacman -U --noconfirm "cardinal-${VERSION}-linux-${SUFFIX}.pkg.tar.zst"
+rm "cardinal-${VERSION}-linux-${SUFFIX}.pkg.tar.zst"
 ```
 
 ## Вариант 2: Универсальный установщик
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/animesao/dck/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/animesao/cardinal/main/install.sh | sudo bash
 ```
 
 ## Вариант 3: Архив с бинарником
 
 ```bash
-TAG=$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')
+TAG=$(curl -fsSL https://api.github.com/repos/animesao/cardinal/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')
 VERSION="${TAG#v}"
 
-curl -fL -o "dck-${VERSION}-linux-amd64.tar.gz" \
-  "https://github.com/animesao/dck/releases/download/${TAG}/dck-${VERSION}-linux-amd64.tar.gz"
-tar xzf "dck-${VERSION}-linux-amd64.tar.gz"
-sudo mv "dck-${VERSION}/dck" /usr/local/bin/dck
-rm -rf "dck-${VERSION}" "dck-${VERSION}-linux-amd64.tar.gz"
+curl -fL -o "cardinal-${VERSION}-linux-amd64.tar.gz" \
+  "https://github.com/animesao/cardinal/releases/download/${TAG}/cardinal-${VERSION}-linux-amd64.tar.gz"
+tar xzf "cardinal-${VERSION}-linux-amd64.tar.gz"
+sudo mv "cardinal-${VERSION}/cardinal" /usr/local/bin/cardinal
+rm -rf "cardinal-${VERSION}" "cardinal-${VERSION}-linux-amd64.tar.gz"
 ```
 
 ## Модули ядра
@@ -59,20 +59,20 @@ sudo modprobe veth
 sudo modprobe br_netfilter
 
 # Сделать постоянными
-echo -e "overlay\nveth\nbr_netfilter" | sudo tee /etc/modules-load.d/dck.conf
+echo -e "overlay\nveth\nbr_netfilter" | sudo tee /etc/modules-load.d/cardinal.conf
 ```
 
 ## Проверка
 
 ```bash
-dck version
-dck doctor
+cardinal version
+cardinal doctor
 ```
 
 ## Удаление
 
 ```bash
-sudo pacman -R dck
-dck bootstrap --remove
-sudo rm -rf ~/.dck
+sudo pacman -R cardinal
+cardinal bootstrap --remove
+sudo rm -rf ~/.cardinal
 ```

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func Rm(args []string) {
@@ -19,7 +19,7 @@ func Rm(args []string) {
 	}
 
 	if fs.NArg() < 1 {
-		fmt.Println("Usage: dck rm [-f] <container> [container...]")
+		fmt.Println("Usage: cardinal rm [-f] <container> [container...]")
 		os.Exit(1)
 	}
 

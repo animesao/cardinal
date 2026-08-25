@@ -1,50 +1,50 @@
-Package: dck
+Package: cardinal
 Version: 1.15.0
 Architecture: amd64
 Maintainer: animesao <animesao@users.noreply.github.com>
-Filename: dck_1.10.3_amd64.deb
+Filename: cardinal_1.10.3_amd64.deb
 Size: 2417652
 SHA256: 7b03a1fbaafa10731630b10a20dad55807663b37f4ac3b55d80461560e16759c
-Description: dck - lightweight container runtime
+Description: cardinal - lightweight container runtime
  No daemon. No Docker. Just containers.
 
-Package: dck
+Package: cardinal
 Version: 1.15.0
 Architecture: amd64
 Maintainer: animesao <animesao@users.noreply.github.com>
-Filename: dck_1.11.0_amd64.deb
+Filename: cardinal_1.11.0_amd64.deb
 Size: 2417594
 SHA256: 78995cd943bbfce437a363fa3fc49d2f158338d132a3765f4c8bffb356f233da
-Description: dck - lightweight container runtime
+Description: cardinal - lightweight container runtime
  No daemon. No Docker. Just containers.
 
-Package: dck
+Package: cardinal
 Version: 1.15.0
 Architecture: amd64
 Maintainer: animesao <animesao@users.noreply.github.com>
-Filename: dck_1.12.0_amd64.deb
+Filename: cardinal_1.12.0_amd64.deb
 Size: 2466790
 SHA256: b367efe270feb728205927e9a38d75365ad1c785b069e741e3c6a707ea93d9c8
-Description: dck - lightweight container runtime
+Description: cardinal - lightweight container runtime
  No daemon. No Docker. Just containers.
 
-Package: dck
+Package: cardinal
 Version: 1.15.0
 Architecture: amd64
 Maintainer: animesao <animesao@users.noreply.github.com>
-Filename: dck_1.13.0_amd64.deb
+Filename: cardinal_1.13.0_amd64.deb
 Size: 2468926
 SHA256: 87ed0d54ef04dcfca9896cf00aaddf5f056989b321558a78f7118af4a6dcf6af
-Description: dck - lightweight container runtime
+Description: cardinal - lightweight container runtime
  No daemon. No Docker. Just containers.
 
-Package: dck
+Package: cardinal
 Version: 1.15.0
 Architecture: amd64
 Maintainer: animesao <animesao@users.noreply.github.com>
-Filename: dck_1.15.0_amd64.deb
+Filename: cardinal_1.15.0_amd64.deb
 Size: 2475346
 SHA256: c991fa539d2a5e1f138fa8602451d63e392999a46671c797b279745af28aeafd
-Description: dck - lightweight container runtime
+Description: cardinal - lightweight container runtime
  No daemon. No Docker. Just containers.
 

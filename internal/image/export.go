@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 const (

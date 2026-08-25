@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"dck/internal/log"
-	"dck/internal/state"
+	"cardinal/internal/log"
+	"cardinal/internal/state"
 )
 
 var serviceLock sync.RWMutex

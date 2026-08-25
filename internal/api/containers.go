@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"dck/internal/container"
-	"dck/internal/image"
-	"dck/internal/state"
+	"cardinal/internal/container"
+	"cardinal/internal/image"
+	"cardinal/internal/state"
 )
 
 func handleContainersList(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +131,7 @@ func containerToSummary(c *container.Container) Container {
 		netSettings.Networks = map[string]NetworkEntry{
 			"bridge": {
 				IPAddress: c.IP,
-				NetworkID: "dck0",
+				NetworkID: "cardinal0",
 			},
 		}
 	}
@@ -265,7 +265,7 @@ func containerToInspect(c *container.Container) *ContainerInspect {
 		netSettings.Networks = map[string]InspectNetworkEntry{
 			"bridge": {
 				IPAddress: c.IP,
-				NetworkID: "dck0",
+				NetworkID: "cardinal0",
 			},
 		}
 	}

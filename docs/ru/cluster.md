@@ -1,11 +1,11 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
 # Кластерная оркестрация
 
-dck поддерживает многопоточную кластеризацию с управлением сервисами,
+cardinal поддерживает многопоточную кластеризацию с управлением сервисами,
 DNS-обнаружением сервисов и rolling updates — всё в одном 5 MB бинарнике
 без внешних зависимостей.
 
@@ -13,13 +13,13 @@ DNS-обнаружением сервисов и rolling updates — всё в �
 
 ```
 ┌──────────────────────────────────────────┐
-│              dck кластер                  │
+│              cardinal кластер                  │
 │                                          │
 │  ┌──────────┐     ┌──────────┐          │
 │  │  Узел 1   │     │  Узел 2   │          │
 │  │ (лидер)  │◄───►│ (worker)  │          │
 │  │          │     │          │          │
-│  │ dck run  │     │ dck run  │          │
+│  │ cardinal run  │     │ cardinal run  │          │
 │  │контейнеры│     │контейнеры│          │
 │  └──────────┘     └──────────┘          │
 │         ▲                ▲               │
@@ -37,13 +37,13 @@ DNS-обнаружением сервисов и rolling updates — всё в �
 
 ## Команды кластера
 
-### `dck cluster init`
+### `cardinal cluster init`
 
 Инициализация нового кластера. Первый узел становится лидером.
 `--serve` сразу запускает API-сервер для приёма запросов на реплики.
 
 ```
-DCK_TOKEN='<strong-random-token>' dck cluster init --name prod --bind 0.0.0.0 --port 7946 --api-port 2375 --serve --token '<strong-random-token>'
+CARDINAL_TOKEN='<strong-random-token>' cardinal cluster init --name prod --bind 0.0.0.0 --port 7946 --api-port 2375 --serve --token '<strong-random-token>'
 ```
 
 Вывод:
@@ -56,12 +56,12 @@ Initialized cluster prod (a1b2c3d4e5f6)
 Starting API server on 0.0.0.0:2375 (требуется Bearer-токен)...
 ```
 
-### `dck cluster join <узел>`
+### `cardinal cluster join <узел>`
 
 Присоединиться к существующему кластеру. `--serve` запускает API-сервер.
 
 ```
-DCK_TOKEN='<strong-random-token>' dck cluster join 10.0.0.1:7946 --bind 0.0.0.0 --port 2375 --serve --token '<strong-random-token>'
+CARDINAL_TOKEN='<strong-random-token>' cardinal cluster join 10.0.0.1:7946 --bind 0.0.0.0 --port 2375 --serve --token '<strong-random-token>'
 ```
 
 Присоединяющийся узел:
@@ -69,21 +69,21 @@ DCK_TOKEN='<strong-random-token>' dck cluster join 10.0.0.1:7946 --bind 0.0.0.0 
 2. Получает полное состояние кластера (узлы + сервисы)
 3. Начинает отправлять heartbeat каждые 5 секунд
 
-### `dck cluster leave`
+### `cardinal cluster leave`
 
 Выйти из кластера. Уведомляет все узлы и сбрасывает локальное состояние.
 
 ```
-dck cluster leave
+cardinal cluster leave
 ```
 
-### `dck cluster serve`
+### `cardinal cluster serve`
 
 Запуск HTTP API-сервера для приёма запросов на реплики от других нод кластера.
 Нужен на каждой ноде, которая должна запускать контейнеры по заданию планировщика.
 
 ```
-dck cluster serve -p 2375 -H 0.0.0.0 --token '<strong-random-token>'
+cardinal cluster serve -p 2375 -H 0.0.0.0 --token '<strong-random-token>'
 ```
 
 API-сервер обрабатывает:
@@ -91,7 +91,7 @@ API-сервер обрабатывает:
 - `DELETE /cluster/replicas/<id>` — остановить и удалить контейнер
 - `GET /cluster/containers` — список контейнеров на этой ноде
 
-### `dck cluster ls`
+### `cardinal cluster ls`
 
 Список всех узлов кластера.
 
@@ -104,12 +104,12 @@ e7f8a9b0  node-03   10.0.0.3:2375  worker  active    15:04:01
 
 ## Управление сервисами
 
-### `dck service create`
+### `cardinal service create`
 
 Создать сервис с репликами, распределёнными по кластеру.
 
 ```
-dck service create \
+cardinal service create \
   --name web \
   --replicas 3 \
   --port 80:80 \
@@ -117,7 +117,7 @@ dck service create \
   nginx:alpine
 ```
 
-### `dck service ls`
+### `cardinal service ls`
 
 Список всех сервисов.
 
@@ -127,35 +127,35 @@ web    nginx:alpine  3         80->80/tcp    2026-07-03 15:00:00
 api    myapi:latest  2         3000->3000/tcp 2026-07-03 14:00:00
 ```
 
-### `dck service scale <имя> <реплики>`
+### `cardinal service scale <имя> <реплики>`
 
 Изменить количество реплик сервиса.
 
 ```
-dck service scale web 5    # увеличить до 5
-dck service scale api 0    # уменьшить до 0 (остановить все)
+cardinal service scale web 5    # увеличить до 5
+cardinal service scale api 0    # уменьшить до 0 (остановить все)
 ```
 
-### `dck service update <имя> --image <новый-образ>`
+### `cardinal service update <имя> --image <новый-образ>`
 
 Выполнить rolling update. Планировщик постепенно заменяет реплики
 (управляется `UpdateConfig.Parallelism` и `UpdateConfig.Delay`).
 
 ```
-dck service update web --image nginx:1.25
+cardinal service update web --image nginx:1.25
 ```
 
-### `dck service rm <имя>`
+### `cardinal service rm <имя>`
 
 Удалить сервис и все его реплики.
 
 ```
-dck service rm web
+cardinal service rm web
 ```
 
 ## DNS-обнаружение сервисов
 
-dck включает встроенный DNS-сервер, который преобразует имена сервисов в IP контейнеров.
+cardinal включает встроенный DNS-сервер, который преобразует имена сервисов в IP контейнеров.
 
 Формат: `<имя>.svc.cluster.local`
 
@@ -185,7 +185,7 @@ web.svc.cluster.local → 10.0.0.10, 10.0.0.11, 10.0.0.12  (round-robin)
 Каждый узел хранит состояние локально:
 
 ```
-~/.dck/
+~/.cardinal/
   cluster/
     cluster.json         # конфигурация кластера + список узлов
   services/

@@ -1,24 +1,24 @@
-# NixOS test configuration for dck
-# This file demonstrates how to use dck in a NixOS configuration
+# NixOS test configuration for cardinal
+# This file demonstrates how to use cardinal in a NixOS configuration
 #
 # Usage in configuration.nix:
 #
 #   { config, pkgs, ... }:
 #   {
 #     imports = [
-#       ./path/to/dck/flake.nix#nixosModules.dck
+#       ./path/to/cardinal/flake.nix#nixosModules.cardinal
 #     ];
 #
-#     services.dck = {
+#     services.cardinal = {
 #       enable = true;
-#       # dataDir = "/var/lib/dck";  # default
-#       # user = "dck";              # default
+#       # dataDir = "/var/lib/cardinal";  # default
+#       # user = "cardinal";              # default
 #       # apiToken = "your-secret-token";
 #       # apiPort = 2375;
 #       # apiHost = "127.0.0.1";
 #     };
 #
-#     # Open firewall for dck API (if needed externally)
+#     # Open firewall for cardinal API (if needed externally)
 #     networking.firewall.allowedTCPPorts = [ 2375 ];
 #   }
 
@@ -27,20 +27,20 @@
 with lib;
 
 let
-  cfg = config.services.dck;
+  cfg = config.services.cardinal;
 in
 {
-  # Example NixOS configuration using the dck module
+  # Example NixOS configuration using the cardinal module
   # This is a template - copy and customize for your use case
 
-  services.dck = {
+  services.cardinal = {
     enable = true;
 
     # Data directory for container state
-    dataDir = "/var/lib/dck";
+    dataDir = "/var/lib/cardinal";
 
-    # User to run dck as
-    user = "dck";
+    # User to run cardinal as
+    user = "cardinal";
 
     # API configuration (optional)
     # apiToken = "your-secure-token-here";
@@ -64,14 +64,14 @@ in
 
   # Firewall configuration
   networking.firewall = {
-    # Allow dck bridge traffic
-    trustedInterfaces = [ "dck0" ];
+    # Allow cardinal bridge traffic
+    trustedInterfaces = [ "cardinal0" ];
 
-    # Allow dck API (if needed externally)
+    # Allow cardinal API (if needed externally)
     # allowedTCPPorts = [ 2375 ];
   };
 
-  # Required packages for dck
+  # Required packages for cardinal
   environment.systemPackages = with pkgs; [
     iproute2
     iptables

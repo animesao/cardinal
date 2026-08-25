@@ -18,8 +18,8 @@ import (
 	"syscall"
 	"time"
 
-	"dck/internal/container"
-	"dck/internal/state"
+	"cardinal/internal/container"
+	"cardinal/internal/state"
 )
 
 func Backup(args []string) {
@@ -54,11 +54,11 @@ func Backup(args []string) {
 }
 
 func printBackupUsage() {
-	fmt.Println(`Usage: dck backup COMMAND
+	fmt.Println(`Usage: cardinal backup COMMAND
 
 Commands:
   create <container> [-o file.tar.gz] [-e]  Archive container writable data and metadata
-  list                                      List backups in the dck backup directory
+  list                                      List backups in the cardinal backup directory
   restore <container> <file.tar.gz>         Restore writable data into a stopped container
   restore <container> <file.tar.gz> --rebind Restore data into a newly created container
   enable <container> [options]              Enable scheduled backups
@@ -70,12 +70,12 @@ Commands:
 
 Create options:
   -o <file>                                Output file path
-  -e, --encrypt                            Encrypt the backup archive (requires DCK_BACKUP_KEY)
+  -e, --encrypt                            Encrypt the backup archive (requires CARDINAL_BACKUP_KEY)
 
 Enable options:
   --interval <duration>                    Backup interval (default: 24h)
   --retention <n>                          Number of archives to keep (default: 7)
-  --dir <path>                             Backup directory (default: dck data/backups/<container>)
+  --dir <path>                             Backup directory (default: cardinal data/backups/<container>)
   --encrypt                                Enable encryption for automatic backups`)
 }
 
@@ -98,7 +98,7 @@ func containerBackupDir(c *container.Container) string {
 
 func backupEnable(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck backup enable <container> [--interval 24h] [--retention 7] [--dir /data/backups]")
+		fmt.Println("Usage: cardinal backup enable <container> [--interval 24h] [--retention 7] [--dir /data/backups]")
 		os.Exit(1)
 	}
 	fs := flag.NewFlagSet("backup enable", flag.ContinueOnError)
@@ -151,7 +151,7 @@ func backupEnable(args []string) {
 
 func backupDisable(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck backup disable <container>")
+		fmt.Println("Usage: cardinal backup disable <container>")
 		os.Exit(1)
 	}
 	c, err := container.Load(args[0])
@@ -169,7 +169,7 @@ func backupDisable(args []string) {
 
 func backupStatus(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck backup status <container>")
+		fmt.Println("Usage: cardinal backup status <container>")
 		os.Exit(1)
 	}
 	c, err := container.Load(args[0])
@@ -197,7 +197,7 @@ func backupStatus(args []string) {
 
 func backupCreate(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck backup create <container> [-o file.tar.gz] [-e]")
+		fmt.Println("Usage: cardinal backup create <container> [-o file.tar.gz] [-e]")
 		os.Exit(1)
 	}
 	name := args[0]
@@ -286,8 +286,8 @@ func backupGenerateKey(args []string) {
 	hexKey := hex.EncodeToString(key)
 	fmt.Printf("Generated encryption key:\n%s\n\n", hexKey)
 	fmt.Println("Save this key securely. You can:")
-	fmt.Println("  1. Set environment variable: export DCK_BACKUP_KEY=" + hexKey)
-	fmt.Println("  2. Save to file: dck backup generate-key > ~/.dck-backup-key && chmod 600 ~/.dck-backup-key")
+	fmt.Println("  1. Set environment variable: export CARDINAL_BACKUP_KEY=" + hexKey)
+	fmt.Println("  2. Save to file: cardinal backup generate-key > ~/.cardinal-backup-key && chmod 600 ~/.cardinal-backup-key")
 }
 
 func validateBackupDirectory(path string) (string, error) {
@@ -475,10 +475,10 @@ func performAutomaticBackup(c *container.Container) error {
 		c.StoppedByUser = false
 		c.Status = container.Created
 		if err := c.Save(); err != nil {
-			fmt.Fprintf(os.Stderr, "dck supervisor: save backup restart state %s: %v\n", c.Name, err)
+			fmt.Fprintf(os.Stderr, "cardinal supervisor: save backup restart state %s: %v\n", c.Name, err)
 		}
 		if err := c.Start(); err != nil {
-			fmt.Fprintf(os.Stderr, "dck supervisor: restart after backup %s: %v\n", c.Name, err)
+			fmt.Fprintf(os.Stderr, "cardinal supervisor: restart after backup %s: %v\n", c.Name, err)
 		}
 	}
 	defer restartAfterBackup()
@@ -671,7 +671,7 @@ func backupList(args []string) {
 
 func backupVerify(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck backup verify <file.tar.gz>")
+		fmt.Println("Usage: cardinal backup verify <file.tar.gz>")
 		os.Exit(1)
 	}
 	if _, err := os.Stat(backupChecksumPath(args[0])); os.IsNotExist(err) {
@@ -687,7 +687,7 @@ func backupVerify(args []string) {
 
 func backupRemove(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck backup remove <file.tar.gz>")
+		fmt.Println("Usage: cardinal backup remove <file.tar.gz>")
 		os.Exit(1)
 	}
 	archivePath, err := validateBackupArchivePath(args[0])
@@ -738,7 +738,7 @@ func validateBackupArchivePath(path string) (string, error) {
 
 func backupRestore(args []string) {
 	if len(args) < 2 {
-		fmt.Println("Usage: dck backup restore <container> <file.tar.gz> [--rebind]")
+		fmt.Println("Usage: cardinal backup restore <container> <file.tar.gz> [--rebind]")
 		os.Exit(1)
 	}
 	rebind := false
@@ -775,7 +775,7 @@ func restoreContainerBackupWithOptions(c *container.Container, archivePath strin
 	if err := verifyBackupChecksum(archivePath); err != nil {
 		return fmt.Errorf("verify backup checksum: %w", err)
 	}
-	stage, err := os.MkdirTemp(state.DataDir(), ".dck-restore-")
+	stage, err := os.MkdirTemp(state.DataDir(), ".cardinal-restore-")
 	if err != nil {
 		return fmt.Errorf("create restore staging directory: %w", err)
 	}
@@ -1010,7 +1010,7 @@ func applyBackupTree(source, destination string, hostVolume bool) error {
 		if err != nil {
 			return err
 		}
-		tmp, err := os.CreateTemp(filepath.Dir(target), ".dck-restore-file-")
+		tmp, err := os.CreateTemp(filepath.Dir(target), ".cardinal-restore-file-")
 		if err != nil {
 			return err
 		}
@@ -1053,7 +1053,7 @@ func applyBackupTree(source, destination string, hostVolume bool) error {
 }
 
 func atomicRestoreSymlink(target, link string) error {
-	tmp, err := os.CreateTemp(filepath.Dir(target), ".dck-restore-link-")
+	tmp, err := os.CreateTemp(filepath.Dir(target), ".cardinal-restore-link-")
 	if err != nil {
 		return err
 	}
@@ -1098,7 +1098,7 @@ func writeBackupChecksum(archivePath string) error {
 		return fmt.Errorf("hash archive: %w", err)
 	}
 	checksumPath := backupChecksumPath(archivePath)
-	tmp, err := os.CreateTemp(filepath.Dir(checksumPath), ".dck-checksum-")
+	tmp, err := os.CreateTemp(filepath.Dir(checksumPath), ".cardinal-checksum-")
 	if err != nil {
 		return err
 	}
@@ -1136,7 +1136,7 @@ func verifyBackupChecksum(archivePath string) error {
 	if err != nil {
 		if os.IsNotExist(err) {
 			// Archives created before checksum sidecars were introduced remain
-			// restorable. `dck backup verify` still reports this as unverified.
+			// restorable. `cardinal backup verify` still reports this as unverified.
 			return nil
 		}
 		return err

@@ -13,7 +13,7 @@ var (
 	protectedHostPaths = []string{
 		"/", "/bin", "/boot", "/dev", "/etc", "/home", "/lib", "/lib64",
 		"/media", "/mnt", "/opt", "/proc", "/root", "/run", "/sbin",
-		"/sys", "/usr", "/var", "/var/lib/dck", "/var/run/dck",
+		"/sys", "/usr", "/var", "/var/lib/cardinal", "/var/run/cardinal",
 		// State directories for sibling container runtimes; mounting them would
 		// give containers parity with the host's existing containers.
 		"/var/run/docker.sock", "/var/run/podman", "/var/run/containerd",
@@ -33,7 +33,7 @@ var (
 //
 // The default blocklist covers system directories, runtime state dirs,
 // and the common credential locations. Operators can opt in to additional
-// paths via the DCK_ALLOWED_HOST_PATHS environment variable (colon-separated
+// paths via the CARDINAL_ALLOWED_HOST_PATHS environment variable (colon-separated
 // list). The use-case for the allowlist is homogeneous deployments where
 // the data directory is co-located with the working directory.
 //
@@ -73,7 +73,7 @@ func IsProtectedHostPath(path string) bool {
 	return false
 }
 
-// InitHostPathPolicy loads the optional DCK_ALLOWED_HOST_PATHS env var
+// InitHostPathPolicy loads the optional CARDINAL_ALLOWED_HOST_PATHS env var
 // exactly once. It is called from server start paths and is safe to call
 // multiple times.
 func InitHostPathPolicy() {
@@ -83,7 +83,7 @@ func InitHostPathPolicy() {
 		return
 	}
 	hostPolicyInited = true
-	if env := strings.TrimSpace(os.Getenv("DCK_ALLOWED_HOST_PATHS")); env != "" {
+	if env := strings.TrimSpace(os.Getenv("CARDINAL_ALLOWED_HOST_PATHS")); env != "" {
 		for _, p := range strings.Split(env, ":") {
 			p = strings.TrimSpace(p)
 			if p == "" {

@@ -15,10 +15,10 @@ import (
 	"sync"
 	"time"
 
-	"dck/internal/container"
-	"dck/internal/image"
-	"dck/internal/log"
-	"dck/internal/state"
+	"cardinal/internal/container"
+	"cardinal/internal/image"
+	"cardinal/internal/log"
+	"cardinal/internal/state"
 )
 
 var fnLock sync.RWMutex
@@ -281,7 +281,7 @@ func scaleUpFunction(ctx context.Context, fn *Function, count int) error {
 			Name:   cName,
 			Detach: true,
 			Labels: map[string]string{
-				"dck.function": fn.Name,
+				"cardinal.function": fn.Name,
 			},
 			Ports: []container.PortMap{
 				{HostPort: 0, ContainerPort: port, Protocol: "tcp"},

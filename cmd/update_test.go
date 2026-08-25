@@ -18,19 +18,19 @@ func TestUpdateInstallTarget(t *testing.T) {
 	}{
 		{
 			name:       "normal binary",
-			selfPath:   "/usr/local/bin/dck",
-			wantTarget: "/usr/local/bin/dck",
+			selfPath:   "/usr/local/bin/cardinal",
+			wantTarget: "/usr/local/bin/cardinal",
 		},
 		{
 			name:       "mounted AppImage executable",
-			selfPath:   "/tmp/.mount_dckabc/usr/bin/dck",
+			selfPath:   "/tmp/.mount_cardinalabc/usr/bin/cardinal",
 			wantTarget: appImageInstallPath,
 			wantSudo:   true,
 		},
 		{
 			name:       "AppImage environment",
-			selfPath:   "/opt/dck.AppImage",
-			appImage:   "/opt/dck.AppImage",
+			selfPath:   "/opt/cardinal.AppImage",
+			appImage:   "/opt/cardinal.AppImage",
 			wantTarget: appImageInstallPath,
 			wantSudo:   true,
 		},
@@ -61,8 +61,8 @@ func TestUpdateInstallTarget(t *testing.T) {
 }
 
 func TestInstallUpdateBinary(t *testing.T) {
-	source := filepath.Join(t.TempDir(), "dck-new")
-	target := filepath.Join(t.TempDir(), "bin", "dck")
+	source := filepath.Join(t.TempDir(), "cardinal-new")
+	target := filepath.Join(t.TempDir(), "bin", "cardinal")
 	if err := os.WriteFile(source, []byte("new binary"), 0600); err != nil {
 		t.Fatalf("write source: %v", err)
 	}

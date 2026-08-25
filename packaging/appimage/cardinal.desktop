@@ -1,8 +1,8 @@
 [Desktop Entry]
-Name=dck
+Name=cardinal
 Comment=Lightweight Linux container runtime
-Exec=dck
-Icon=dck
+Exec=cardinal
+Icon=cardinal
 Type=Application
 Categories=Development;System;
 Terminal=true

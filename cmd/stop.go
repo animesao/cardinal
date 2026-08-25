@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func Stop(args []string) {
@@ -36,7 +36,7 @@ func Stop(args []string) {
 
 	remaining := fs.Args()
 	if len(remaining) < 1 {
-		fmt.Println("Usage: dck stop [--all] <container>")
+		fmt.Println("Usage: cardinal stop [--all] <container>")
 		os.Exit(1)
 	}
 

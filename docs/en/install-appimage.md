@@ -1,9 +1,9 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Installing dck via AppImage
+# Installing cardinal via AppImage
 
 AppImage is a portable format — no package manager required.
 
@@ -11,34 +11,34 @@ AppImage is a portable format — no package manager required.
 
 Double-click the `.AppImage` file. A terminal-based installer will:
 
-1. Copy the binary to `/usr/local/bin/dck`
+1. Copy the binary to `/usr/local/bin/cardinal`
 2. Enable the systemd supervisor
 
 ## CLI Install
 
 ```bash
 # Get latest version
-TAG=$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')
+TAG=$(curl -fsSL https://api.github.com/repos/animesao/cardinal/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')
 VERSION="${TAG#v}"
 
 # Download
-curl -fL -o "dck-${VERSION}-linux-amd64.AppImage" \
-  "https://github.com/animesao/dck/releases/download/${TAG}/dck-${VERSION}-linux-amd64.AppImage"
-chmod +x "dck-${VERSION}-linux-amd64.AppImage"
+curl -fL -o "cardinal-${VERSION}-linux-amd64.AppImage" \
+  "https://github.com/animesao/cardinal/releases/download/${TAG}/cardinal-${VERSION}-linux-amd64.AppImage"
+chmod +x "cardinal-${VERSION}-linux-amd64.AppImage"
 
 # Install
-"./dck-${VERSION}-linux-amd64.AppImage" --install
+"./cardinal-${VERSION}-linux-amd64.AppImage" --install
 
 # Or use directly without installing
-"./dck-${VERSION}-linux-amd64.AppImage" run --rm alpine echo hello
+"./cardinal-${VERSION}-linux-amd64.AppImage" run --rm alpine echo hello
 ```
 
 ## Architecture Support
 
 | Arch | AppImage |
 |------|----------|
-| x86_64 | ✅ `dck-*-linux-amd64.AppImage` |
-| aarch64 | ✅ `dck-*-linux-arm64.AppImage` |
+| x86_64 | ✅ `cardinal-*-linux-amd64.AppImage` |
+| aarch64 | ✅ `cardinal-*-linux-arm64.AppImage` |
 | armv6 | ❌ Use raw binary instead |
 
 ## Portable Usage
@@ -46,27 +46,27 @@ chmod +x "dck-${VERSION}-linux-amd64.AppImage"
 AppImage works without installation:
 
 ```bash
-./dck-*-linux-amd64.AppImage version
-./dck-*-linux-amd64.AppImage run --rm alpine echo hello
+./cardinal-*-linux-amd64.AppImage version
+./cardinal-*-linux-amd64.AppImage run --rm alpine echo hello
 ```
 
 ## Verify
 
 ```bash
-dck version
-dck doctor
+cardinal version
+cardinal doctor
 ```
 
 ## Uninstall
 
 ```bash
 # If installed via --install
-dck bootstrap --remove
-sudo rm /usr/local/bin/dck
+cardinal bootstrap --remove
+sudo rm /usr/local/bin/cardinal
 
 # Remove AppImage file
-rm dck-*-linux-amd64.AppImage
+rm cardinal-*-linux-amd64.AppImage
 
 # Remove data
-sudo rm -rf ~/.dck
+sudo rm -rf ~/.cardinal
 ```

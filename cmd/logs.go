@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func Logs(args []string) {
@@ -22,7 +22,7 @@ func Logs(args []string) {
 	}
 
 	if fs.NArg() < 1 {
-		fmt.Println("Usage: dck logs [-f] [--tail <n>] <container>")
+		fmt.Println("Usage: cardinal logs [-f] [--tail <n>] <container>")
 		os.Exit(1)
 	}
 

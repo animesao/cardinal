@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"dck/internal/image"
-	"dck/internal/state"
+	"cardinal/internal/image"
+	"cardinal/internal/state"
 )
 
 func handleImagesList(w http.ResponseWriter, r *http.Request) {
@@ -245,7 +245,7 @@ func handleImageHistory(w http.ResponseWriter, r *http.Request, ref string) {
 		{
 			ID:        "sha256:" + img.Digest,
 			Created:   time.Now().Unix(),
-			CreatedBy: "dck build",
+			CreatedBy: "cardinal build",
 			Size:      0,
 			Tags:      []string{fmt.Sprintf("%s:%s", name, tag)},
 		},

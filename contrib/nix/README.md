@@ -1,9 +1,9 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Nix / NixOS packaging for `dck`
+# Nix / NixOS packaging for `cardinal`
 
 This directory contains:
 
@@ -18,17 +18,17 @@ Both produce the same derivation. Pick whichever matches your workflow.
 
 ```bash
 # One-shot, runnable shell wrapper that points to `--version`
-nix run github:animesao/dck -- --version
+nix run github:animesao/cardinal -- --version
 
 # Persistent install for the current user
-nix profile install github:animesao/dck
+nix profile install github:animesao/cardinal
 
 # Add to a NixOS system configuration
 {
-  inputs.dck.url = "github:animesao/dck/v1.24.16";
+  inputs.cardinal.url = "github:animesao/cardinal/v1.24.16";
   outputs.nixosConfigurations.example = nixpkgs.lib.nixosSystem {
     modules = [
-      ({ pkgs, ... }: { environment.systemPackages = [ inputs.dck.packages.${system}.default ]; })
+      ({ pkgs, ... }: { environment.systemPackages = [ inputs.cardinal.packages.${system}.default ]; })
     ];
   };
 }
@@ -44,7 +44,7 @@ vendorHash = pkgs.lib.fakeHash;   # = "sha256-AAAA…"
 ```
 
 That's deliberate — when the maintainer who forked the derivation
-runs `nix build` for the first time against a new `dck` tag, Nix will
+runs `nix build` for the first time against a new `cardinal` tag, Nix will
 print the real hashes in the build log and refuse to silently accept
 the placeholders. The maintainer copies the printed hashes back into
 this file and commits. This is how `nixpkgs` itself handles every
@@ -52,14 +52,14 @@ fetchFromGitHub + buildGoModule pair; doing it for our flake keeps it
 honest and reproducible.
 
 If you're a **consumer** installing from the canonical
-`github:animesao/dck`, you do not need to fix hashes yourself —
+`github:animesao/cardinal`, you do not need to fix hashes yourself —
 the flake already carries them (post-tag).
 
 ## Verification after install
 
 ```bash
-dck version    # expect v1.24.16 (or the tag you pinned)
-dck doctor     # reports kernel-features / namespace / cgroup state
+cardinal version    # expect v1.24.16 (or the tag you pinned)
+cardinal doctor     # reports kernel-features / namespace / cgroup state
 ```
 
 ## See also

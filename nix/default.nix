@@ -6,7 +6,7 @@
 }:
 
 stdenv.mkDerivation {
-  pname = "dck";
+  pname = "cardinal";
   inherit version;
 
   src = ./..;
@@ -26,22 +26,22 @@ stdenv.mkDerivation {
     go version
     go build \
       -tags netgo \
-      -ldflags="-s -w -X dck/cmd.version=${version}" \
-      -o $TMPDIR/dck \
+      -ldflags="-s -w -X cardinal/cmd.version=${version}" \
+      -o $TMPDIR/cardinal \
       .
   '';
 
   installPhase = ''
     mkdir -p $out/bin
-    cp $TMPDIR/dck $out/bin/dck
+    cp $TMPDIR/cardinal $out/bin/cardinal
   '';
 
   meta = with lib; {
     description = "Lightweight container runtime for Linux";
-    homepage = "https://github.com/animesao/dck";
+    homepage = "https://github.com/animesao/cardinal";
     license = licenses.mit;
     platforms = platforms.linux;
     maintainers = [ ];
-    mainProgram = "dck";
+    mainProgram = "cardinal";
   };
 }

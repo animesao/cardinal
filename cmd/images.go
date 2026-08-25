@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"dck/internal/image"
+	"cardinal/internal/image"
 )
 
 func Images(args []string) {
@@ -30,7 +30,7 @@ func Images(args []string) {
 
 func Rmi(args []string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: dck rmi <image>[:<tag>]")
+		fmt.Println("Usage: cardinal rmi <image>[:<tag>]")
 		os.Exit(1)
 	}
 

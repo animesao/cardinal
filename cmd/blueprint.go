@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"dck/internal/container"
-	"dck/internal/image"
+	"cardinal/internal/container"
+	"cardinal/internal/image"
 )
 
 type blueprintRegistry struct {
@@ -101,7 +101,7 @@ func Blueprint(args []string) {
 
 func blueprintInfo(args []string) {
 	if len(args) < 1 || args[0] == "" {
-		fmt.Println("Usage: dck blueprint info <name>")
+		fmt.Println("Usage: cardinal blueprint info <name>")
 		os.Exit(1)
 	}
 
@@ -127,7 +127,7 @@ func blueprintInfo(args []string) {
 	}
 	if !ok {
 		fmt.Fprintf(os.Stderr, "Blueprint %q not found\n", bpName)
-		fmt.Println("Use 'dck blueprint list' to see available blueprints.")
+		fmt.Println("Use 'cardinal blueprint list' to see available blueprints.")
 		os.Exit(1)
 	}
 
@@ -224,12 +224,12 @@ func blueprintInfo(args []string) {
 	}
 
 	fmt.Printf("  Quick install:\n")
-	fmt.Printf("    dck blueprint install %s\n\n", bpName)
+	fmt.Printf("    cardinal blueprint install %s\n\n", bpName)
 
 	fmt.Printf("  Manual run:\n")
-	manualArgs := []string{"dck run -d --restart " + tpl.Restart}
+	manualArgs := []string{"cardinal run -d --restart " + tpl.Restart}
 	if tpl.Restart == "" {
-		manualArgs[0] = "dck run -d"
+		manualArgs[0] = "cardinal run -d"
 	}
 	for _, p := range strings.Split(tpl.Ports, ",") {
 		p = strings.TrimSpace(p)
@@ -282,15 +282,15 @@ func blueprintInfo(args []string) {
 
 func printBlueprintUsage() {
 	fmt.Println(`Blueprint commands:
-  dck blueprint list              List available blueprints
-  dck blueprint ls                Alias for list
-  dck blueprint info <name>       Show blueprint details with examples
-  dck blueprint show <name>       Alias for info
-  dck blueprint install <name>    Install a blueprint
-  dck blueprint i <name>          Alias for install
-  dck blueprint repo list         List configured repositories
-  dck blueprint repo add <url>    Add a custom repository
-  dck blueprint repo remove <n>   Remove a repository
+  cardinal blueprint list              List available blueprints
+  cardinal blueprint ls                Alias for list
+  cardinal blueprint info <name>       Show blueprint details with examples
+  cardinal blueprint show <name>       Alias for info
+  cardinal blueprint install <name>    Install a blueprint
+  cardinal blueprint i <name>          Alias for install
+  cardinal blueprint repo list         List configured repositories
+  cardinal blueprint repo add <url>    Add a custom repository
+  cardinal blueprint repo remove <n>   Remove a repository
 
 Options for install:
   -n, --name <name>               Container name (default: blueprint name)
@@ -354,7 +354,7 @@ func blueprintList() {
 
 func blueprintInstall(args []string) {
 	if len(args) < 1 || args[0] == "" {
-		fmt.Println("Usage: dck blueprint install <name> [--name <container-name>]")
+		fmt.Println("Usage: cardinal blueprint install <name> [--name <container-name>]")
 		os.Exit(1)
 	}
 
@@ -405,7 +405,7 @@ func blueprintInstall(args []string) {
 	bp, ok := reg.Blueprints[bpName]
 	if !ok {
 		fmt.Fprintf(os.Stderr, "Blueprint %q not found in registry\n", bpName)
-		fmt.Println("Use 'dck blueprint list' to see available blueprints.")
+		fmt.Println("Use 'cardinal blueprint list' to see available blueprints.")
 		os.Exit(1)
 	}
 
@@ -731,8 +731,8 @@ func blueprintInstall(args []string) {
 		}
 	}
 
-	fmt.Println("  Use 'dck ps' to see running containers")
-	fmt.Println("  Use 'dck logs " + c.Name + "' to view logs")
+	fmt.Println("  Use 'cardinal ps' to see running containers")
+	fmt.Println("  Use 'cardinal logs " + c.Name + "' to view logs")
 }
 
 func fetchBlueprintRegistry() (*blueprintRegistry, error) {

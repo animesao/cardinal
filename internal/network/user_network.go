@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 type UserNetwork struct {
@@ -72,12 +72,12 @@ func networkBridgeName(name string) string {
 	// Linux interface names are limited to 15 bytes. Use a hash-derived suffix
 	// so similarly named networks cannot accidentally share a bridge name.
 	digest := sha256.Sum256([]byte(name))
-	return "dckn-" + hex.EncodeToString(digest[:])[:8]
+	return "cardinaln-" + hex.EncodeToString(digest[:])[:8]
 }
 
 func networkID(name string) string {
 	digest := sha256.Sum256([]byte(name))
-	return "dckn-" + hex.EncodeToString(digest[:])[:16]
+	return "cardinaln-" + hex.EncodeToString(digest[:])[:16]
 }
 
 func saveUserNetwork(n *UserNetwork) error {

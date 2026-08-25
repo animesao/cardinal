@@ -9,14 +9,14 @@ import (
 	"strings"
 	"sync"
 
-	"dck/internal/state"
+	"cardinal/internal/state"
 )
 
 // RegistryAllowlistEntry records a single allowed registry hostname.
 //
 // The on-disk format is one hostname per line; comments start with '#'. The
 // list is consulted on every Pull/Push to refuse pulls from registries
-// outside the allowlist when DCK_REGISTRY_STRICT=1 is set in the
+// outside the allowlist when CARDINAL_REGISTRY_STRICT=1 is set in the
 // environment. Env-driven allowlists are layered on top to make ad-hoc
 // automation easy without mutating the persistent store.
 type RegistryAllowlistEntry struct {
@@ -41,7 +41,7 @@ var (
 // init seeds the in-memory list with the built-in default so the runtime
 // never accidentally blocks the official Docker Hub before policy init has
 // run. Operators who want a closed environment must enable
-// DCK_REGISTRY_STRICT=1 AND pre-populate the allowlist.
+// CARDINAL_REGISTRY_STRICT=1 AND pre-populate the allowlist.
 func init() {
 	allowlist = append(allowlist, defaultAllowlist...)
 }
@@ -51,10 +51,10 @@ func allowlistPath() string {
 }
 
 // InitRegistryAllowlist loads the on-disk allowlist and applies any
-// DCK_REGISTRY_ALLOWLIST (colon-separated) overrides on top.
+// CARDINAL_REGISTRY_ALLOWLIST (colon-separated) overrides on top.
 //
 // The function is idempotent and safe to call multiple times. It is wired
-// into the pull/push paths so a deploy-time flip of DCK_REGISTRY_STRICT=1
+// into the pull/push paths so a deploy-time flip of CARDINAL_REGISTRY_STRICT=1
 // immediately tightens accepted registries without a restart.
 func InitRegistryAllowlist() error {
 	allowlistMu.Lock()
@@ -63,7 +63,7 @@ func InitRegistryAllowlist() error {
 	// Start from defaults so a fresh install still works against Docker Hub.
 	allowlist = append(allowlist[:0], defaultAllowlist...)
 
-	if env := strings.TrimSpace(os.Getenv("DCK_REGISTRY_ALLOWLIST")); env != "" {
+	if env := strings.TrimSpace(os.Getenv("CARDINAL_REGISTRY_ALLOWLIST")); env != "" {
 		for _, h := range strings.Split(env, ":") {
 			h = strings.TrimSpace(h)
 			if h != "" {
@@ -72,7 +72,7 @@ func InitRegistryAllowlist() error {
 		}
 	}
 
-	if env := strings.TrimSpace(os.Getenv("DCK_REGISTRY_BLOCKLIST")); env != "" {
+	if env := strings.TrimSpace(os.Getenv("CARDINAL_REGISTRY_BLOCKLIST")); env != "" {
 		// The block-list is layered on top: remove any default that the
 		// operator wants to forbid (e.g. quay.io for a strict environment).
 		block := make(map[string]bool, 4)
@@ -171,11 +171,11 @@ func AllowlistSnapshot() []string {
 }
 
 // IsRegistryAllowed reports whether `host` is in the current allowlist.
-// When DCK_REGISTRY_STRICT=1 is unset, the function returns true for any
+// When CARDINAL_REGISTRY_STRICT=1 is unset, the function returns true for any
 // host (the allowlist then serves purely as documentation).
 func IsRegistryAllowed(host string) bool {
 	host = normalizeRegistryHostname(host)
-	if os.Getenv("DCK_REGISTRY_STRICT") != "1" {
+	if os.Getenv("CARDINAL_REGISTRY_STRICT") != "1" {
 		return true
 	}
 	allowlistMu.RLock()
@@ -190,8 +190,8 @@ func IsRegistryAllowed(host string) bool {
 
 // IsInsecureRegistryAllowed reports whether pulling from a plain-http or
 // localhost registry is permitted. The default is to refuse so operators
-// have to opt in by setting DCK_ALLOW_INSECURE_REGISTRY=1.
+// have to opt in by setting CARDINAL_ALLOW_INSECURE_REGISTRY=1.
 func IsInsecureRegistryAllowed() bool {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("DCK_ALLOW_INSECURE_REGISTRY")))
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("CARDINAL_ALLOW_INSECURE_REGISTRY")))
 	return v == "1" || v == "true" || v == "yes"
 }

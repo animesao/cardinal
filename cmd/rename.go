@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"os"
 
-	"dck/internal/container"
+	"cardinal/internal/container"
 )
 
 func Rename(args []string) {
 	if len(args) < 2 {
-		fmt.Println("Usage: dck rename <container> <new-name>")
+		fmt.Println("Usage: cardinal rename <container> <new-name>")
 		os.Exit(1)
 	}
 

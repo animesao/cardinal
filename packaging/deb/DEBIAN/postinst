@@ -18,15 +18,15 @@ case "$1" in
         fi
 
         echo ""
-        echo "  dck installed successfully!"
+        echo "  cardinal installed successfully!"
         echo ""
         echo "  Quick start:"
-        echo "    dck pull alpine"
-        echo "    dck run --rm alpine echo hello"
-        echo "    dck stats"
+        echo "    cardinal pull alpine"
+        echo "    cardinal run --rm alpine echo hello"
+        echo "    cardinal stats"
         echo ""
         echo "  Auto-start containers on boot:"
-        echo "    dck bootstrap --install"
+        echo "    cardinal bootstrap --install"
         echo ""
         ;;
 esac

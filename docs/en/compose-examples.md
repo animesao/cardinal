@@ -1,7 +1,7 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
 # Compose Examples — 15 Real-World Configurations
 
@@ -80,8 +80,8 @@ services:
 ```
 
 - `:ro` — read-only mount (security)
-- **Use directories, not files** — dck mounts directories only (e.g. `./nginx-conf/` not `./nginx.conf`)
-- `labels` — metadata for filtering with `dck ps --filter`
+- **Use directories, not files** — cardinal mounts directories only (e.g. `./nginx-conf/` not `./nginx.conf`)
+- `labels` — metadata for filtering with `cardinal ps --filter`
 - `healthcheck` — check if nginx responds every 30s
 
 ---
@@ -158,7 +158,7 @@ networks:
     internal: true
 ```
 
-- **Use directories for mounts** — `./init-sql/` instead of `./init.sql` (dck limitation)
+- **Use directories for mounts** — `./init-sql/` instead of `./init.sql` (cardinal limitation)
 - `volumes: /app/node_modules` — unnamed volume, prevents node_modules from being overwritten by bind mount
 - `env_file` — load env vars from file
 - `secrets` — inject sensitive files as `/run/secrets/<name>`
@@ -217,7 +217,7 @@ volumes:
 ```
 
 - **Required `.env` file**: create `.env` with `MYSQL_ROOT_PASS`, `MYSQL_APP_PASS`, `REDIS_PASS`
-- Use `./mysql-conf/` directory (copy `my.cnf` inside) — dck doesn't mount single files
+- Use `./mysql-conf/` directory (copy `my.cnf` inside) — cardinal doesn't mount single files
 - `cap_add: SYS_NICE` — needed for MySQL to adjust thread priority
 - Adminer — web UI at port 8080
 
@@ -324,7 +324,7 @@ services:
       - /var/run
 ```
 
-**Simplified for dck** — omits `user: "1000:1000"` + `read_only` because nginx needs to write cache. For hardened security use a custom nginx.conf with temp paths.
+**Simplified for cardinal** — omits `user: "1000:1000"` + `read_only` because nginx needs to write cache. For hardened security use a custom nginx.conf with temp paths.
 
 - `tmpfs` — temporary in-memory filesystem for logs/cache
 - **Note:** `security_opt` values must be quoted YAML strings: `"no-new-privileges:true"`
@@ -334,8 +334,8 @@ services:
 
 ## 8. CI Runner (self-hosted, reference only)
 
-> **Not a ready-to-run dck recipe.** The common `summerwind/actions-runner`
-> setup expects Docker-in-Docker or access to a host Docker socket. dck blocks
+> **Not a ready-to-run cardinal recipe.** The common `summerwind/actions-runner`
+> setup expects Docker-in-Docker or access to a host Docker socket. cardinal blocks
 > protected host bind sources such as `/var/run/docker.sock`, so use a
 > dedicated host-side runner integration or an image that does not require
 > Docker socket access. The snippet below documents the container-side
@@ -352,7 +352,7 @@ services:
       - RUNNER_NAME=my-runner
       - RUNNER_REPO=https://github.com/user/repo
       - RUNNER_TOKEN=${GITHUB_TOKEN}
-      - RUNNER_LABELS=dck,production
+      - RUNNER_LABELS=cardinal,production
     working_dir: /home/runner
     privileged: true
     dns:
@@ -363,7 +363,7 @@ volumes:
 ```
 
 - `privileged: true` alone does not provide Docker-in-Docker.
-- For dck, treat this as a configuration reference and use a host-side runner integration or a runtime-specific image that does not require `/var/run/docker.sock`.
+- For cardinal, treat this as a configuration reference and use a host-side runner integration or a runtime-specific image that does not require `/var/run/docker.sock`.
 
 ---
 
@@ -567,7 +567,7 @@ volumes:
 
 ## 13. Prometheus + Grafana Monitoring
 
-**Important:** dck mounts volumes as directories only. Use a directory config mount instead of a file.
+**Important:** cardinal mounts volumes as directories only. Use a directory config mount instead of a file.
 
 ```yaml
 services:
@@ -610,7 +610,7 @@ scrape_configs:
 EOF
 ```
 
-- **Directory mount** `./prometheus-conf:/etc/prometheus:ro` works (file mount `./prometheus.yml:/etc/prometheus/prometheus.yml` does not in dck)
+- **Directory mount** `./prometheus-conf:/etc/prometheus:ro` works (file mount `./prometheus.yml:/etc/prometheus/prometheus.yml` does not in cardinal)
 - Grafana accessible at `http://host:3001`, admin/admin or `GF_SECURITY_ADMIN_PASSWORD`
 
 ---
@@ -700,12 +700,12 @@ volumes:
 
 ---
 
-## Important dck Gotchas
+## Important cardinal Gotchas
 
 | Issue | Why | Fix |
 |---|---|---|
-| **File bind mount** fails | dck only mounts directories (bind mount `./file` → `mount bind exit 32`) | Use a directory: `./dir/` instead of `./file` |
-| **Cgroup** warning | `/sys/fs/cgroup/dck` is read-only on VPS/LXC | Non-fatal, container runs without resource limits |
+| **File bind mount** fails | cardinal only mounts directories (bind mount `./file` → `mount bind exit 32`) | Use a directory: `./dir/` instead of `./file` |
+| **Cgroup** warning | `/sys/fs/cgroup/cardinal` is read-only on VPS/LXC | Non-fatal, container runs without resource limits |
 | **`session.lock`** Minecraft crash | Paper leaves stale locks on host volume | Add `rm -f world/*/session.lock` to start script |
 | **`security_opt`** YAML error | `no-new-privileges:true` has two colons | Quote it: `"no-new-privileges:true"` |
 | **`.env`** not loaded | `${VAR}` in environment expands from `.env` file | Create `.env` in same directory as `compose.yaml` |

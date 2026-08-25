@@ -6,8 +6,8 @@ RED=$(tput setaf 1 2>/dev/null || echo "")
 GREEN=$(tput setaf 2 2>/dev/null || echo "")
 RESET=$(tput sgr0 2>/dev/null || echo "")
 
-info()  { echo "${BOLD}${GREEN}[dck]${RESET} $*"; }
-warn()  { echo "${BOLD}${RED}[dck]${RESET} $*" >&2; }
+info()  { echo "${BOLD}${GREEN}[cardinal]${RESET} $*"; }
+warn()  { echo "${BOLD}${RED}[cardinal]${RESET} $*" >&2; }
 
 FORCE=false
 for arg do
@@ -16,10 +16,10 @@ for arg do
     esac
 done
 
-info "Uninstalling dck..."
+info "Uninstalling cardinal..."
 
 unmount_overlay() {
-    OVERLAY_DIR="${DCK_DIR:-$HOME/.dck}/overlay"
+    OVERLAY_DIR="${CARDINAL_DIR:-$HOME/.cardinal}/overlay"
     if [ -d "$OVERLAY_DIR" ]; then
         for d in "$OVERLAY_DIR"/*/merged; do
             if [ -d "$d" ] && mountpoint -q "$d" 2>/dev/null; then
@@ -31,34 +31,34 @@ unmount_overlay() {
 }
 
 PREFIX="${PREFIX:-/usr/local}"
-BIN="$PREFIX/bin/dck"
+BIN="$PREFIX/bin/cardinal"
 
 if [ -f "$BIN" ]; then
     rm -f "$BIN"
     info "Removed $BIN"
 else
-    warn "dck binary not found at $BIN"
+    warn "cardinal binary not found at $BIN"
 fi
 
-DCK_DIR="${DCK_DIR:-$HOME/.dck}"
-if [ -d "$DCK_DIR" ]; then
+CARDINAL_DIR="${CARDINAL_DIR:-$HOME/.cardinal}"
+if [ -d "$CARDINAL_DIR" ]; then
     echo ""
     if [ "$FORCE" = "true" ] || [ ! -t 0 ]; then
         unmount_overlay
-        rm -rf "$DCK_DIR"
-        info "Removed $DCK_DIR"
+        rm -rf "$CARDINAL_DIR"
+        info "Removed $CARDINAL_DIR"
     else
         warn "WARNING: This will DELETE all images, containers, and data"
-        printf "Remove %s? [y/N] " "$DCK_DIR"
+        printf "Remove %s? [y/N] " "$CARDINAL_DIR"
         read -r confirm
         if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
             unmount_overlay
-            rm -rf "$DCK_DIR"
-            info "Removed $DCK_DIR"
+            rm -rf "$CARDINAL_DIR"
+            info "Removed $CARDINAL_DIR"
         else
-            info "Skipped $DCK_DIR (remove manually: rm -rf $DCK_DIR)"
+            info "Skipped $CARDINAL_DIR (remove manually: rm -rf $CARDINAL_DIR)"
         fi
     fi
 fi
 
-info "dck uninstalled."
+info "cardinal uninstalled."

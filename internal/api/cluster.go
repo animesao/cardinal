@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"strings"
 
-	"dck/internal/builder"
-	"dck/internal/container"
-	"dck/internal/image"
+	"cardinal/internal/builder"
+	"cardinal/internal/container"
+	"cardinal/internal/image"
 )
 
 func handleClusterRouter(w http.ResponseWriter, r *http.Request) {
@@ -118,10 +118,10 @@ func handleReplicaCreate(w http.ResponseWriter, r *http.Request) {
 		labels = make(map[string]string)
 	}
 	if req.ServiceName != "" {
-		labels["dck.service"] = req.ServiceName
+		labels["cardinal.service"] = req.ServiceName
 	}
 	if req.ReplicaID != "" {
-		labels["dck.replica"] = req.ReplicaID
+		labels["cardinal.replica"] = req.ReplicaID
 	}
 
 	restart := req.Restart

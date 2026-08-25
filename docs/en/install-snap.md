@@ -1,9 +1,9 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Installing dck via Snap
+# Installing cardinal via Snap
 
 ## Install from GitHub Releases
 
@@ -19,44 +19,44 @@ case "$ARCH" in
 esac
 
 # Get latest version
-TAG=$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')
+TAG=$(curl -fsSL https://api.github.com/repos/animesao/cardinal/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')
 VERSION="${TAG#v}"
 
 # Download and install
-curl -fL -o "dck-${VERSION}-linux-${SUFFIX}.snap" \
-  "https://github.com/animesao/dck/releases/download/${TAG}/dck-${VERSION}-linux-${SUFFIX}.snap"
-sudo snap install --dangerous --classic "dck-${VERSION}-linux-${SUFFIX}.snap"
-rm "dck-${VERSION}-linux-${SUFFIX}.snap"
+curl -fL -o "cardinal-${VERSION}-linux-${SUFFIX}.snap" \
+  "https://github.com/animesao/cardinal/releases/download/${TAG}/cardinal-${VERSION}-linux-${SUFFIX}.snap"
+sudo snap install --dangerous --classic "cardinal-${VERSION}-linux-${SUFFIX}.snap"
+rm "cardinal-${VERSION}-linux-${SUFFIX}.snap"
 ```
 
-> **Note:** `--dangerous` is required because the snap is not from the Snap Store. `--classic` gives dck full system access (needed for namespace operations).
+> **Note:** `--dangerous` is required because the snap is not from the Snap Store. `--classic` gives cardinal full system access (needed for namespace operations).
 
 ## Build from Source
 
 ```bash
-git clone https://github.com/animesao/dck.git
-cd dck
+git clone https://github.com/animesao/cardinal.git
+cd cardinal
 snapcraft
-sudo snap install --dangerous --classic ./dck_*.snap
+sudo snap install --dangerous --classic ./cardinal_*.snap
 ```
 
 ## What You Get
 
-- Binary at `/snap/bin/dck`
+- Binary at `/snap/bin/cardinal`
 - Classic confinement (full system access)
-- Automatic alias: `dck` command available globally
+- Automatic alias: `cardinal` command available globally
 
 ## Verify
 
 ```bash
-dck version
-dck doctor
+cardinal version
+cardinal doctor
 ```
 
 ## Uninstall
 
 ```bash
-sudo snap remove dck
-dck bootstrap --remove
-sudo rm -rf ~/.dck
+sudo snap remove cardinal
+cardinal bootstrap --remove
+sudo rm -rf ~/.cardinal
 ```

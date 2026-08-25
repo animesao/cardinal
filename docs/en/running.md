@@ -1,13 +1,13 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Running dck Containers
+# Running cardinal Containers
 
-This guide covers the complete day-to-day workflow: install dck, pull an image, run an application, mount persistent files, configure environment variables, inspect logs, update code, and recover from common errors.
+This guide covers the complete day-to-day workflow: install cardinal, pull an image, run an application, mount persistent files, configure environment variables, inspect logs, update code, and recover from common errors.
 
-> dck runs containers on Linux. Commands below use Bash and should be run as `root` or with the required privileges.
+> cardinal runs containers on Linux. Commands below use Bash and should be run as `root` or with the required privileges.
 
 ## 1. Requirements
 
@@ -27,14 +27,14 @@ grep overlay /proc/filesystems
 uname -a
 ```
 
-## 2. Install or update dck
+## 2. Install or update cardinal
 
 ### Universal installer (all distros)
 
-The install script auto-detects your distro and installs dck + dependencies:
+The install script auto-detects your distro and installs cardinal + dependencies:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/animesao/dck/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/animesao/cardinal/main/install.sh | sudo bash
 ```
 
 Supported distros: **Ubuntu, Debian, Arch, Manjaro, Fedora, RHEL, CentOS, Rocky, Alma, openSUSE, Alpine, Void Linux**, and more.
@@ -45,23 +45,23 @@ Supported distros: **Ubuntu, Debian, Arch, Manjaro, Fedora, RHEL, CentOS, Rocky,
 
 ```bash
 # Using an AUR helper (yay/paru)
-yay -S dck
+yay -S cardinal
 # Or from source
-git clone https://aur.archlinux.org/dck.git
-cd dck
+git clone https://aur.archlinux.org/cardinal.git
+cd cardinal
 makepkg -si
 ```
 
 **Fedora / RHEL / CentOS:**
 
-Download and install the latest RPM asset from the [GitHub release page](https://github.com/animesao/dck/releases/latest):
+Download and install the latest RPM asset from the [GitHub release page](https://github.com/animesao/cardinal/releases/latest):
 
 ```bash
-TAG="$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')"
+TAG="$(curl -fsSL https://api.github.com/repos/animesao/cardinal/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')"
 test -n "$TAG" || { echo "Could not determine the latest release" >&2; exit 1; }
 VERSION="${TAG#v}"
-FILE="dck-${VERSION}-linux-amd64.rpm"
-curl -fL -o "$FILE" "https://github.com/animesao/dck/releases/download/$TAG/$FILE"
+FILE="cardinal-${VERSION}-linux-amd64.rpm"
+curl -fL -o "$FILE" "https://github.com/animesao/cardinal/releases/download/$TAG/$FILE"
 sudo dnf install "./$FILE"
 # On older systems:
 # sudo rpm -Uvh "./$FILE"
@@ -69,14 +69,14 @@ sudo dnf install "./$FILE"
 
 **Debian / Ubuntu (.deb):**
 
-Download and install the latest DEB asset from the [GitHub release page](https://github.com/animesao/dck/releases/latest):
+Download and install the latest DEB asset from the [GitHub release page](https://github.com/animesao/cardinal/releases/latest):
 
 ```bash
-TAG="$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')"
+TAG="$(curl -fsSL https://api.github.com/repos/animesao/cardinal/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')"
 test -n "$TAG" || { echo "Could not determine the latest release" >&2; exit 1; }
 VERSION="${TAG#v}"
-FILE="dck-${VERSION}-linux-amd64.deb"
-curl -fL -o "$FILE" "https://github.com/animesao/dck/releases/download/$TAG/$FILE"
+FILE="cardinal-${VERSION}-linux-amd64.deb"
+curl -fL -o "$FILE" "https://github.com/animesao/cardinal/releases/download/$TAG/$FILE"
 sudo apt install "./$FILE"
 ```
 
@@ -87,37 +87,37 @@ are not uploaded automatically to the Snap Store. Download and install the
 versioned `.snap` asset directly:
 
 ```bash
-TAG="$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"\]*\)".*/\1/p')"
+TAG="$(curl -fsSL https://api.github.com/repos/animesao/cardinal/releases/latest | sed -n 's/.*"tag_name": "\([^"\]*\)".*/\1/p')"
 test -n "$TAG" || { echo "Could not determine the latest release" >&2; exit 1; }
-FILE="dck-${TAG#v}-linux-amd64.snap"
-curl -fL -o "$FILE" "https://github.com/animesao/dck/releases/download/$TAG/$FILE"
+FILE="cardinal-${TAG#v}-linux-amd64.snap"
+curl -fL -o "$FILE" "https://github.com/animesao/cardinal/releases/download/$TAG/$FILE"
 sudo snap install --dangerous --classic "$FILE"
 ```
 
 Use the `arm64` suffix on ARM64 hosts. The Snap uses classic confinement
-because dck needs host namespace, mount, cgroup, and networking capabilities.
+because cardinal needs host namespace, mount, cgroup, and networking capabilities.
 
 **Manual binary install:**
 
 ```bash
-curl -fsSL https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64 -o /tmp/dck-new
-sudo install -D -m 0755 /tmp/dck-new /usr/local/bin/dck
-rm -f /tmp/dck-new
-dck bootstrap --install
+curl -fsSL https://github.com/animesao/cardinal/releases/latest/download/cardinal-linux-amd64 -o /tmp/cardinal-new
+sudo install -D -m 0755 /tmp/cardinal-new /usr/local/bin/cardinal
+rm -f /tmp/cardinal-new
+cardinal bootstrap --install
 ```
 
 **AppImage (amd64 and arm64):**
 
 AppImage is a self-contained executable format. Download the matching asset
-from the [latest GitHub release](https://github.com/animesao/dck/releases/latest),
+from the [latest GitHub release](https://github.com/animesao/cardinal/releases/latest),
 make it executable, and run it directly:
 
 ```bash
 # x86_64 / amd64: resolve the current release asset automatically
-TAG="$(curl -fsSL https://api.github.com/repos/animesao/dck/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')"
+TAG="$(curl -fsSL https://api.github.com/repos/animesao/cardinal/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')"
 test -n "$TAG" || { echo "Could not determine the latest release" >&2; exit 1; }
-FILE="dck-${TAG#v}-linux-amd64.AppImage"
-curl -fL -o "$FILE" "https://github.com/animesao/dck/releases/download/$TAG/$FILE"
+FILE="cardinal-${TAG#v}-linux-amd64.AppImage"
+curl -fL -o "$FILE" "https://github.com/animesao/cardinal/releases/download/$TAG/$FILE"
 chmod +x "$FILE"
 "./$FILE" version
 
@@ -125,36 +125,36 @@ chmod +x "$FILE"
 "./$FILE" --install
 ```
 
-For ARM64, use the matching `dck-*-linux-arm64.AppImage` asset instead. AppImage does
-not require a package manager, but dck still needs the host's Linux namespaces,
+For ARM64, use the matching `cardinal-*-linux-arm64.AppImage` asset instead. AppImage does
+not require a package manager, but cardinal still needs the host's Linux namespaces,
 cgroups, OverlayFS, mount, and networking capabilities. The release does not
 publish a standard AppImage for ARMv6 because the official AppImage runtime
 supports x86_64, aarch64, and armhf, not true ARMv6. ARMv6 users should use
-the `dck-linux-armv6` binary or `.tar.gz` archive.
+the `cardinal-linux-armv6` binary or `.tar.gz` archive.
 
 #### Install by double-clicking on a Linux desktop
 
-The dck AppImage is a CLI runtime, not a graphical application. When you
+The cardinal AppImage is a CLI runtime, not a graphical application. When you
 double-click the AppImage in a Linux file manager, it opens an available
 terminal and runs the desktop installer. The installer extracts the embedded
-static dck binary to `/usr/local/bin/dck`, asks for administrator permission
-when needed, and installs/starts `dck-bootstrap.service` when systemd is
-available. Your containers and images remain in the existing dck data
+static cardinal binary to `/usr/local/bin/cardinal`, asks for administrator permission
+when needed, and installs/starts `cardinal-bootstrap.service` when systemd is
+available. Your containers and images remain in the existing cardinal data
 directory, and the original AppImage remains portable.
 
 You can also start the same installer from a terminal. Use the filename of the AppImage you downloaded:
 
 ```bash
-APPIMAGE="$(find . -maxdepth 1 -type f -name 'dck-*-linux-amd64.AppImage' -print -quit)"
+APPIMAGE="$(find . -maxdepth 1 -type f -name 'cardinal-*-linux-amd64.AppImage' -print -quit)"
 test -n "$APPIMAGE" || { echo "AppImage not found in the current directory" >&2; exit 1; }
 chmod +x "$APPIMAGE"
 "$APPIMAGE" --install
 ```
 
-To use the AppImage only as a portable CLI, pass a normal dck command instead. This block locates the downloaded file in the current directory:
+To use the AppImage only as a portable CLI, pass a normal cardinal command instead. This block locates the downloaded file in the current directory:
 
 ```bash
-APPIMAGE="$(find . -maxdepth 1 -type f -name 'dck-*-linux-amd64.AppImage' -print -quit)"
+APPIMAGE="$(find . -maxdepth 1 -type f -name 'cardinal-*-linux-amd64.AppImage' -print -quit)"
 test -n "$APPIMAGE" || { echo "AppImage not found in the current directory" >&2; exit 1; }
 chmod +x "$APPIMAGE"
 "$APPIMAGE" version
@@ -172,59 +172,59 @@ read the FUSE-mounted binary as root instead of copying it first to `/tmp`.
 ### Verify the installation
 
 ```bash
-dck version
-dck info
+cardinal version
+cardinal info
 ```
 
 Update an existing installation:
 
 ```bash
-dck update --check
-dck update
+cardinal update --check
+cardinal update
 ```
 
-When dck is running from an AppImage, `dck update` cannot modify the
+When cardinal is running from an AppImage, `cardinal update` cannot modify the
 read-only AppImage mount. The updater now installs the verified new static
-binary to `/usr/local/bin/dck` instead and leaves the original AppImage
+binary to `/usr/local/bin/cardinal` instead and leaves the original AppImage
 unchanged. If the desktop user cannot write there, it requests `sudo`.
 
 After updating, verify the binary and run a disposable container:
 
 ```bash
-dck version
-dck run --rm alpine:latest echo "DCK UPDATE OK"
+cardinal version
+cardinal run --rm alpine:latest echo "CARDINAL UPDATE OK"
 ```
 
-If `dck update` cannot download the binary (older releases failed with `Failed to download binary: all methods failed`), install the release manually. Replace the version and architecture as needed:
+If `cardinal update` cannot download the binary (older releases failed with `Failed to download binary: all methods failed`), install the release manually. Replace the version and architecture as needed:
 
 ```bash
-curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
-  https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64
-sudo install -D -m 0755 /tmp/dck-new /usr/local/bin/dck
-rm -f /tmp/dck-new
-sudo systemctl restart dck-bootstrap   # if the systemd supervisor is installed
+curl -fsSL --connect-timeout 10 -o /tmp/cardinal-new \
+  https://github.com/animesao/cardinal/releases/latest/download/cardinal-linux-amd64
+sudo install -D -m 0755 /tmp/cardinal-new /usr/local/bin/cardinal
+rm -f /tmp/cardinal-new
+sudo systemctl restart cardinal-bootstrap   # if the systemd supervisor is installed
 ```
 
-Binary names are `dck-linux-amd64`, `dck-linux-arm64`, and `dck-linux-armv6`. Releases also provide native packages for each supported architecture: `.deb`, `.rpm`, `.pkg.tar.zst`, and `.apk` with `amd64`, `arm64`, or `armv6` in the filename. AppImage assets are published for `amd64` and `arm64`; ARMv6 uses the raw binary or `.tar.gz` archive. Choose the package matching both your distribution and CPU architecture. If GitHub is unavailable, download the asset from another trusted network or transfer it over SSH; do not use unverified third-party mirrors for release binaries. The `${VERSION}` placeholder means the tag without its leading `v` (for example, `1.23.17`).
+Binary names are `cardinal-linux-amd64`, `cardinal-linux-arm64`, and `cardinal-linux-armv6`. Releases also provide native packages for each supported architecture: `.deb`, `.rpm`, `.pkg.tar.zst`, and `.apk` with `amd64`, `arm64`, or `armv6` in the filename. AppImage assets are published for `amd64` and `arm64`; ARMv6 uses the raw binary or `.tar.gz` archive. Choose the package matching both your distribution and CPU architecture. If GitHub is unavailable, download the asset from another trusted network or transfer it over SSH; do not use unverified third-party mirrors for release binaries. The `${VERSION}` placeholder means the tag without its leading `v` (for example, `1.23.17`).
 
 ## 3. Pull and run an image
 
 The image reference is positional. `--image` is also supported, but `--images` is not.
 
 ```bash
-dck pull alpine:latest
-dck run --rm alpine:latest echo "hello from dck"
+cardinal pull alpine:latest
+cardinal run --rm alpine:latest echo "hello from cardinal"
 ```
 
-For a pull → verify → run workflow, check the image's integrity after pulling and before running. `dck verify` compares the config digest and every layer digest against the stored manifest locally, without contacting the registry:
+For a pull → verify → run workflow, check the image's integrity after pulling and before running. `cardinal verify` compares the config digest and every layer digest against the stored manifest locally, without contacting the registry:
 
 ```bash
-dck pull alpine:latest
-dck verify alpine:latest
-dck run --rm alpine:latest echo "hello from dck"
+cardinal pull alpine:latest
+cardinal verify alpine:latest
+cardinal run --rm alpine:latest echo "hello from cardinal"
 ```
 
-`dck verify` exits non-zero if the image is not present locally, the config digest does not match the stored metadata or manifest, or any layer file is corrupt. It is a fast offline sanity check for images restored from `dck import` or transferred between hosts.
+`cardinal verify` exits non-zero if the image is not present locally, the config digest does not match the stored metadata or manifest, or any layer file is corrupt. It is a fast offline sanity check for images restored from `cardinal import` or transferred between hosts.
 
 Use a tag with a colon. These references have different meanings:
 
@@ -237,8 +237,8 @@ nanozoo/python3.12:3.12--d46ab4d  repository and explicit tag
 If a repository has no `latest` tag, specify a tag printed by search:
 
 ```bash
-dck search nanozoo/python3.12
-dck pull nanozoo/python3.12:3.12--d46ab4d
+cardinal search nanozoo/python3.12
+cardinal pull nanozoo/python3.12:3.12--d46ab4d
 ```
 
 ## 4. Run a long-lived service
@@ -248,7 +248,7 @@ The general form is:
 `--restart-delay` accepts Go duration values such as `10s`, `30s`, or `1m`.
 
 ```bash
-dck run -d \
+cardinal run -d \
   -n APP_NAME \
   -p HOST_PORT:CONTAINER_PORT \
   --restart unless-stopped \
@@ -260,21 +260,21 @@ dck run -d \
 Example web server:
 
 ```bash
-dck pull nginx:alpine
-dck run -d \
+cardinal pull nginx:alpine
+cardinal run -d \
   -n web \
   -p 8080:80 \
   --restart unless-stopped \
   nginx:alpine
 
 curl http://127.0.0.1:8080
-dck ps -a
-dck logs web
+cardinal ps -a
+cardinal logs web
 ```
 
-Supported restart policies are `no`, `always`, `on-failure`, and `unless-stopped`. Add `--restart-delay 1m` (or a shorter value such as `10s`) to control how long dck waits after an unexpected process exit before starting the container again. The delay does not override an intentional `dck stop`.
+Supported restart policies are `no`, `always`, `on-failure`, and `unless-stopped`. Add `--restart-delay 1m` (or a shorter value such as `10s`) to control how long cardinal waits after an unexpected process exit before starting the container again. The delay does not override an intentional `cardinal stop`.
 
-Quick repeated crashes are protected: once the crash-loop budget (default 5 restarts, tunable with `--restart-max-attempts` and `--restart-window`) is exhausted, automatic restart is blocked — `dck inspect NAME` then shows `"restart_blocked": true` — and the container stays stopped until an explicit `dck start`.
+Quick repeated crashes are protected: once the crash-loop budget (default 5 restarts, tunable with `--restart-max-attempts` and `--restart-window`) is exhausted, automatic restart is blocked — `cardinal inspect NAME` then shows `"restart_blocked": true` — and the container stays stopped until an explicit `cardinal start`.
 
 ## 5. Bind mounts and named volumes
 
@@ -294,12 +294,12 @@ Append `:ro` or `:rw` to make the mount read-only or read-write (read-write is t
 
 `tmpfs:` (in-memory) and `nfs://server:/export:/container/path` specs are also supported.
 
-Create a named volume with dck:
+Create a named volume with cardinal:
 
 ```bash
-dck volume create app-data
-dck volume ls
-dck volume inspect app-data
+cardinal volume create app-data
+cardinal volume ls
+cardinal volume inspect app-data
 ```
 
 For application source code, use a dedicated data directory outside protected host paths:
@@ -307,7 +307,7 @@ For application source code, use a dedicated data directory outside protected ho
 ```bash
 mkdir -p /data/myapp
 cp -a /path/to/myapp/. /data/myapp/
-dck run -d \
+cardinal run -d \
   -n myapp \
   --vol /data/myapp:/app \
   --workdir /app \
@@ -315,16 +315,16 @@ dck run -d \
   IMAGE[:TAG] COMMAND
 ```
 
-For security, dck rejects bind sources that resolve to sensitive host paths such as `/`, `/root`, `/etc`, `/proc`, `/sys`, and similar system directories. This prevents an accidental container mount from exposing host secrets. A path such as `/root/myapp` may therefore need to be moved to `/data/myapp` or another dedicated directory.
+For security, cardinal rejects bind sources that resolve to sensitive host paths such as `/`, `/root`, `/etc`, `/proc`, `/sys`, and similar system directories. This prevents an accidental container mount from exposing host secrets. A path such as `/root/myapp` may therefore need to be moved to `/data/myapp` or another dedicated directory.
 
-> The source directory must exist before `dck run`. The command `--vol "$PWD:/app"` is valid only when the current directory is an allowed host path.
+> The source directory must exist before `cardinal run`. The command `--vol "$PWD:/app"` is valid only when the current directory is an allowed host path.
 
 ## 6. Environment variables and `.env`
 
 Pass individual variables with `-e`:
 
 ```bash
-dck run -d -e APP_ENV=production -e PORT=8080 IMAGE[:TAG] COMMAND
+cardinal run -d -e APP_ENV=production -e PORT=8080 IMAGE[:TAG] COMMAND
 ```
 
 Or use a file containing `KEY=VALUE` entries:
@@ -336,13 +336,13 @@ BOT_TOKEN=replace_me
 EOF
 
 chmod 600 .env
-dck run -d --env-file .env IMAGE[:TAG] COMMAND
+cardinal run -d --env-file .env IMAGE[:TAG] COMMAND
 ```
 
 Do not commit `.env` files or print secrets in public logs. For a project at `/data/mybot`, use an explicit path:
 
 ```bash
-dck run -d \
+cardinal run -d \
   -n mybot \
   --env-file /data/mybot/.env \
   --vol /data/mybot:/bot \
@@ -364,10 +364,10 @@ chmod 600 .env
 Start it in the background:
 
 ```bash
-dck pull python:3.12
-dck rm -f alfheimguide 2>/dev/null || true
+cardinal pull python:3.12
+cardinal rm -f alfheimguide 2>/dev/null || true
 
-dck run -d \
+cardinal run -d \
   -n alfheimguide \
   --restart unless-stopped \
   --env-file "$PWD/.env" \
@@ -380,9 +380,9 @@ dck run -d \
 Check the result:
 
 ```bash
-dck ps -a
-dck logs --tail 100 alfheimguide
-dck logs -f alfheimguide
+cardinal ps -a
+cardinal logs --tail 100 alfheimguide
+cardinal logs -f alfheimguide
 ```
 
 If dependencies are installed on every restart and that is undesirable, install them once into the container overlay and run only the application afterward, or build a dedicated image with a Dockerfile. The bind-mounted project files remain on the host and survive container removal.
@@ -399,10 +399,10 @@ ls -lh /data/minecraft/server.jar
 Run Eclipse Temurin Java 21:
 
 ```bash
-dck pull eclipse-temurin:21
-dck rm -f minecraft 2>/dev/null || true
+cardinal pull eclipse-temurin:21
+cardinal rm -f minecraft 2>/dev/null || true
 
-dck run -d \
+cardinal run -d \
   -n minecraft \
   -p 25565:25565 \
   --restart unless-stopped \
@@ -417,16 +417,16 @@ The server must listen on `0.0.0.0:25565`, not only on `127.0.0.1`.
 Check it:
 
 ```bash
-dck ps -a
-dck logs --tail 100 minecraft
+cardinal ps -a
+cardinal logs --tail 100 minecraft
 ss -ltnp | grep 25565
 ```
 
 If using a named volume instead:
 
 ```bash
-dck volume create minecraft-data
-dck run -d \
+cardinal volume create minecraft-data
+cardinal run -d \
   -n minecraft \
   -p 25565:25565 \
   --restart unless-stopped \
@@ -439,60 +439,60 @@ dck run -d \
 ## 9. Container lifecycle
 
 ```bash
-dck ps                 # running containers
-dck ps -a              # running and stopped containers
-dck stop NAME          # stop without deleting data
-dck start NAME         # start an existing stopped container
-dck restart NAME       # stop and start
-dck rm NAME            # remove a stopped container
-dck rm -f NAME         # force removal
+cardinal ps                 # running containers
+cardinal ps -a              # running and stopped containers
+cardinal stop NAME          # stop without deleting data
+cardinal start NAME         # start an existing stopped container
+cardinal restart NAME       # stop and start
+cardinal rm NAME            # remove a stopped container
+cardinal rm -f NAME         # force removal
 ```
 
-`dck stop` preserves the container overlay and mounted application data. `dck rm -f` removes the container overlay and dck-managed log/state files. Host bind-mounted files and named volume data are not removed by removing the container.
+`cardinal stop` preserves the container overlay and mounted application data. `cardinal rm -f` removes the container overlay and cardinal-managed log/state files. Host bind-mounted files and named volume data are not removed by removing the container.
 
 ## 10. Logs and attach
 
-For a root installation, dck stores the container stdout/stderr log at:
+For a root installation, cardinal stores the container stdout/stderr log at:
 
 ```text
-/root/.dck/logs/<container-id>.log
+/root/.cardinal/logs/<container-id>.log
 ```
 
-The data root can be changed with `DCK_DATA_DIR`:
+The data root can be changed with `CARDINAL_DATA_DIR`:
 
 ```bash
-export DCK_DATA_DIR=/data/dck-state
-dck info
+export CARDINAL_DATA_DIR=/data/cardinal-state
+cardinal info
 ```
 
 Use the CLI instead of editing internal files:
 
 ```bash
-dck logs NAME
-dck logs --tail 100 NAME
-dck logs -f NAME
-dck attach NAME
+cardinal logs NAME
+cardinal logs --tail 100 NAME
+cardinal logs -f NAME
+cardinal attach NAME
 ```
 
-`dck logs -f` follows new output. `dck attach` connects to the main process of a detached container. Press `Ctrl+C` safely to leave attach; it does not stop the container.
+`cardinal logs -f` follows new output. `cardinal attach` connects to the main process of a detached container. Press `Ctrl+C` safely to leave attach; it does not stop the container.
 
-Starting a container creates a fresh dck stdout/stderr log, so previous dck log output is not accumulated across `stop`/`start` or `restart`. Application-specific logs are different: for example, Minecraft's `/data/logs/latest.log` is stored in the bind mount or named volume and is preserved by the application.
+Starting a container creates a fresh cardinal stdout/stderr log, so previous cardinal log output is not accumulated across `stop`/`start` or `restart`. Application-specific logs are different: for example, Minecraft's `/data/logs/latest.log` is stored in the bind mount or named volume and is preserved by the application.
 
 ## 11. Automatic backups
 
-Enable a per-container schedule. The backup contains the writable overlay and named volumes, but not host bind mounts. Back up bind-mounted directories such as `/data/minecraft` separately. dck briefly stops a running container so the archive is consistent before starting it again. Enabling the schedule does not create an archive immediately; the first archive is created after the configured interval.
+Enable a per-container schedule. The backup contains the writable overlay and named volumes, but not host bind mounts. Back up bind-mounted directories such as `/data/minecraft` separately. cardinal briefly stops a running container so the archive is consistent before starting it again. Enabling the schedule does not create an archive immediately; the first archive is created after the configured interval.
 
 ```bash
-dck backup enable minecraft --interval 6h --retention 14
-dck backup status minecraft
-dck backup list
-dck backup disable minecraft
+cardinal backup enable minecraft --interval 6h --retention 14
+cardinal backup status minecraft
+cardinal backup list
+cardinal backup disable minecraft
 ```
 
-By default archives are written to `$DCK_DATA_DIR/backups/<container>/`. Set a dedicated directory if required:
+By default archives are written to `$CARDINAL_DATA_DIR/backups/<container>/`. Set a dedicated directory if required:
 
 ```bash
-dck backup enable minecraft \
+cardinal backup enable minecraft \
   --interval 24h \
   --retention 7 \
   --dir /data/backups/minecraft
@@ -501,33 +501,33 @@ dck backup enable minecraft \
 Install the persistent supervisor once so the schedule continues after the terminal and after a reboot. If a backup fails, the supervisor records a retry time instead of retrying in a tight loop:
 
 ```bash
-dck bootstrap --install
-systemctl status dck-bootstrap
+cardinal bootstrap --install
+systemctl status cardinal-bootstrap
 ```
 
-A manual backup can still be created with `dck backup create NAME`; stop the container first. Restore only into a stopped container. Manual and scheduled archives cover dck-managed overlay data and named volumes, not host bind mounts:
+A manual backup can still be created with `cardinal backup create NAME`; stop the container first. Restore only into a stopped container. Manual and scheduled archives cover cardinal-managed overlay data and named volumes, not host bind mounts:
 
 ```bash
-dck backup restore minecraft /data/backups/minecraft/minecraft-20260811-120000.tar.gz
+cardinal backup restore minecraft /data/backups/minecraft/minecraft-20260811-120000.tar.gz
 ```
 
-Automatic backup settings are stored in the container state and survive `stop`, `start`, and dck upgrades. Retention removes the oldest scheduled archives after a successful backup; it does not delete manually placed files outside the container's scheduled archive naming pattern.
+Automatic backup settings are stored in the container state and survive `stop`, `start`, and cardinal upgrades. Retention removes the oldest scheduled archives after a successful backup; it does not delete manually placed files outside the container's scheduled archive naming pattern.
 
-Verify an archive against its checksum with `dck backup verify FILE.tar.gz`. When no checksum sidecar exists, dck reports the archive as valid but unverified.
+Verify an archive against its checksum with `cardinal backup verify FILE.tar.gz`. When no checksum sidecar exists, cardinal reports the archive as valid but unverified.
 
 ## 12. Inspect and operate inside a container
 
 ```bash
-dck exec NAME command args...
-dck exec -i -t NAME /bin/sh
-dck console NAME
-dck top NAME
-dck port NAME
-dck stats NAME --no-stream
-dck fs ls NAME /path
-dck fs cat NAME /path/file
-dck cp ./local-file NAME:/path/
-dck cp NAME:/path/file ./local-file
+cardinal exec NAME command args...
+cardinal exec -i -t NAME /bin/sh
+cardinal console NAME
+cardinal top NAME
+cardinal port NAME
+cardinal stats NAME --no-stream
+cardinal fs ls NAME /path
+cardinal fs cat NAME /path/file
+cardinal cp ./local-file NAME:/path/
+cardinal cp NAME:/path/file ./local-file
 ```
 
 `attach` connects to the existing main process; `exec` starts a new process. Use `console` or `exec -i -t` for a shell.
@@ -535,9 +535,9 @@ dck cp NAME:/path/file ./local-file
 ## 13. Resource limits and security
 
 ```bash
-dck run -d --memory 512m --cpus 1 --disk 5G IMAGE[:TAG] COMMAND
-dck run -d --user 1000:1000 --cap-drop ALL --no-new-privs IMAGE[:TAG] COMMAND
-dck run -d --readonly IMAGE[:TAG] COMMAND
+cardinal run -d --memory 512m --cpus 1 --disk 5G IMAGE[:TAG] COMMAND
+cardinal run -d --user 1000:1000 --cap-drop ALL --no-new-privs IMAGE[:TAG] COMMAND
+cardinal run -d --readonly IMAGE[:TAG] COMMAND
 ```
 
 Add only the capabilities that the application requires:
@@ -554,8 +554,8 @@ With a bind mount, edit the host files and restart the container:
 
 ```bash
 nano /data/alfheimguide/main.py
-dck restart alfheimguide
-dck logs --tail 100 alfheimguide
+cardinal restart alfheimguide
+cardinal logs --tail 100 alfheimguide
 ```
 
 For a new dependency, update `requirements.txt` and restart if your startup command installs dependencies. For production, prefer a built image instead of installing packages on every boot.
@@ -565,7 +565,7 @@ For a new dependency, update `requirements.txt` and restart if your startup comm
 All examples use the same command shape:
 
 ```bash
-dck run -d \
+cardinal run -d \
   -n NAME \
   -p HOST_PORT:CONTAINER_PORT \
   --restart POLICY \
@@ -576,22 +576,22 @@ dck run -d \
   IMAGE[:TAG] COMMAND
 ```
 
-Put all dck flags before the image name. Anything after the image and command is passed to the container process. In particular, write `-p 23323:23332` before `python:3.12`, not after `sh -c`.
+Put all cardinal flags before the image name. Anything after the image and command is passed to the container process. In particular, write `-p 23323:23332` before `python:3.12`, not after `sh -c`.
 
 ### Restart behavior
 
-| Policy | Process exits unexpectedly | `dck stop` | Host reboot |
+| Policy | Process exits unexpectedly | `cardinal stop` | Host reboot |
 |---|---|---|---|
 | `no` | Stay stopped | Stay stopped | Stay stopped |
 | `on-failure` | Restart only for a non-zero exit while its monitor is alive; not adopted after detached CLI exits | Stay stopped | Not bootstrapped |
 | `always` | Restart | Stay stopped when stopped explicitly | Start automatically |
-| `unless-stopped` | Restart | Stay stopped until an explicit `dck start` | Start automatically unless it was manually stopped |
+| `unless-stopped` | Restart | Stay stopped until an explicit `cardinal start` | Start automatically unless it was manually stopped |
 
-`dck run --restart always` and `dck run --restart unless-stopped` install the systemd bootstrap service when run as root. `--restart-delay` affects automatic recovery after a process exit; it does not delay the initial boot. To install bootstrap manually:
+`cardinal run --restart always` and `cardinal run --restart unless-stopped` install the systemd bootstrap service when run as root. `--restart-delay` affects automatic recovery after a process exit; it does not delay the initial boot. To install bootstrap manually:
 
 ```bash
-dck bootstrap --install
-systemctl status dck-bootstrap
+cardinal bootstrap --install
+systemctl status cardinal-bootstrap
 ```
 
 The bootstrap service starts eligible containers after the host boots. It does not make `on-failure` a boot-autostart policy. For a persistent detached service, use `always` or `unless-stopped`; `on-failure` is only reliable while the process that owns its monitor remains alive.
@@ -606,8 +606,8 @@ chmod 600 .env
 # Edit .env and set BOT_TOKEN and other secrets.
 
 # Automatically restart after a crash and start after reboot.
-dck pull python:3.12
-dck run -d \
+cardinal pull python:3.12
+cardinal run -d \
   -n bot \
   -p 23323:23332 \
   --restart unless-stopped \
@@ -622,7 +622,7 @@ dck run -d \
 For a bot that should stop permanently when its process exits, omit `--restart`:
 
 ```bash
-dck run -d \
+cardinal run -d \
   -n bot-manual \
   --env-file "$PWD/.env" \
   --vol "$PWD:/bot" \
@@ -636,8 +636,8 @@ dck run -d \
 Persistent database data belongs in a named volume, not in the container overlay:
 
 ```bash
-dck volume create postgres-data
-dck run -d \
+cardinal volume create postgres-data
+cardinal run -d \
   -n postgres \
   -p 5432:5432 \
   --restart unless-stopped \
@@ -651,7 +651,7 @@ dck run -d \
 Manual-only variant (no restart or boot autostart):
 
 ```bash
-dck run -d \
+cardinal run -d \
   -n postgres-manual \
   -p 5433:5432 \
   --vol postgres-data:/var/lib/postgresql/data \
@@ -664,8 +664,8 @@ dck run -d \
 ### MySQL
 
 ```bash
-dck volume create mysql-data
-dck run -d \
+cardinal volume create mysql-data
+cardinal run -d \
   -n mysql \
   -p 3306:3306 \
   --restart always \
@@ -680,8 +680,8 @@ dck run -d \
 ### Redis
 
 ```bash
-dck volume create redis-data
-dck run -d \
+cardinal volume create redis-data
+cardinal run -d \
   -n redis \
   -p 6379:6379 \
   --restart unless-stopped \
@@ -693,8 +693,8 @@ dck run -d \
 ### MongoDB
 
 ```bash
-dck volume create mongo-data
-dck run -d \
+cardinal volume create mongo-data
+cardinal run -d \
   -n mongodb \
   -p 27017:27017 \
   --restart unless-stopped \
@@ -710,7 +710,7 @@ A custom JAR can be kept in a host bind mount:
 mkdir -p /data/minecraft
 # Copy server.jar, eula.txt, server.properties, and worlds into /data/minecraft.
 
-dck run -d \
+cardinal run -d \
   -n minecraft \
   -p 25565:25565 \
   --restart unless-stopped \
@@ -724,7 +724,7 @@ dck run -d \
 Manual-only Minecraft:
 
 ```bash
-dck run -d \
+cardinal run -d \
   -n minecraft-manual \
   -p 25566:25565 \
   --vol /data/minecraft:/data \
@@ -733,15 +733,15 @@ dck run -d \
   java -Xms1G -Xmx4G -jar server.jar nogui
 ```
 
-The Minecraft server must listen on `0.0.0.0:25565`. Its own logs and worlds are preserved in `/data/minecraft`; dck stdout/stderr logs are reset at each new container start. Add `--restart-delay 1m` when recovery should wait one minute after a crash.
+The Minecraft server must listen on `0.0.0.0:25565`. Its own logs and worlds are preserved in `/data/minecraft`; cardinal stdout/stderr logs are reset at each new container start. Add `--restart-delay 1m` when recovery should wait one minute after a crash.
 
 ### Terraria
 
 Image configuration differs between Terraria images. Verify the image's documented environment variables before production use:
 
 ```bash
-dck volume create terraria-data
-dck run -d \
+cardinal volume create terraria-data
+cardinal run -d \
   -n terraria \
   -p 7777:7777 \
   --restart unless-stopped \
@@ -752,7 +752,7 @@ dck run -d \
 Without automatic restart:
 
 ```bash
-dck run -d \
+cardinal run -d \
   -n terraria-manual \
   -p 7778:7777 \
   --vol terraria-data:/config \
@@ -764,8 +764,8 @@ Replace `terraria-server-image:latest` with the image you selected and follow it
 ### Factorio
 
 ```bash
-dck volume create factorio-data
-dck run -d \
+cardinal volume create factorio-data
+cardinal run -d \
   -n factorio \
   -p 34197:34197/udp \
   --restart unless-stopped \
@@ -775,11 +775,11 @@ dck run -d \
 
 ### Source-engine or other dedicated game server
 
-Use the image's documented internal port and persistent data directory. The dck policy is independent of the game:
+Use the image's documented internal port and persistent data directory. The cardinal policy is independent of the game:
 
 ```bash
-dck volume create game-data
-dck run -d \
+cardinal volume create game-data
+cardinal run -d \
   -n dedicated-game \
   -p 27015:27015/udp \
   --restart always \
@@ -793,20 +793,20 @@ For a one-time/manual server, remove `--restart always`. Use `--restart-delay 1m
 ### Inspect, stop, and recover
 
 ```bash
-dck ps -a
-dck logs --tail 100 minecraft
-dck stats minecraft --no-stream
-dck stop minecraft
-dck start minecraft
-dck restart minecraft
+cardinal ps -a
+cardinal logs --tail 100 minecraft
+cardinal stats minecraft --no-stream
+cardinal stop minecraft
+cardinal start minecraft
+cardinal restart minecraft
 ```
 
-A process crash triggers the configured restart policy. A manual `dck stop` is intentional and prevents `unless-stopped` from starting again until `dck start` is run. To disable automatic recovery permanently, update the container:
+A process crash triggers the configured restart policy. A manual `cardinal stop` is intentional and prevents `unless-stopped` from starting again until `cardinal start` is run. To disable automatic recovery permanently, update the container:
 
 ```bash
-dck stop bot
-dck set bot --restart no
-dck start bot
+cardinal stop bot
+cardinal set bot --restart no
+cardinal start bot
 ```
 
 ## 16. Troubleshooting
@@ -816,8 +816,8 @@ dck start bot
 Use `--image`, or pass the image positionally:
 
 ```bash
-dck run --image python:3.12 python --version
-dck run python:3.12 python --version
+cardinal run --image python:3.12 python --version
+cardinal run python:3.12 python --version
 ```
 
 ### `container mount target must be absolute`
@@ -847,12 +847,12 @@ mkdir -p /data/app
 cp -a /root/app/. /data/app/
 ```
 
-### `Usage: dck run` followed by `-n: command not found`
+### `Usage: cardinal run` followed by `-n: command not found`
 
 A Bash continuation backslash must be the final character on its line. Do not insert blank lines after `\`. Use one line if copying through a fragile terminal:
 
 ```bash
-dck run -d -n app --vol /data/app:/app --workdir /app IMAGE[:TAG] COMMAND
+cardinal run -d -n app --vol /data/app:/app --workdir /app IMAGE[:TAG] COMMAND
 ```
 
 ### Container is `created` but not `running`
@@ -860,9 +860,9 @@ dck run -d -n app --vol /data/app:/app --workdir /app IMAGE[:TAG] COMMAND
 Inspect the logs and remove the failed container before retrying:
 
 ```bash
-dck ps -a
-dck logs NAME
-dck rm -f NAME
+cardinal ps -a
+cardinal logs NAME
+cardinal rm -f NAME
 ```
 
 ### The application is running but unreachable
@@ -870,51 +870,51 @@ dck rm -f NAME
 Check that it listens on `0.0.0.0`, the port mapping is correct, and the host firewall allows the port:
 
 ```bash
-dck port NAME
+cardinal port NAME
 ss -ltnp
-dck logs NAME
+cardinal logs NAME
 ```
 
-### `Failed to download binary: all methods failed` during `dck update`
+### `Failed to download binary: all methods failed` during `cardinal update`
 
 The updater used to time out after ten seconds, which was too short for multi-megabyte binaries on slow links. Install the release manually:
 
 ```bash
-curl -fsSL --connect-timeout 10 -o /tmp/dck-new \
-  https://github.com/animesao/dck/releases/latest/download/dck-linux-amd64
-sudo install -D -m 0755 /tmp/dck-new /usr/local/bin/dck
-rm -f /tmp/dck-new
-sudo systemctl restart dck-bootstrap
+curl -fsSL --connect-timeout 10 -o /tmp/cardinal-new \
+  https://github.com/animesao/cardinal/releases/latest/download/cardinal-linux-amd64
+sudo install -D -m 0755 /tmp/cardinal-new /usr/local/bin/cardinal
+rm -f /tmp/cardinal-new
+sudo systemctl restart cardinal-bootstrap
 ```
 
 ### Container stays `running` after its process exited
 
-Older releases treated defunct (zombie) container processes as alive, so the supervisor never noticed the exit — the container stayed `running`, crash-loop restarts barely fired, and resources were not cleaned up. Update dck and verify:
+Older releases treated defunct (zombie) container processes as alive, so the supervisor never noticed the exit — the container stayed `running`, crash-loop restarts barely fired, and resources were not cleaned up. Update cardinal and verify:
 
 ```bash
-dck version
-dck ps -a
-dck inspect NAME | grep -E '"status"|"pid"'
+cardinal version
+cardinal ps -a
+cardinal inspect NAME | grep -E '"status"|"pid"'
 ```
 
 ### A `--network none` container hangs before its command starts
 
-For `--network none`, no `eth0` address is expected, so dck skips the interface wait. For `--network host`, the host interface is already available; bridge mode waits only briefly for the veth interface. If startup still hangs, update dck and inspect the container logs.
+For `--network none`, no `eth0` address is expected, so cardinal skips the interface wait. For `--network host`, the host interface is already available; bridge mode waits only briefly for the veth interface. If startup still hangs, update cardinal and inspect the container logs.
 
 ## 17. Data locations
 
-For root, the default dck data directory is `/root/.dck`. The exact location is also shown by `dck info`:
+For root, the default cardinal data directory is `/root/.cardinal`. The exact location is also shown by `cardinal info`:
 
 ```text
-/root/.dck/
+/root/.cardinal/
 ├── images/       downloaded image root filesystems
 ├── containers/   container state JSON
 ├── overlay/      writable container layers
-├── logs/         dck stdout/stderr logs
+├── logs/         cardinal stdout/stderr logs
 ├── volumes/      named volumes
 ├── cache/        cached image layers
 ├── consoles/     attach sockets
 └── backups/      scheduled container archives
 ```
 
-Set `DCK_DATA_DIR` before running dck to use another state location. Application bind mounts such as `/data/alfheimguide` are separate from this internal state.
+Set `CARDINAL_DATA_DIR` before running cardinal to use another state location. Application bind mounts such as `/data/alfheimguide` are separate from this internal state.

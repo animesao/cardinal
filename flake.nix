@@ -1,5 +1,5 @@
 {
-  description = "dck — lightweight container runtime for Linux";
+  description = "cardinal — lightweight container runtime for Linux";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -15,22 +15,22 @@
       in
       {
         packages = {
-          dck = pkgs.callPackage ./nix/default.nix {
+          cardinal = pkgs.callPackage ./nix/default.nix {
             version = versionStr;
           };
-          default = self.packages.${system}.dck;
+          default = self.packages.${system}.cardinal;
         };
 
         overlays.default = final: prev: {
-          dck = self.packages.${system}.dck;
+          cardinal = self.packages.${system}.cardinal;
         };
 
         apps = {
-          dck = flake-utils.lib.mkApp {
-            drv = self.packages.${system}.dck;
-            name = "dck";
+          cardinal = flake-utils.lib.mkApp {
+            drv = self.packages.${system}.cardinal;
+            name = "cardinal";
           };
-          default = self.apps.${system}.dck;
+          default = self.apps.${system}.cardinal;
         };
 
         devShells.default = pkgs.mkShell {
@@ -43,44 +43,44 @@
           ];
 
           shellHook = ''
-            echo "dck development shell"
+            echo "cardinal development shell"
             echo "Run 'go build .' to build"
           '';
         };
       }
     ) // {
-      nixosModules.dck = { config, lib, pkgs, ... }:
+      nixosModules.cardinal = { config, lib, pkgs, ... }:
         with lib;
         let
-          cfg = config.services.dck;
+          cfg = config.services.cardinal;
         in
         {
-          options.services.dck = {
-            enable = mkEnableOption "dck container runtime";
+          options.services.cardinal = {
+            enable = mkEnableOption "cardinal container runtime";
 
             package = mkOption {
               type = types.package;
-              default = self.packages.${pkgs.system}.dck;
-              defaultText = "self.packages.\${pkgs.system}.dck";
-              description = "The dck package to use.";
+              default = self.packages.${pkgs.system}.cardinal;
+              defaultText = "self.packages.\${pkgs.system}.cardinal";
+              description = "The cardinal package to use.";
             };
 
             dataDir = mkOption {
               type = types.path;
-              default = "/var/lib/dck";
-              description = "Data directory for dck state.";
+              default = "/var/lib/cardinal";
+              description = "Data directory for cardinal state.";
             };
 
             user = mkOption {
               type = types.str;
-              default = "dck";
-              description = "User to run dck as.";
+              default = "cardinal";
+              description = "User to run cardinal as.";
             };
 
             group = mkOption {
               type = types.str;
-              default = "dck";
-              description = "Group to run dck as.";
+              default = "cardinal";
+              description = "Group to run cardinal as.";
             };
 
             apiToken = mkOption {
@@ -112,15 +112,15 @@
 
             users.groups.${cfg.group} = {};
 
-            systemd.services.dck = {
-              description = "dck container runtime";
+            systemd.services.cardinal = {
+              description = "cardinal container runtime";
               after = [ "network-online.target" ];
               wants = [ "network-online.target" ];
               wantedBy = [ "multi-user.target" ];
 
               serviceConfig = {
                 Type = "simple";
-                ExecStart = "${cfg.package}/bin/dck supervisor";
+                ExecStart = "${cfg.package}/bin/cardinal supervisor";
                 Restart = "always";
                 RestartSec = 5;
                 KillMode = "process";
@@ -169,10 +169,10 @@
               };
 
               environment = {
-                DCK_DATA_DIR = cfg.dataDir;
+                CARDINAL_DATA_DIR = cfg.dataDir;
               } // optionalAttrs (cfg.apiToken != null) {
-                DCK_TOKEN = cfg.apiToken;
-                DCK_HOST = "${cfg.apiHost}:${toString cfg.apiPort}";
+                CARDINAL_TOKEN = cfg.apiToken;
+                CARDINAL_HOST = "${cfg.apiHost}:${toString cfg.apiPort}";
               };
             };
 

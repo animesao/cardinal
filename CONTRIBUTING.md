@@ -1,15 +1,15 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
 <p align="center">
-  <img src="img/dck.png" alt="dck logo" width="120">
+  <img src="img/cardinal.png" alt="cardinal logo" width="120">
 </p>
 
 # Contributors
 
-Thank you to everyone who helps improve **dck**.
+Thank you to everyone who helps improve **cardinal**.
 
 ## Maintainers
 
@@ -61,7 +61,7 @@ contrib/
 │   ├── flake.nix        # buildGoModule + lib.fakeHash
 │   └── default.nix      # legacy non-flake expression
 ├── gentoo/
-│   └── dck-1.24.15.ebuild
+│   └── cardinal-1.24.15.ebuild
 └── void/
     └── template         # xbps-src / void-packages drop-in
 ```
@@ -70,7 +70,7 @@ Every existing contributor (under `contrib/`) is built with:
 
 ```
 CGO_ENABLED=0
-go build -trimpath -ldflags="-s -w -buildid= -X dck/cmd.version=${version}"
+go build -trimpath -ldflags="-s -w -buildid= -X cardinal/cmd.version=${version}"
 ```
 
 That flag set is the upstream build matrix in entirety; matching

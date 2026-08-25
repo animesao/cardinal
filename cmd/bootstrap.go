@@ -8,8 +8,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"dck/internal/container"
-	"dck/internal/network"
+	"cardinal/internal/container"
+	"cardinal/internal/network"
 )
 
 func Bootstrap(args []string) {
@@ -81,7 +81,7 @@ func ensureBootstrap() {
 	if os.Geteuid() != 0 {
 		return
 	}
-	unitPath := "/etc/systemd/system/dck-bootstrap.service"
+	unitPath := "/etc/systemd/system/cardinal-bootstrap.service"
 	if data, err := os.ReadFile(unitPath); err == nil && !strings.Contains(string(data), " supervisor") {
 		if err := installSystemdService(); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not migrate systemd service: %v\n", err)
@@ -89,15 +89,15 @@ func ensureBootstrap() {
 		return
 	}
 	if _, err := os.Stat(unitPath); err == nil {
-		if exec.Command("systemctl", "is-active", "--quiet", "dck-bootstrap").Run() == nil {
+		if exec.Command("systemctl", "is-active", "--quiet", "cardinal-bootstrap").Run() == nil {
 			return
 		}
 		if err := exec.Command("systemctl", "daemon-reload").Run(); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not reload systemd: %v\n", err)
 			return
 		}
-		if err := exec.Command("systemctl", "start", "dck-bootstrap").Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: could not start dck supervisor: %v\n", err)
+		if err := exec.Command("systemctl", "start", "cardinal-bootstrap").Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not start cardinal supervisor: %v\n", err)
 		}
 		return
 	}
@@ -109,11 +109,11 @@ func ensureBootstrap() {
 func installSystemdService() error {
 	path, err := os.Executable()
 	if err != nil {
-		return fmt.Errorf("get dck path: %w", err)
+		return fmt.Errorf("get cardinal path: %w", err)
 	}
 
 	unit := fmt.Sprintf(`[Unit]
-Description=dck container supervisor
+Description=cardinal container supervisor
 After=network-online.target
 Wants=network-online.target
 
@@ -130,7 +130,7 @@ StandardError=journal
 WantedBy=multi-user.target
 `, path)
 
-	unitPath := "/etc/systemd/system/dck-bootstrap.service"
+	unitPath := "/etc/systemd/system/cardinal-bootstrap.service"
 	previous, readErr := os.ReadFile(unitPath)
 	if readErr != nil && !os.IsNotExist(readErr) {
 		return fmt.Errorf("read existing %s: %w", unitPath, readErr)
@@ -145,7 +145,7 @@ WantedBy=multi-user.target
 
 	f, err := os.Create(unitPath)
 	if err != nil {
-		return fmt.Errorf("create %s: %w (try running as root: sudo dck bootstrap --install)", unitPath, err)
+		return fmt.Errorf("create %s: %w (try running as root: sudo cardinal bootstrap --install)", unitPath, err)
 	}
 	if _, err := f.WriteString(unit); err != nil {
 		_ = f.Close()
@@ -170,11 +170,11 @@ WantedBy=multi-user.target
 	if err := exec.Command("systemctl", "daemon-reload").Run(); err != nil {
 		return cleanupUnit(fmt.Errorf("systemctl daemon-reload: %w", err))
 	}
-	if err := exec.Command("systemctl", "enable", "dck-bootstrap").Run(); err != nil {
-		return cleanupUnit(fmt.Errorf("enable dck-bootstrap: %w", err))
+	if err := exec.Command("systemctl", "enable", "cardinal-bootstrap").Run(); err != nil {
+		return cleanupUnit(fmt.Errorf("enable cardinal-bootstrap: %w", err))
 	}
-	if err := exec.Command("systemctl", "restart", "dck-bootstrap").Run(); err != nil {
-		return cleanupUnit(fmt.Errorf("restart dck-bootstrap: %w", err))
+	if err := exec.Command("systemctl", "restart", "cardinal-bootstrap").Run(); err != nil {
+		return cleanupUnit(fmt.Errorf("restart cardinal-bootstrap: %w", err))
 	}
 
 	fmt.Println("Systemd service installed and started. Enabled for next boot.")
@@ -182,18 +182,18 @@ WantedBy=multi-user.target
 }
 
 func removeSystemdService() error {
-	unitPath := "/etc/systemd/system/dck-bootstrap.service"
+	unitPath := "/etc/systemd/system/cardinal-bootstrap.service"
 
 	if _, err := os.Stat(unitPath); os.IsNotExist(err) {
 		fmt.Println("Systemd service not found.")
 		return nil
 	}
 
-	if err := exec.Command("systemctl", "stop", "dck-bootstrap").Run(); err != nil {
-		return fmt.Errorf("stop dck-bootstrap: %w", err)
+	if err := exec.Command("systemctl", "stop", "cardinal-bootstrap").Run(); err != nil {
+		return fmt.Errorf("stop cardinal-bootstrap: %w", err)
 	}
-	if err := exec.Command("systemctl", "disable", "dck-bootstrap").Run(); err != nil {
-		return fmt.Errorf("disable dck-bootstrap: %w", err)
+	if err := exec.Command("systemctl", "disable", "cardinal-bootstrap").Run(); err != nil {
+		return fmt.Errorf("disable cardinal-bootstrap: %w", err)
 	}
 	if err := os.Remove(unitPath); err != nil {
 		return fmt.Errorf("remove %s: %w", unitPath, err)
@@ -202,6 +202,6 @@ func removeSystemdService() error {
 		return fmt.Errorf("systemctl daemon-reload: %w", err)
 	}
 
-	fmt.Println("Systemd service stopped and removed: dck-bootstrap")
+	fmt.Println("Systemd service stopped and removed: cardinal-bootstrap")
 	return nil
 }

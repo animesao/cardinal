@@ -1,5 +1,5 @@
-# gitleaks config for dck — allow documented example placeholders.
-title = "dck gitleaks"
+# gitleaks config for cardinal — allow documented example placeholders.
+title = "cardinal gitleaks"
 
 [allowlist]
   description = "Allow documented placeholders in docs and examples"

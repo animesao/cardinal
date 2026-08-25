@@ -1,4 +1,4 @@
-_dck() {
+_cardinal() {
     local cur prev words cword
     _init_completion || return
 
@@ -20,11 +20,11 @@ _dck() {
             COMPREPLY=($(compgen -W "$opts" -- "$cur"))
             ;;
         stop|start|restart|rm|logs|exec|console|attach|port)
-            local containers=$(dck ps -a 2>/dev/null | tail -n +2 | awk '{print $1, $4}')
+            local containers=$(cardinal ps -a 2>/dev/null | tail -n +2 | awk '{print $1, $4}')
             COMPREPLY=($(compgen -W "$containers" -- "$cur"))
             ;;
         pull|rmi)
-            local images=$(dck images 2>/dev/null | tail -n +2 | awk '{print $1":"$2}')
+            local images=$(cardinal images 2>/dev/null | tail -n +2 | awk '{print $1":"$2}')
             COMPREPLY=($(compgen -W "$images" -- "$cur"))
             ;;
         stats)
@@ -33,7 +33,7 @@ _dck() {
                     return
                     ;;
             esac
-            local containers=$(dck ps 2>/dev/null | tail -n +2 | awk '{print $1, $4}')
+            local containers=$(cardinal ps 2>/dev/null | tail -n +2 | awk '{print $1, $4}')
             opts="--no-stream"
             COMPREPLY=($(compgen -W "$containers $opts" -- "$cur"))
             ;;
@@ -64,4 +64,4 @@ _dck() {
             COMPREPLY=($(compgen -W "--check" -- "$cur"))
             ;;
     esac
-} && complete -F _dck dck
+} && complete -F _cardinal cardinal

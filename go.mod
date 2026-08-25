@@ -1,4 +1,4 @@
-module dck
+module cardinal
 
 go 1.26
 

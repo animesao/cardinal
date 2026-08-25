@@ -1,28 +1,28 @@
 # Maintainer: animesao <animesao@users.noreply.github.com>
-pkgname=dck
+pkgname=cardinal
 pkgver=1.23.2
 pkgrel=1
 pkgdesc='Lightweight container runtime for Linux'
 arch=('x86_64' 'aarch64')
-url='https://github.com/animesao/dck'
+url='https://github.com/animesao/cardinal'
 license=('MIT')
 depends=('iptables' 'iproute2' 'util-linux' 'procps-ng' 'curl')
 optdepends=('ufw: firewall management')
-source=("${url}/releases/download/v${pkgver}/dck-linux-${CARCH}")
+source=("${url}/releases/download/v${pkgver}/cardinal-linux-${CARCH}")
 sha256sums=('SKIP')
 
 package() {
-  install -Dm755 "dck-linux-${CARCH}" "${pkgdir}/usr/bin/dck"
+  install -Dm755 "cardinal-linux-${CARCH}" "${pkgdir}/usr/bin/cardinal"
 
   # Install systemd service
-  install -Dm644 /dev/stdin "${pkgdir}/usr/lib/systemd/system/dck-bootstrap.service" <<'EOF'
+  install -Dm644 /dev/stdin "${pkgdir}/usr/lib/systemd/system/cardinal-bootstrap.service" <<'EOF'
 [Unit]
-Description=dck container runtime supervisor
+Description=cardinal container runtime supervisor
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/dck supervisor
+ExecStart=/usr/bin/cardinal supervisor
 Restart=on-failure
 RestartSec=5
 LimitNOFILE=1048576
@@ -32,8 +32,8 @@ WantedBy=multi-user.target
 EOF
 
   # Install bash completion
-  install -Dm644 /dev/stdin "${pkgdir}/usr/share/bash-completion/completions/dck" <<'COMPLETION'
-_dck() {
+  install -Dm644 /dev/stdin "${pkgdir}/usr/share/bash-completion/completions/cardinal" <<'COMPLETION'
+_cardinal() {
   local cur prev commands
   COMPREPLY=()
   cur="${COMP_WORDS[COMP_CWORD]}"
@@ -48,19 +48,19 @@ _dck() {
   COMPREPLY=( $(compgen -W "${commands}" -- "${cur}") )
   return 0
 }
-complete -F _dck dck
+complete -F _cardinal cardinal
 COMPLETION
 
   # Install man page
-  install -Dm644 /dev/stdin "${pkgdir}/usr/share/man/man1/dck.1" <<'MAN'
-.TH DCK 1 "2026" "dck" "User Commands"
+  install -Dm644 /dev/stdin "${pkgdir}/usr/share/man/man1/cardinal.1" <<'MAN'
+.TH CARDINAL 1 "2026" "cardinal" "User Commands"
 .SH NAME
-dck \- lightweight container runtime for Linux
+cardinal \- lightweight container runtime for Linux
 .SH SYNOPSIS
-.B dck
+.B cardinal
 .IR COMMAND " [" OPTIONS "] [" ARGUMENTS ]
 .SH DESCRIPTION
-.B dck
+.B cardinal
 is a lightweight container runtime that provides container creation,
 management, monitoring, and orchestration capabilities using Linux
 namespaces, cgroups v2, and OverlayFS.
@@ -115,13 +115,13 @@ Show container details.
 Show container resource usage.
 .TP
 .B update
-Update dck to the latest version.
+Update cardinal to the latest version.
 .TP
 .B doctor
 Run system diagnostics.
 .SH SEE ALSO
-.UR https://github.com/animesao/dck
-dck documentation
+.UR https://github.com/animesao/cardinal
+cardinal documentation
 .UE
 .SH AUTHOR
 animesao

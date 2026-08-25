@@ -1,21 +1,21 @@
 name: Linux E2E
 
-# E2E workflow that needs root and the iptables/iproute2 stack. dck is
+# E2E workflow that needs root and the iptables/iproute2 stack. cardinal is
 # a privileged runtime, so the smoke set is intentionally narrow: we
 # only check the lifecycle commands that the README quickstart uses.
 #
 # Design goals for this file:
 #
-#   1. Always runnable even if dck itself crashes - we want the
+#   1. Always runnable even if cardinal itself crashes - we want the
 #      diagnostic dump on every failure (uploaded as artifact with
 #      `if: always()`).
-#   2. Pipefail-safe: we never pipe `dck …` directly into `grep` because
+#   2. Pipefail-safe: we never pipe `cardinal …` directly into `grep` because
 #      a missing expected token would trip set -o pipefail and mask
-#      dck's real exit code.
+#      cardinal's real exit code.
 #   3. Self-contained: pre-creates the data dir, so a previous failed
 #      run cannot leave a 0-byte directory behind.
 #   4. Verbose: preflight dumps the env, the privilege context, the
-#      mount table, the kernel capabilities and the dck state dir so a
+#      mount table, the kernel capabilities and the cardinal state dir so a
 #      future maintainer can read the GH Actions log alone.
 #
 # Pinned action versions below are kept conservative because the
@@ -45,8 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      DCK_DATA_DIR: /tmp/dck-e2e-state
-      DIAG_DIR: /tmp/dck-e2e-diag
+      CARDINAL_DATA_DIR: /tmp/cardinal-e2e-state
+      DIAG_DIR: /tmp/cardinal-e2e-diag
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -63,12 +63,12 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             iproute2 iptables util-linux mount
 
-      - name: Build dck (e2e)
+      - name: Build cardinal (e2e)
         run: |
           CGO_ENABLED=0 go build -trimpath \
-            -ldflags="-s -w -buildid= -X dck/cmd.version=e2e-${{ github.run_id }}" \
-            -o dck-e2e .
-          ls -la dck-e2e
+            -ldflags="-s -w -buildid= -X cardinal/cmd.version=e2e-${{ github.run_id }}" \
+            -o cardinal-e2e .
+          ls -la cardinal-e2e
 
       # ---------------- Diagnostic dump ----------------------------------------
       # Always runs. If anything below fails, we still want the GH log to
@@ -80,42 +80,42 @@ jobs:
           mkdir -p "$DIAG_DIR"
           diag() { echo "::group::$1"; eval "$2" 2>&1 | sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g'; echo "::endgroup::"; }
           diag "id"            "id; echo '---'; logname 2>/dev/null || true; echo '---'; whoami"
-          diag "env"           "env | sort | grep -E '^(DCK_|HOME|PATH|PWD|USER|LOGNAME|TERM|LANG|LC_)' || true"
+          diag "env"           "env | sort | grep -E '^(CARDINAL_|HOME|PATH|PWD|USER|LOGNAME|TERM|LANG|LC_)' || true"
           diag "kernel"        "uname -a; echo '---'; cat /proc/self/status | head -20"
           diag "unshare"       "which unshare; unshare --version 2>&1 | head -3 || true"
           diag "mount summary" "mount | head -25; echo '---cgroups---'; cat /proc/self/cgroup 2>/dev/null || true"
           diag "cgroup v2"     "ls -la /sys/fs/cgroup 2>/dev/null | head -20 || true"
           diag "overlay"       "lsmod 2>/dev/null | grep -E '^overlay ' || true; cat /proc/filesystems | grep -E 'overlay|fuse' || true"
-          diag "dck state dir" "ls -laR \"$DCK_DATA_DIR\" 2>/dev/null || echo 'data dir does not yet exist'"
+          diag "cardinal state dir" "ls -laR \"$CARDINAL_DATA_DIR\" 2>/dev/null || echo 'data dir does not yet exist'"
           diag "free space"    "df -h /tmp"
         env:
-          DCK_DATA_DIR: /tmp/dck-e2e-state
-          DIAG_DIR: /tmp/dck-e2e-diag
+          CARDINAL_DATA_DIR: /tmp/cardinal-e2e-state
+          DIAG_DIR: /tmp/cardinal-e2e-diag
 
       # ---------------- Smoke 1: doctor -----------------------------------------
       # Doctor must finish (it can warn) and we persist its output so the
       # failed-step context shows the platform readiness picture.
-      - name: Smoke 1 — dck doctor
+      - name: Smoke 1 — cardinal doctor
         if: always()
         run: |
           mkdir -p "$DIAG_DIR"
           log="$DIAG_DIR/01-doctor.log"
           {
-            echo "==== dck doctor ===="
+            echo "==== cardinal doctor ===="
             id
-            sudo -E ./dck-e2e doctor || echo "(doctor exited non-zero - tolerated)"
+            sudo -E ./cardinal-e2e doctor || echo "(doctor exited non-zero - tolerated)"
             echo "==== exit-code: $? ===="
           } >"$log" 2>&1
           cat "$log"
 
       # ---------------- Smoke 2: pull -------------------------------------------
       # Pull must succeed.
-      - name: Smoke 2 — dck pull alpine:latest
+      - name: Smoke 2 — cardinal pull alpine:latest
         run: |
           log="$DIAG_DIR/02-pull.log"
           set -Euo pipefail
-          if ! sudo -E ./dck-e2e pull alpine:latest >"$log" 2>&1; then
-            echo "::error::dck pull alpine:latest failed"
+          if ! sudo -E ./cardinal-e2e pull alpine:latest >"$log" 2>&1; then
+            echo "::error::cardinal pull alpine:latest failed"
             cat "$log"
             exit 1
           fi
@@ -126,38 +126,38 @@ jobs:
       # verbatim to the diag dir, then assert both the exit code and the marker
       # line. If either check fails we cat the captured buffer so the failure
       # context is visible in the GH Actions log.
-      - name: Smoke 3 — dck run --rm --network none
+      - name: Smoke 3 — cardinal run --rm --network none
         run: |
           log="$DIAG_DIR/03-run-network-none.log"
           set -Euo pipefail
           # Do NOT pre-create / chmod the data dir here - earlier
           # revisions did this and it failed: `mkdir` ran as the
-          # github-actions user, `dck doctor` (via sudo) had already
+          # github-actions user, `cardinal doctor` (via sudo) had already
           # created the dir as root:root with mode 0700, and a
-          # non-owner `chmod 0700` returns EPERM. dck's own
+          # non-owner `chmod 0700` returns EPERM. cardinal's own
           # state.EnsureDirs() — called from image.Pull and from
           # c.Start() — handles directory creation.
 
-          if ! sudo -E ./dck-e2e run --rm --network none alpine:latest \
-                echo DCK_E2E_OK >"$log" 2>&1; then
-            echo "::error::dck run --network none failed (see $log)"
+          if ! sudo -E ./cardinal-e2e run --rm --network none alpine:latest \
+                echo CARDINAL_E2E_OK >"$log" 2>&1; then
+            echo "::error::cardinal run --network none failed (see $log)"
             echo "----- captured stdout/stderr -----"
             cat "$log"
             echo "----- end capture -----"
             # Try to recover additional context from the persisted state.
-            ls -la "$DCK_DATA_DIR" 2>/dev/null || true
-            ls -la "$DCK_DATA_DIR/containers" 2>/dev/null || true
+            ls -la "$CARDINAL_DATA_DIR" 2>/dev/null || true
+            ls -la "$CARDINAL_DATA_DIR/containers" 2>/dev/null || true
             # If a container was created before start failure, dump its log.
-            cid=$(ls "$DCK_DATA_DIR/containers" 2>/dev/null | head -1 | sed 's/\.json$//' || true)
+            cid=$(ls "$CARDINAL_DATA_DIR/containers" 2>/dev/null | head -1 | sed 's/\.json$//' || true)
             if [ -n "${cid:-}" ]; then
-              echo "----- container log path: $DCK_DATA_DIR/logs/$cid.log -----"
-              cat "$DCK_DATA_DIR/logs/$cid.log" 2>/dev/null || echo "(no log)"
+              echo "----- container log path: $CARDINAL_DATA_DIR/logs/$cid.log -----"
+              cat "$CARDINAL_DATA_DIR/logs/$cid.log" 2>/dev/null || echo "(no log)"
             fi
             exit 1
           fi
 
-          if ! grep -Fx DCK_E2E_OK "$log" >/dev/null; then
-            echo "::error::container did not echo DCK_E2E_OK (see $log)"
+          if ! grep -Fx CARDINAL_E2E_OK "$log" >/dev/null; then
+            echo "::error::container did not echo CARDINAL_E2E_OK (see $log)"
             cat "$log"
             exit 1
           fi
@@ -172,7 +172,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dck-e2e-diag-${{ github.run_id }}
-          path: /tmp/dck-e2e-diag
+          name: cardinal-e2e-diag-${{ github.run_id }}
+          path: /tmp/cardinal-e2e-diag
           retention-days: 7
           if-no-files-found: warn

@@ -2,16 +2,16 @@
 set -euo pipefail
 
 HERE="$(dirname "$(readlink -f "$0")")"
-BIN="$HERE/usr/bin/dck"
+BIN="$HERE/usr/bin/cardinal"
 
 if [ $# -eq 0 ]; then
-  # No arguments — install dck to the system
+  # No arguments — install cardinal to the system
   if [ -n "${APPIMAGE:-}" ]; then
     exec /bin/bash "$HERE/usr/bin/install-appimage.sh" "$APPIMAGE" "$BIN"
   fi
-  echo "[dck] APPIMAGE env var not set; cannot install." >&2
+  echo "[cardinal] APPIMAGE env var not set; cannot install." >&2
   exit 1
 fi
 
-# Arguments provided — forward to the dck binary
+# Arguments provided — forward to the cardinal binary
 exec "$BIN" "$@"

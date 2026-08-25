@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"dck/internal/container"
-	"dck/internal/state"
+	"cardinal/internal/container"
+	"cardinal/internal/state"
 )
 
 const (

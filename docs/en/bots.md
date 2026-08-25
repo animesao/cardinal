@@ -1,11 +1,11 @@
-<!-- dck-version:start -->
+<!-- cardinal-version:start -->
 **Documentation version:** `1.60.11`
 **Project release:** `v1.60.11`
-<!-- dck-version:end -->
+<!-- cardinal-version:end -->
 
-# Deploying Bots with dck
+# Deploying Bots with cardinal
 
-Run Telegram, Discord, Slack bots and more inside dck containers with persistent storage and auto-restart.
+Run Telegram, Discord, Slack bots and more inside cardinal containers with persistent storage and auto-restart.
 
 ---
 
@@ -31,7 +31,7 @@ cd /data/mybot
 
 # 1. Create bot code, requirements.txt, start.sh
 # 2. Run (limit: 256MB RAM, 0.25 CPU, 1GB disk):
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n mybot \
   -v /data/mybot:/bot \
   --workdir /bot \
@@ -41,7 +41,7 @@ dck run -d --restart always \
   python:3.11-slim
 ```
 
-The `--startup` script installs dependencies and runs the bot. Changes to files on the host (`/data/mybot/`) are instantly visible inside the container. Restart with `dck restart mybot`.
+The `--startup` script installs dependencies and runs the bot. Changes to files on the host (`/data/mybot/`) are instantly visible inside the container. Restart with `cardinal restart mybot`.
 
 ---
 
@@ -59,7 +59,7 @@ from telegram.ext import Application, CommandHandler
 TOKEN = os.environ["BOT_TOKEN"]
 
 async def start(update: Update, context):
-    await update.message.reply_text("Hello from dck Telegram bot!")
+    await update.message.reply_text("Hello from cardinal Telegram bot!")
 
 async def ping(update: Update, context):
     await update.message.reply_text("pong")
@@ -86,7 +86,7 @@ pip install --no-cache-dir --disable-pip-version-check -r /bot/requirements.txt
 exec python /bot/bot.py
 EOF
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n tg-bot \
   -v /data/tg-bot:/bot \
   --workdir /bot \
@@ -138,7 +138,7 @@ pip install --no-cache-dir --disable-pip-version-check -r /bot/requirements.txt
 exec python /bot/bot.py
 EOF
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n discord-bot \
   -v /data/discord-bot:/bot \
   --workdir /bot \
@@ -153,7 +153,7 @@ dck run -d --restart always \
 
 ```bash
 # 1. Start PostgreSQL (limit: 1GB RAM, 1 CPU, 10GB disk)
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n bot-db \
   -v bot_pgdata:/var/lib/postgresql/data \
   --memory 1g --cpus 1 --disk 10G \
@@ -200,7 +200,7 @@ pip install --no-cache-dir --disable-pip-version-check -r /bot/requirements.txt
 exec python /bot/bot.py
 EOF
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n db-bot \
   -v /data/bot-db:/bot \
   --workdir /bot \
@@ -245,7 +245,7 @@ cd /bot && npm install
 exec node bot.js
 EOF
 
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n js-bot \
   -v /data/js-bot:/bot \
   --workdir /bot \
@@ -261,16 +261,16 @@ dck run -d --restart always \
 
 ```bash
 # Check logs
-dck logs -f tg-bot
+cardinal logs -f tg-bot
 
 # Check if running
-dck ps | grep bot
+cardinal ps | grep bot
 
 # Restart
-dck restart discord-bot
+cardinal restart discord-bot
 
 # Auto healthcheck (with --startup)
-dck run -d --restart always \
+cardinal run -d --restart always \
   -n tg-bot \
   -v /data/tg-bot:/bot \
   --workdir /bot \
@@ -293,23 +293,23 @@ dck run -d --restart always \
 nano /data/tg-bot/bot.py
 
 # Restart container to apply changes
-dck restart tg-bot
+cardinal restart tg-bot
 
 # Or if using --startup with pip install, just restart
-dck restart discord-bot
+cardinal restart discord-bot
 
 # Remove and recreate
-dck rm -f tg-bot
-dck run -d --restart always ...  # same command as before
+cardinal rm -f tg-bot
+cardinal run -d --restart always ...  # same command as before
 ```
 
 ### Copy files into running container
 
 ```bash
 # Update code without restart
-dck cp ./bot.py tg-bot:/bot/bot.py
+cardinal cp ./bot.py tg-bot:/bot/bot.py
 
 # If the bot reloads on file change, it picks up automatically
 # Otherwise restart:
-dck restart tg-bot
+cardinal restart tg-bot
 ```

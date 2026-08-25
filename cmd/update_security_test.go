@@ -6,7 +6,7 @@ import "testing"
 
 func TestParseSHA256Checksum(t *testing.T) {
 	const checksum = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-	for _, input := range []string{checksum, checksum + "  dck-linux-amd64\n"} {
+	for _, input := range []string{checksum, checksum + "  cardinal-linux-amd64\n"} {
 		got, err := parseSHA256Checksum(input)
 		if err != nil {
 			t.Fatalf("parseSHA256Checksum(%q): %v", input, err)
