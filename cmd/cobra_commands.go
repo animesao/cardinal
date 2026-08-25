@@ -50,6 +50,28 @@ var allCommands []*cobra.Command
 // own flag set, which historically means every cardinal invocation that we
 // wrote and tested before the cobra migration. Phased migration of
 // run flags into cobra is tracked as a follow-up.
+func stripGlobalFlags(args []string) []string {
+	out := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "--json" || a == "--quiet" {
+			continue
+		}
+		if a == "--log-level" && i+1 < len(args) {
+			i++
+			continue
+		}
+		if a == "--log-level=debug" || a == "--log-level=info" || a == "--log-level=warn" || a == "--log-level=warning" || a == "--log-level=error" {
+			continue
+		}
+		if len(a) > 12 && a[:12] == "--log-level=" {
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
+}
+
 func register(spec commandSpec) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   spec.use,
@@ -71,6 +93,12 @@ func register(spec commandSpec) *cobra.Command {
 				_ = c.Help()
 				return
 			}
+			// For DisableFlagParsing commands, cobra leaves global flags
+			// (--json/--quiet/--log-level) in args. Strip them so legacy
+			// flag parsing does not see unknown flag errors.
+			if c.DisableFlagParsing {
+				args = stripGlobalFlags(args)
+			}
 			spec.run(args)
 		},
 	}
@@ -84,6 +112,17 @@ func register(spec commandSpec) *cobra.Command {
 		cmd.DisableFlagParsing = true
 		// DisableFlagParsing implies cobra.OnInitialize-style hooks do
 		// not fire from this subcommand, which is harmless for `run`.
+		cmd.Args = cobra.ArbitraryArgs
+	} else if spec.use != "ps" {
+		// Legacy commands still parse flags via stdlib flag.NewFlagSet
+		// inside their handler (stop --all, rm -f, logs -f, exec -it,
+		// up -f, down -a, update --check, etc.). Until they are fully
+		// migrated to cobra pflags, disable cobra parsing so the legacy
+		// parser receives the raw args verbatim. This fixes the
+		// `unknown flag` regressions introduced by the cobra migration
+		// and also handles `cardinal rm -r` (alias for -f) correctly.
+		// run/serve already use this mode; ps keeps cobra parsing for -a.
+		cmd.DisableFlagParsing = true
 		cmd.Args = cobra.ArbitraryArgs
 	}
 	allCommands = append(allCommands, cmd)
@@ -300,7 +339,7 @@ Examples:
 
 func hasLongHelpArgument(args []string) bool {
 	for _, arg := range args {
-		if arg == "--help" {
+		if arg == "--help" || arg == "-h" || arg == "help" {
 			return true
 		}
 	}
@@ -335,13 +374,20 @@ func attachBackupSubcommands() {
 		{"remove", "Delete a backup archive and its checksum"},
 	} {
 		s := sub
-		backup.AddCommand(&cobra.Command{
+		subCmd := &cobra.Command{
 			Use:   s.use,
 			Short: s.short,
 			Run: func(c *cobra.Command, args []string) {
+				if hasLongHelpArgument(args) {
+					_ = c.Help()
+					return
+				}
 				Backup(append([]string{s.use}, args...))
 			},
-		})
+		}
+		subCmd.DisableFlagParsing = true
+		subCmd.Args = cobra.ArbitraryArgs
+		backup.AddCommand(subCmd)
 	}
 
 	// Restore subcommand: DisableFlagParsing so --rebind and other
@@ -365,13 +411,20 @@ func attachSecuritySubcommands() {
 	if sec == nil {
 		return
 	}
-	sec.AddCommand(&cobra.Command{
+	checkCmd := &cobra.Command{
 		Use:   "check",
 		Short: "Run security-focused diagnostics (alias for `cardinal doctor --strict`)",
 		Run: func(c *cobra.Command, args []string) {
+			if hasLongHelpArgument(args) {
+				_ = c.Help()
+				return
+			}
 			Security(append([]string{"check"}, args...))
 		},
-	})
+	}
+	checkCmd.DisableFlagParsing = true
+	checkCmd.Args = cobra.ArbitraryArgs
+	sec.AddCommand(checkCmd)
 }
 
 func findCommand(use string) *cobra.Command {

@@ -67,6 +67,29 @@ func reorderRunFlags(args []string, fs *flag.FlagSet) []string {
 }
 
 func Run(args []string) {
+	// Normalize combined bool shorthands like -it, -dit before flag parsing
+	// stdlib flag does not handle -it as -i -t, but Docker-style expects it.
+	normalizedRun := make([]string, 0, len(args)*2)
+	for _, a := range args {
+		if len(a) > 2 && a[0] == '-' && a[1] != '-' && !strings.Contains(a, "=") {
+			// Check if all chars are known bool shorthands d,i,t
+			isCombined := true
+			for _, ch := range a[1:] {
+				if ch != 'd' && ch != 'i' && ch != 't' {
+					isCombined = false
+					break
+				}
+			}
+			if isCombined {
+				for _, ch := range a[1:] {
+					normalizedRun = append(normalizedRun, "-"+string(ch))
+				}
+				continue
+			}
+		}
+		normalizedRun = append(normalizedRun, a)
+	}
+	args = normalizedRun
 	fs := flag.NewFlagSet("run", flag.ExitOnError)
 	detach := fs.Bool("d", false, "Detach mode")
 	name := fs.String("n", "", "Container name")
