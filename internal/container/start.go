@@ -866,13 +866,19 @@ func (c *Container) runHealthcheck(ctx context.Context) {
 		err := c.execHealthcheck(hc.Cmd, timeout)
 		if err != nil {
 			failures++
+			log.Warn("healthcheck failed (%d/%d) for %s: %v", failures, retries, c.Name, err)
 			if failures >= retries {
-				if err := commandContext30("kill", "-9", strconv.Itoa(c.PID)).Run(); err != nil {
-					log.Warn("kill -9 %d: %v", c.PID, err)
-				}
+				log.Warn("container %s marked unhealthy after %d consecutive failures, restarting", c.Name, retries)
+				// Send SIGTERM first for graceful shutdown, then SIGKILL after 5s timeout.
+				_ = commandContext30("kill", "-15", strconv.Itoa(c.PID)).Run()
+				time.Sleep(5 * time.Second)
+				_ = commandContext30("kill", "-9", strconv.Itoa(c.PID)).Run()
 				return
 			}
 		} else {
+			if failures > 0 {
+				log.Info("healthcheck recovered for %s after %d failures", c.Name, failures)
+			}
 			failures = 0
 		}
 	}

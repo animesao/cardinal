@@ -177,6 +177,7 @@ DIAGNOSTICS & SYSTEM
   dck security                  Security diagnostics
   dck info                      System information
   dck events                    Stream events (--since)
+  dck system df                 Show disk usage by images, containers, volumes
   dck system prune              Remove unused data
   dck version                   Print version
   dck update                    Self-update (--check for dry run)

@@ -193,8 +193,8 @@ func shortID(id string, n int) string {
 }
 
 func (c *Container) Save() error {
-	c.dataMu.RLock()
-	defer c.dataMu.RUnlock()
+	c.dataMu.Lock()
+	defer c.dataMu.Unlock()
 	if err := os.MkdirAll(state.ContainersDir(), 0700); err != nil {
 		return err
 	}

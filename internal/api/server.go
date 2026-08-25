@@ -233,8 +233,9 @@ type rateBucket struct {
 
 func rateLimiter(next http.Handler) http.Handler {
 	const (
-		rate   = 25.0 // tokens per second
-		bucket = 50   // initial burst
+		rate      = 25.0 // tokens per second
+		bucket    = 50   // initial burst
+		maxClients = 4096 // hard cap on tracked IPs
 	)
 	var (
 		mu      sync.Mutex
@@ -262,6 +263,10 @@ func rateLimiter(next http.Handler) http.Handler {
 		mu.Lock()
 		state, ok := clients[host]
 		if !ok {
+			// Evict stale entries before admitting a new client when at capacity.
+			if len(clients) >= maxClients {
+				pruneLocked(10 * time.Minute)
+			}
 			state = &rateBucket{tokens: bucket, last: time.Now()}
 			clients[host] = state
 		}
@@ -279,11 +284,22 @@ func rateLimiter(next http.Handler) http.Handler {
 		state.tokens--
 		mu.Unlock()
 
-		if len(clients) > 4096 {
-			prune(5 * time.Minute)
+		// Periodic prune on every request to prevent unbounded growth.
+		if len(clients) > maxClients/2 {
+			go prune(10 * time.Minute)
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// pruneLocked removes stale entries while the mutex is already held.
+func pruneLocked(maxAge time.Duration) {
+	cutoff := time.Now().Add(-maxAge)
+	for k, v := range clients {
+		if v.last.Before(cutoff) {
+			delete(clients, k)
+		}
+	}
 }
 
 // metricsHandler restricts the Prometheus endpoint behind the API bearer

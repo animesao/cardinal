@@ -1,6 +1,7 @@
 package image
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -24,16 +25,26 @@ const (
 
 var httpClient = &http.Client{Timeout: 300 * time.Second}
 
+// PullContext is like Pull but accepts a context for cancellation and timeout control.
+func PullContext(ctx context.Context, ref string) (*Image, error) {
+	return PullWithPlatformContext(ctx, ref, "", "")
+}
+
 type authResponse struct {
 	Token       string `json:"token"`
 	AccessToken string `json:"access_token"`
 }
 
 func Pull(ref string) (*Image, error) {
-	return PullWithPlatform(ref, "", "")
+	return PullContext(context.Background(), ref)
 }
 
 func PullWithPlatform(ref, platformOS, platformArch string) (*Image, error) {
+	return PullWithPlatformContext(context.Background(), ref, platformOS, platformArch)
+}
+
+// PullWithPlatformContext is like PullWithPlatform but accepts a context.
+func PullWithPlatformContext(ctx context.Context, ref, platformOS, platformArch string) (*Image, error) {
 	if err := os.MkdirAll(state.ImagesDir(), 0700); err != nil {
 		return nil, err
 	}
@@ -46,17 +57,19 @@ func PullWithPlatform(ref, platformOS, platformArch string) (*Image, error) {
 
 	fmt.Printf("Pulling %s:%s...\n", name, tag)
 
-	token, err := getToken(name)
+	sumCtx, sumCancel := context.WithTimeout(ctx, 5*time.Second)
+	defer sumCancel()
+	token, err := getTokenWithContext(sumCtx, name)
 	if err != nil {
 		return nil, fmt.Errorf("auth: %w", err)
 	}
 
-	manifest, err := getResolvedManifest(name, tag, token, platformOS, platformArch)
+	manifest, err := getResolvedManifestWithContext(ctx, name, tag, token, platformOS, platformArch)
 	if err != nil {
 		return nil, fmt.Errorf("manifest: %w", err)
 	}
 
-	configData, err := downloadBlob(name, manifest.Config.Digest, token)
+	configData, err := downloadBlobWithContext(ctx, name, manifest.Config.Digest, token)
 	if err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}
@@ -426,4 +439,137 @@ func bar(pct, width int) string {
 		}
 	}
 	return string(b)
+}
+
+// Context-aware HTTP helpers that accept context for cancellation support.
+
+func getTokenWithContext(ctx context.Context, repo string) (string, error) {
+	u := fmt.Sprintf("%s?service=%s&scope=repository:%s:pull", authURL, authService, repo)
+	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("token HTTP %d: %s", resp.StatusCode, string(body))
+	}
+	var ar authResponse
+	if err := json.NewDecoder(resp.Body).Decode(&ar); err != nil {
+		return "", err
+	}
+	if ar.Token != "" {
+		return ar.Token, nil
+	}
+	return ar.AccessToken, nil
+}
+
+func getResolvedManifestWithContext(ctx context.Context, repo, ref, token, platformOS, platformArch string) (*ManifestV2, error) {
+	m, raw, err := fetchRawManifestWithContext(ctx, repo, ref, token)
+	if err != nil {
+		return nil, err
+	}
+	if m.MediaType == "application/vnd.docker.distribution.manifest.list.v2+json" ||
+		m.MediaType == "application/vnd.oci.image.index.v1+json" {
+		var list ManifestList
+		if err := json.Unmarshal(raw, &list); err != nil {
+			return nil, fmt.Errorf("parse manifest list: %w", err)
+		}
+		targetArch := platformArch
+		targetOS := platformOS
+		if targetArch == "" {
+			targetArch = "amd64"
+		}
+		if targetOS == "" {
+			targetOS = "linux"
+		}
+		var targetDigest string
+		for _, entry := range list.Manifests {
+			if entry.Platform.Architecture == targetArch && entry.Platform.OS == targetOS {
+				targetDigest = entry.Digest
+				break
+			}
+		}
+		if targetDigest == "" && len(list.Manifests) > 0 {
+			targetDigest = list.Manifests[0].Digest
+		}
+		if targetDigest == "" {
+			return nil, fmt.Errorf("no suitable manifest found in list")
+		}
+		fmt.Printf("  Resolved multi-arch to %s\n", shortDigest(targetDigest))
+		return getResolvedManifestWithContext(ctx, repo, targetDigest, token, platformOS, platformArch)
+	}
+	if m.SchemaVersion == 0 || len(m.Layers) == 0 {
+		var v2 ManifestV2
+		if err := json.Unmarshal(raw, &v2); err != nil {
+			return nil, fmt.Errorf("parse manifest v2: %w", err)
+		}
+		if v2.SchemaVersion == 0 || len(v2.Layers) == 0 {
+			return nil, fmt.Errorf("unrecognized manifest format (mediaType: %s)", m.MediaType)
+		}
+		return &v2, nil
+	}
+	return m, nil
+}
+
+func fetchRawManifestWithContext(ctx context.Context, repo, ref, token string) (*ManifestV2, []byte, error) {
+	u := fmt.Sprintf("%s/v2/%s/manifests/%s", registryURL, repo, ref)
+	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept",
+		"application/vnd.docker.distribution.manifest.v2+json,"+
+			"application/vnd.oci.image.manifest.v1+json,"+
+			"application/vnd.docker.distribution.manifest.list.v2+json,"+
+			"application/vnd.oci.image.index.v1+json")
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+	}
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil, err
+	}
+	var m ManifestV2
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, nil, fmt.Errorf("parse manifest: %w", err)
+	}
+	return &m, raw, nil
+}
+
+func downloadBlobWithContext(ctx context.Context, repo, digest, token string) ([]byte, error) {
+	u := fmt.Sprintf("%s/v2/%s/blobs/%s", registryURL, repo, digest)
+	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+	}
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if err := verifyDigest(data, digest); err != nil {
+		return nil, err
+	}
+	return data, nil
 }

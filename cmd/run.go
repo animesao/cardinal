@@ -6,8 +6,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"dck/internal/builder"
@@ -405,6 +407,20 @@ func Run(args []string) {
 	if err := c.Save(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving container: %v\n", err)
 		os.Exit(1)
+	}
+
+	// For foreground (non-detached) runs, listen for signals so SIGTERM/SIGINT
+	// gracefully stop the container instead of leaving an orphaned process.
+	// This must be registered before Start() because Start() blocks for
+	// foreground containers — the signal handler runs concurrently while the
+	// container process is alive.
+	if !*detach {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		go func() {
+			<-sigCh
+			_ = c.Stop()
+		}()
 	}
 
 	if err := c.Start(); err != nil {

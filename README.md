@@ -154,9 +154,33 @@ dck set web --restart-max-attempts 10      # Allow 10 crash restarts before bloc
 dck backup enable web --interval 6h --retention 14  # Scheduled backups
 dck backup status web                       # Show backup settings
 dck backup disable web                      # Disable scheduled backups
+dck system df                               # Show disk usage by images, containers, volumes
 dck system prune                            # Remove unused containers and images
 dck info                                    # System information
 dck commit web my-image:v1                  # Create image from container
+```
+
+### System Disk Usage
+
+Check how much disk space dck is using:
+
+```bash
+dck system df
+```
+
+Output:
+```
+TYPE            TOTAL     SIZE      PATH
+Images (3)     45.2 GB   12 items  /root/.dck/images
+Containers (5) 2.1 GB    10 items  /root/.dck/containers
+Overlay (5)    1.8 GB    20 items  /root/.dck/overlay
+Volumes (2)    512.0 MB  8 items   /root/.dck/volumes
+Logs (3)       128.5 MB  3 items   /root/.dck/logs
+Backups        2.3 GB    6 items   /root/.dck/backups
+Cache          3.1 GB    15 items  /root/.dck/cache
+
+Total disk usage: 55.1 GB
+Data directory:   /root/.dck
 ```
 
 ### Automatic Backups
