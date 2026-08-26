@@ -26,7 +26,7 @@ cardinal COMMAND [SUBCOMMAND] [OPTIONS] [POSITIONAL-ARGUMENTS]
 | `--option=value` | Long option with an inline value | `--memory=2g` |
 | `--` | End options; following values are command arguments | `cardinal run alpine sh -c -- 'echo -n hi'` |
 
-Short boolean options are separate flags: use `-i -t`, not the combined `-it` form. Long options are generally not interchangeable unless this reference lists an alias. Quote values containing spaces, `$`, `*`, `:`, or shell syntax.
+Short boolean options can be written separately (`-i -t`) or as a combined shorthand (`-it`, `-dit`) — cardinal normalizes combined boolean shorthands such as `-it`/`-dit` (for `run`) and `-it` (for `exec`) before parsing. Long options are generally not interchangeable unless this reference lists an alias. Quote values containing spaces, `$`, `*`, `:`, or shell syntax.
 
 ### Common aliases
 
@@ -256,9 +256,9 @@ Stop containers. `--all` stops every running container.
 
 Stop and start a container.
 
-### `cardinal rm [-f] CONTAINER`
+### `cardinal rm [-f|-r] CONTAINER`
 
-Remove a container. `-f` force-removes a running container. Removing a container removes its writable overlay; named volumes are kept.
+Remove a container. `-f` force-removes a running container (`-r` is an alias for `-f`). Removing a container removes its writable overlay; named volumes are kept.
 
 ### `cardinal rename CONTAINER NEW_NAME`
 
@@ -285,6 +285,7 @@ Change configuration without removing the container. If it was running, cardinal
 | `--no-new-privs` | Disable privilege escalation |
 | `-h HOSTNAME` | Hostname |
 | `--network MODE` | Network mode |
+| `--startup SCRIPT` | Inline startup script or `@FILE`; runs before the container command |
 
 ```bash
 cardinal set minecraft --restart unless-stopped --restart-delay 1m

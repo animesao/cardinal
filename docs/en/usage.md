@@ -211,9 +211,11 @@ cardinal run -d -v /data:/data -e DB_URL=postgres://... myapp
 cardinal run -d --name myapp --ports 8080:80 --volume /app:/app --restart always --image nginx:alpine
 ```
 
-**Important:** cardinal uses Go's `flag` package, so flags must be passed separately:
-- ✅ `cardinal run -i -t alpine sh` (correct)
-- ❌ `cardinal run -it alpine sh` (will error — use `-i -t`)
+**Note:** cardinal uses Go's `flag` package. Flags may be passed separately
+(`-i -t`) or combined into shorthands (`-it`, `-dit`) — combined forms are
+normalized automatically before parsing:
+- ✅ `cardinal run -i -t alpine sh`
+- ✅ `cardinal run -it alpine sh` (shorthand, normalized to `-i -t`)
 
 #### Run options
 

@@ -34,6 +34,7 @@ All examples assume you have cardinal installed on a Linux server with a public 
 - [Minecraft Server](#minecraft-server)
 - [Telegram Bot](#telegram-bot)
 - [Discord Bot](#discord-bot)
+- [Node Site with Auto-Start](#node-site-with-auto-start)
 - [Databases](#databases)
   - [PostgreSQL](#postgresql)
   - [MySQL](#mysql)
@@ -1373,6 +1374,83 @@ cardinal port rm player1 25566       # alias
 - Applies iptables DNAT rules instantly — no restart needed
 - Ports persist in container state across restarts
 - Useful for donator perks, temporary services, or emergency access
+
+---
+
+## Node Site with Auto-Start
+
+Deploy a Node.js site (like this documentation site) with cardinal in one
+command: the project directory is mounted live (content updates without a
+rebuild), the container restarts itself after crashes, and the port is opened
+automatically.
+
+### One-command deploy (`deploy.sh`)
+
+```bash
+./deploy.sh                 # default: name=cardinal, port=443, host network
+./deploy.sh --bridge        # bridge network — cardinal opens the port itself
+./deploy.sh --port 8080     # deploy on another port
+./deploy.sh --force         # force a rebuild
+./deploy.sh --restart       # add --restart always (auto-start after reboot)
+```
+
+What the script does: removes an existing container with the same name,
+creates it (volume `$PWD:/site`, `--workdir /site`, a `--startup` fix for
+`/etc/hosts`, command `npm start`), installs dependencies and builds the site
+inside the container when needed, opens the port in the host firewall
+(`ufw`/`firewalld`/`iptables`), and health-checks the result.
+
+### The equivalent `cardinal run` commands
+
+Host network — the app binds the port directly, cardinal manages nothing:
+
+```bash
+cardinal run -d -n cardinal --network host -e PORT=443 -v $PWD:/site \
+  --image node:24 --workdir /site \
+  --startup "echo '127.0.0.1 localhost' >> /etc/hosts" \
+  --cmd "npm start"
+```
+
+Bridge network — cardinal manages the port (iptables DNAT + `ufw allow`):
+
+```bash
+cardinal run -d -n cardinal -p 443:443 -e PORT=443 -v $PWD:/site \
+  --image node:24 --workdir /site \
+  --startup "echo '127.0.0.1 localhost' >> /etc/hosts" \
+  --cmd "npm start"
+```
+
+### Auto-start after reboot
+
+`--restart always` plus the persistent supervisor keeps the site running
+across reboots and crashes:
+
+```bash
+cardinal bootstrap --install              # install cardinal-bootstrap.service
+cardinal set cardinal --restart always    # or add --restart always at creation
+```
+
+The supervisor also powers scheduled backups and crash-loop protection.
+
+### Port and firewall notes
+
+- **Bridge mode** — cardinal adds iptables DNAT and `ufw allow <port>/<proto>`
+  at start, and removes them on `stop`/`rm`.
+- **Host mode** — no mappings exist; open the port yourself:
+  `ufw allow 443/tcp` (and check the provider's cloud firewall, which is
+  outside the OS).
+- Add or remove mappings on a running container with
+  `cardinal port add <c> HOST:CONT` / `cardinal port remove <c> HOST`.
+
+### Gotchas
+
+- **`/etc/hosts` in containers is minimal** — builds that resolve `localhost`
+  (e.g. Astro) fail with `getaddrinfo ENOTFOUND localhost`. The `--startup`
+  line above appends `127.0.0.1 localhost` on every start; you can also set it
+  later with `cardinal set <c> --startup "..."`.
+- **HTTPS on port 443** — browsers may auto-upgrade `http://...:443` to
+  `https://`. Use a plain port (`--port 8080`) or terminate TLS in front
+  (Caddy/nginx).
 
 ---
 

@@ -34,6 +34,7 @@ Python, Node.js, PHP, Java и полноценные приложения с б�
 - [Minecraft сервер](#minecraft-сервер)
 - [Telegram бот](#telegram-бот)
 - [Discord бот](#discord-бот)
+- [Node.js сайт с автозапуском](#nodejs-сайт-с-автозапуском)
 - [Базы данных](#базы-данных)
   - [PostgreSQL](#postgresql)
   - [MySQL](#mysql)
@@ -1300,6 +1301,82 @@ cardinal port rm player1 25566       # алиас
 - Правила iptables DNAT применяются мгновенно — перезапуск не нужен
 - Порты сохраняются в состоянии контейнера между перезапусками
 - Полезно для донатных привилегий, временных сервисов или экстренного доступа
+
+---
+
+## Node.js сайт с автозапуском
+
+Разверните Node.js сайт (как этот документационный сайт) с cardinal одной
+командой: каталог проекта монтируется на лету (контент обновляется без
+пересборки), контейнер сам перезапускается после падений, а порт открывается
+автоматически.
+
+### Деплой одной командой (`deploy.sh`)
+
+```bash
+./deploy.sh                 # по умолчанию: name=cardinal, port=443, host-сеть
+./deploy.sh --bridge        # bridge-сеть — порт открывает сам cardinal
+./deploy.sh --port 8080     # другой порт
+./deploy.sh --force         # принудительная пересборка
+./deploy.sh --restart       # добавить --restart always (автозапуск после ребута)
+```
+
+Что делает скрипт: удаляет существующий контейнер с тем же именем, создаёт
+его (том `$PWD:/site`, `--workdir /site`, `--startup`-фикс для `/etc/hosts`,
+команда `npm start`), ставит зависимости и собирает сайт внутри контейнера
+при необходимости, открывает порт в фаерволе хоста
+(`ufw`/`firewalld`/`iptables`) и проверяет здоровье сайта.
+
+### Эквивалентные команды `cardinal run`
+
+Host-сеть — приложение само биндится на порт, cardinal ничем не управляет:
+
+```bash
+cardinal run -d -n cardinal --network host -e PORT=443 -v $PWD:/site \
+  --image node:24 --workdir /site \
+  --startup "echo '127.0.0.1 localhost' >> /etc/hosts" \
+  --cmd "npm start"
+```
+
+Bridge-сеть — портом управляет cardinal (iptables DNAT + `ufw allow`):
+
+```bash
+cardinal run -d -n cardinal -p 443:443 -e PORT=443 -v $PWD:/site \
+  --image node:24 --workdir /site \
+  --startup "echo '127.0.0.1 localhost' >> /etc/hosts" \
+  --cmd "npm start"
+```
+
+### Автозапуск после перезагрузки
+
+`--restart always` плюс постоянный supervisor держат сайт в живых после
+ребутов и падений:
+
+```bash
+cardinal bootstrap --install              # установить cardinal-bootstrap.service
+cardinal set cardinal --restart always    # или добавить --restart always при создании
+```
+
+Supervisor также обслуживает запланированные бэкапы и защиту от crash-loop.
+
+### Порт и фаервол
+
+- **Bridge-режим** — cardinal добавляет iptables DNAT и `ufw allow <порт>/<протокол>`
+  при старте и удаляет их при `stop`/`rm`.
+- **Host-режим** — маппингов нет; открывайте порт сами:
+  `ufw allow 443/tcp` (и проверьте облачный firewall провайдера — он вне ОС).
+- Добавлять/удалять порты на работающем контейнере:
+  `cardinal port add <c> HOST:CONT` / `cardinal port remove <c> HOST`.
+
+### Подводные камни
+
+- **`/etc/hosts` в контейнерах минимальный** — сборки, резолвящие `localhost`
+  (например Astro), падают с `getaddrinfo ENOTFOUND localhost`. Строка
+  `--startup` выше дописывает `127.0.0.1 localhost` при каждом старте; можно
+  задать и позже: `cardinal set <c> --startup "..."`.
+- **HTTPS на порту 443** — браузеры могут автоматически подменять
+  `http://...:443` на `https://`. Используйте обычный порт (`--port 8080`)
+  или терминируйте TLS спереди (Caddy/nginx).
 
 ---
 
