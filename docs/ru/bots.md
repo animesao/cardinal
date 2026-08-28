@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.10`
-**Project release:** `v2.0.10`
+**Documentation version:** `2.0.11`
+**Project release:** `v2.0.11`
 <!-- cardinal-version:end -->
 
 # Развёртывание ботов с cardinal

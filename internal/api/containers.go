@@ -503,6 +503,12 @@ func handleContainersRouter(w http.ResponseWriter, r *http.Request) {
 		action = parts[1]
 	}
 
+	// Docker API convention: DELETE /containers/{id} (no action segment)
+	// means "remove the container". Remotes (wings, panel) rely on it.
+	if r.Method == "DELETE" && action == "" && id != "json" {
+		action = "remove"
+	}
+
 	if id == "json" && action == "" {
 		handleContainersList(w, r)
 		return
