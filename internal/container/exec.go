@@ -44,17 +44,17 @@ func (c *Container) ExecOptsIO(cmd []string, interactive, tty bool, stdin io.Rea
 		if err != nil {
 			return err
 		}
-		defer ptmx.Close()
+		defer ptmx.Close() //nolint:errcheck
 
-		// Pipe caller I/O ↔ PTY
+		// Pipe caller I/O <-> PTY
 		done := make(chan struct{}, 2)
 		if stdin != nil {
-			go func() { io.Copy(ptmx, stdin); done <- struct{}{} }()
+			go func() { _, _ = io.Copy(ptmx, stdin); done <- struct{}{} }()
 		} else {
 			done <- struct{}{}
 		}
 		if stdout != nil {
-			go func() { io.Copy(stdout, ptmx); done <- struct{}{} }()
+			go func() { _, _ = io.Copy(stdout, ptmx); done <- struct{}{} }()
 		} else {
 			done <- struct{}{}
 		}
