@@ -22,16 +22,24 @@ func Exec(args []string) {
 		}
 	}
 	args = normalized
-	fs := flag.NewFlagSet("exec", flag.ContinueOnError)
-	fs.SetOutput(os.Stderr)
-	interactive := fs.Bool("i", false, "Interactive mode")
-	tty := fs.Bool("t", false, "Allocate TTY")
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing exec options: %v\n", err)
-		os.Exit(1)
+
+	// Manually extract -i and -t flags from ANY position (stdlib flag.Parse
+	// stops at the first non-flag arg, so "exec <id> -i /bin/sh" would miss
+	// the -i flag and leak it into the nsenter command).
+	var interactive, tty bool
+	var remaining []string
+	for i := 0; i < len(args); i++ {
+		if args[i] == "-i" {
+			interactive = true
+			continue
+		}
+		if args[i] == "-t" {
+			tty = true
+			continue
+		}
+		remaining = append(remaining, args[i])
 	}
 
-	remaining := fs.Args()
 	if len(remaining) < 2 {
 		fmt.Println("Usage: cardinal exec [-i] [-t] <container> <cmd> [args...]")
 		os.Exit(1)
@@ -48,7 +56,7 @@ func Exec(args []string) {
 		os.Exit(1)
 	}
 
-	if err := c.ExecOpts(remaining[1:], *interactive, *tty); err != nil {
+	if err := c.ExecOpts(remaining[1:], interactive, tty); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
