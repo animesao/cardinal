@@ -69,6 +69,8 @@ func Bootstrap(args []string) {
 func shouldBootstrap(policy string, stoppedByUser bool) bool {
 	switch policy {
 	case "always":
+		// always is a boot policy; a stale manual-stop marker must not prevent
+		// recovery after the host itself has rebooted.
 		return true
 	case "unless-stopped":
 		return !stoppedByUser

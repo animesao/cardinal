@@ -160,7 +160,10 @@ func adoptEligibleContainers(managed map[string]time.Time, finalized map[string]
 		if c == nil {
 			continue
 		}
-		if c.StoppedByUser || c.Restart == "no" || c.Restart == "" {
+		// `always` means the service must be recovered after a host reboot,
+		// even when the persisted state contains the stale manual-stop marker.
+		// Manual stops are still respected for `unless-stopped`.
+		if c.Restart == "no" || c.Restart == "" || (c.Restart == "unless-stopped" && c.StoppedByUser) {
 			delete(managed, c.ID)
 			continue
 		}
@@ -212,7 +215,9 @@ func adoptEligibleContainers(managed map[string]time.Time, finalized map[string]
 			delete(managed, c.ID)
 			continue
 		}
-		if fresh.Status == container.Running || fresh.StoppedByUser || fresh.RestartBlocked {
+		if fresh.Status == container.Running ||
+			(fresh.Restart == "unless-stopped" && fresh.StoppedByUser) ||
+			fresh.RestartBlocked {
 			continue
 		}
 		managed[c.ID] = time.Time{}
@@ -282,7 +287,14 @@ func supervisorRestartDelay(c *container.Container) time.Duration {
 }
 
 func eligibleForSupervisor(c *container.Container) bool {
-	if c == nil || !c.Detach || c.StoppedByUser || c.Status == container.Running || c.RestartBlocked {
+	if c == nil || !c.Detach || c.Status == container.Running || c.RestartBlocked {
+		if c != nil && c.Restart == "always" && c.Status != container.Running && !c.RestartBlocked {
+			// `always` is deliberately not blocked by a stale stopped_by_user flag.
+			return true
+		}
+		return false
+	}
+	if c.Restart == "unless-stopped" && c.StoppedByUser {
 		return false
 	}
 	switch c.Restart {

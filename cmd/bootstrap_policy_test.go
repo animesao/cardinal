@@ -11,7 +11,7 @@ func TestShouldBootstrap(t *testing.T) {
 		stoppedByUser bool
 		want          bool
 	}{
-		{name: "always starts after reboot", policy: "always", stoppedByUser: true, want: true},
+		{name: "always starts after reboot despite stale manual flag", policy: "always", stoppedByUser: true, want: true},
 		{name: "unless stopped starts when not manually stopped", policy: "unless-stopped", want: true},
 		{name: "unless stopped stays stopped after manual stop", policy: "unless-stopped", stoppedByUser: true, want: false},
 		{name: "on failure is not a boot policy", policy: "on-failure", want: false},
