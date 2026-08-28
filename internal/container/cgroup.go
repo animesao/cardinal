@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	cgroupRoot = "/sys/fs/cgroup"
-	cardinalCgroup  = "cardinal"
-	cpuPeriod  = 100000
+	cgroupRoot     = "/sys/fs/cgroup"
+	cardinalCgroup = "cardinal"
+	cpuPeriod      = 100000
 )
 
 func cgroupV2Enabled() bool {
@@ -54,9 +54,10 @@ func setupContainerCgroup(id string, pid int, memoryLimit int64, cpuCount float6
 		return "", fmt.Errorf("cgroup base: %w", err)
 	}
 
-	// Enable controllers for cardinal cgroup's children (container cgroups)
+	// Enable controllers for cardinal cgroup's children (container cgroups).
+	// io powers io.stat (disk read/write accounting) in ReadContainerStats.
 	if cgroupV2Enabled() {
-		for _, ctrl := range []string{"memory", "cpu", "pids"} {
+		for _, ctrl := range []string{"memory", "cpu", "pids", "io"} {
 			if err := enableCgroupController(ctrl); err != nil {
 				log.Warn("enable cgroup controller %s: %v", ctrl, err)
 			}
@@ -64,7 +65,7 @@ func setupContainerCgroup(id string, pid int, memoryLimit int64, cpuCount float6
 
 		// Also enable in cardinal's own subtree so children inherit controllers
 		cardinalSub := filepath.Join(basePath, "cgroup.subtree_control")
-		for _, ctrl := range []string{"memory", "cpu", "pids"} {
+		for _, ctrl := range []string{"memory", "cpu", "pids", "io"} {
 			data, readErr := os.ReadFile(cardinalSub)
 			if readErr != nil {
 				log.Warn("read subtree_control: %v", readErr)

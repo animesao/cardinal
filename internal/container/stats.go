@@ -58,7 +58,7 @@ func ReadContainerStats(c *Container) (*ContainerStats, error) {
 	readMemoryStats(s, cgPath)
 	readCPUStats(s, cgPath)
 	readPIDsStats(s, cgPath)
-	readIOStats(s, cgPath)
+	readIOStats(s, cgPath, c)
 	readDiskStats(s, c)
 
 	if s.MemoryLimit > 0 {
@@ -135,6 +135,14 @@ func readCPUStats(s *ContainerStats, cgPath string) {
 func readDiskStats(s *ContainerStats, c *Container) {
 	s.DiskLimit = uint64(maxInt64(c.DiskLimit))
 	upper, _, _ := c.OverlayDirs()
+	// When the disk-limit data mount is active, Start re-points the overlay's
+	// upper dir at <overlay>/<id>/data/upper — the plain <id>/upper path is an
+	// empty leftover, which made DiskUsage report 0 for every container with
+	// a disk limit. Prefer the mounted data layer when it exists.
+	dataUpper := filepath.Join(filepath.Dir(upper), "data", "upper")
+	if fi, err := os.Stat(dataUpper); err == nil && fi.IsDir() {
+		upper = dataUpper
+	}
 	var total uint64
 	_ = filepath.WalkDir(upper, func(_ string, entry os.DirEntry, err error) error {
 		if err != nil || entry == nil || !entry.Type().IsRegular() {
@@ -163,21 +171,37 @@ func readPIDsStats(s *ContainerStats, cgPath string) {
 	}
 }
 
-func readIOStats(s *ContainerStats, cgPath string) {
+func readIOStats(s *ContainerStats, cgPath string, c *Container) {
 	data, err := os.ReadFile(filepath.Join(cgPath, "io.stat"))
-	if err != nil {
-		return
-	}
-	for _, line := range strings.Split(string(data), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
+	if err == nil {
+		for _, line := range strings.Split(string(data), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			for _, part := range strings.Fields(line) {
+				if strings.HasPrefix(part, "rbytes=") {
+					s.IOReadBytes, _ = strconv.ParseUint(part[7:], 10, 64)
+				} else if strings.HasPrefix(part, "wbytes=") {
+					s.IOWriteBytes, _ = strconv.ParseUint(part[7:], 10, 64)
+				}
+			}
 		}
-		for _, part := range strings.Fields(line) {
-			if strings.HasPrefix(part, "rbytes=") {
-				s.IOReadBytes, _ = strconv.ParseUint(part[7:], 10, 64)
-			} else if strings.HasPrefix(part, "wbytes=") {
-				s.IOWriteBytes, _ = strconv.ParseUint(part[7:], 10, 64)
+	}
+	// Fallback: the io controller is not always enabled (older containers
+	// created before it was added to the cgroup setup). /proc/<pid>/io of the
+	// container's main process keeps the counters meaningful either way.
+	if s.IOReadBytes == 0 && s.IOWriteBytes == 0 && c != nil && c.PID > 0 {
+		procIO := fmt.Sprintf("/proc/%d/io", c.PID)
+		if pdata, perr := os.ReadFile(procIO); perr == nil {
+			for _, line := range strings.Split(string(pdata), "\n") {
+				line = strings.TrimSpace(line)
+				switch {
+				case strings.HasPrefix(line, "read_bytes:"):
+					s.IOReadBytes, _ = strconv.ParseUint(strings.TrimSpace(strings.TrimPrefix(line, "read_bytes:")), 10, 64)
+				case strings.HasPrefix(line, "write_bytes:"):
+					s.IOWriteBytes, _ = strconv.ParseUint(strings.TrimSpace(strings.TrimPrefix(line, "write_bytes:")), 10, 64)
+				}
 			}
 		}
 	}

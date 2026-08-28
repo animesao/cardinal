@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.11`
-**Project release:** `v2.0.11`
+**Documentation version:** `2.0.12`
+**Project release:** `v2.0.12`
 <!-- cardinal-version:end -->
 
 # Установка cardinal в Void Linux
