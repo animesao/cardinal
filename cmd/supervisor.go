@@ -288,10 +288,6 @@ func supervisorRestartDelay(c *container.Container) time.Duration {
 
 func eligibleForSupervisor(c *container.Container) bool {
 	if c == nil || !c.Detach || c.Status == container.Running || c.RestartBlocked {
-		if c != nil && c.Restart == "always" && c.Status != container.Running && !c.RestartBlocked {
-			// `always` is deliberately not blocked by a stale stopped_by_user flag.
-			return true
-		}
 		return false
 	}
 	if c.Restart == "unless-stopped" && c.StoppedByUser {
