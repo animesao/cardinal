@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.9`
-**Project release:** `v2.0.9`
+**Documentation version:** `2.0.10`
+**Project release:** `v2.0.10`
 <!-- cardinal-version:end -->
 
 # cardinal — Command verification map
