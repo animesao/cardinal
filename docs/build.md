@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.3`
-**Project release:** `v2.0.3`
+**Documentation version:** `2.0.4`
+**Project release:** `v2.0.4`
 <!-- cardinal-version:end -->
 
 # Build, CI & Versioning
