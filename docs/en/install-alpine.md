@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.5`
-**Project release:** `v2.0.5`
+**Documentation version:** `2.0.6`
+**Project release:** `v2.0.6`
 <!-- cardinal-version:end -->
 
 # Installing cardinal on Alpine Linux
