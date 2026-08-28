@@ -71,6 +71,8 @@ func handleImagesRouter(w http.ResponseWriter, r *http.Request) {
 		handleImageHistory(w, r, name)
 	case "get":
 		handleImageGet(w, r, name)
+	case "pull":
+		handleImagePull(w, r, name)
 	default:
 		if action == "" && r.Method == "DELETE" {
 			handleImageRemove(w, r, name)
@@ -260,6 +262,23 @@ func handleImageGet(w http.ResponseWriter, r *http.Request, ref string) {
 		return
 	}
 	writeError(w, 501, "not implemented")
+}
+
+func handleImagePull(w http.ResponseWriter, r *http.Request, ref string) {
+	if r.Method != "POST" {
+		writeError(w, 405, "method not allowed")
+		return
+	}
+
+	img, err := image.Pull(ref)
+	if err != nil {
+		writeError(w, 502, fmt.Sprintf("pull %s: %v", ref, err))
+		return
+	}
+
+	writeJSON(w, 200, OKResponse{
+		Message: fmt.Sprintf("pulled %s:%s", strings.TrimPrefix(img.Name, "library/"), img.Tag),
+	})
 }
 
 // ListAllImages returns all images for system info
