@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.4`
-**Project release:** `v2.0.4`
+**Documentation version:** `2.0.5`
+**Project release:** `v2.0.5`
 <!-- cardinal-version:end -->
 
 # Installing cardinal on Nix / NixOS
