@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -209,14 +210,14 @@ func containerToInspect(c *container.Container) *ContainerInspect {
 	}
 
 	config := &ContainerConfig{
-		Hostname:     c.Hostname,
-		User:         c.User,
-		ExposedPorts: exposedPorts,
-		Env:          env,
-		Cmd:          c.Cmd,
-		Image:        imageName,
-		WorkingDir:   c.WorkingDir,
-		Entrypoint:   nil,
+		Hostname:      c.Hostname,
+		User:          c.User,
+		ExposedPorts:  exposedPorts,
+		Env:           env,
+		Cmd:           c.Cmd,
+		Image:         imageName,
+		WorkingDir:    c.WorkingDir,
+		Entrypoint:    nil,
 		Labels:        c.Labels,
 		Volumes:       make(map[string]struct{}),
 		StartupScript: c.StartupScript,
@@ -361,7 +362,7 @@ func handleContainersCreate(w http.ResponseWriter, r *http.Request) {
 				})
 			}
 		}
-	}	// Parse volumes from HostConfig.Binds
+	} // Parse volumes from HostConfig.Binds
 	var volumes []container.VolumeMount
 	if req.HostConfig != nil {
 		for _, bind := range req.HostConfig.Binds {
@@ -450,24 +451,24 @@ func handleContainersCreate(w http.ResponseWriter, r *http.Request) {
 	workdir := req.WorkingDir
 
 	opts := container.CreateOpts{
-		Name:        name,
-		Cmd:         req.Cmd,
-		Ports:       ports,
-		Volumes:     volumes,
-		Env:         env,
-		Hostname:    name,
-		Restart:     restart,
-		Detach:      true,
-		Labels:      labels,
-		CapAdd:      capAdd,
-		CapDrop:     capDrop,
-		MemoryLimit: memLimit,
-		CPUCount:    cpuCount,
-		DiskLimit:   diskLimit,
-		NetworkMode: networkMode,
-		Entrypoint:  entrypoint,
-		WorkingDir:  workdir,
-		DNS:         dns,
+		Name:          name,
+		Cmd:           req.Cmd,
+		Ports:         ports,
+		Volumes:       volumes,
+		Env:           env,
+		Hostname:      name,
+		Restart:       restart,
+		Detach:        true,
+		Labels:        labels,
+		CapAdd:        capAdd,
+		CapDrop:       capDrop,
+		MemoryLimit:   memLimit,
+		CPUCount:      cpuCount,
+		DiskLimit:     diskLimit,
+		NetworkMode:   networkMode,
+		Entrypoint:    entrypoint,
+		WorkingDir:    workdir,
+		DNS:           dns,
 		User:          req.User,
 		StartupScript: req.StartupScript,
 	}
@@ -664,14 +665,22 @@ func handleContainerUpdate(w http.ResponseWriter, r *http.Request, c *container.
 	}
 
 	var req struct {
-		StartupScript      *string `json:"StartupScript"`
-		StartupScriptLower *string `json:"startupScript"`
-		StartupScriptSnake *string `json:"startup_script"`
+		StartupScript      *string  `json:"StartupScript"`
+		StartupScriptLower *string  `json:"startupScript"`
+		StartupScriptSnake *string  `json:"startup_script"`
+		MemoryLimit        *int64   `json:"memory_limit"`
+		MemoryBytes        *int64   `json:"memory_bytes"`
+		MemoryBytesCamel   *int64   `json:"memoryBytes"`
+		CPUCount           *float64 `json:"cpu_count"`
+		CPUs               *float64 `json:"cpus"`
+		DiskLimit          *int64   `json:"disk_limit"`
+		DiskBytes          *int64   `json:"disk_bytes"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid JSON: %v", err))
 		return
 	}
+
 	startupScript := req.StartupScript
 	if startupScript == nil {
 		startupScript = req.StartupScriptLower
@@ -679,23 +688,89 @@ func handleContainerUpdate(w http.ResponseWriter, r *http.Request, c *container.
 	if startupScript == nil {
 		startupScript = req.StartupScriptSnake
 	}
-	if startupScript == nil {
+	mem := req.MemoryLimit
+	if mem == nil {
+		mem = req.MemoryBytes
+	}
+	if mem == nil {
+		mem = req.MemoryBytesCamel
+	}
+	cpu := req.CPUCount
+	if cpu == nil {
+		cpu = req.CPUs
+	}
+	disk := req.DiskLimit
+	if disk == nil {
+		disk = req.DiskBytes
+	}
+
+	if startupScript == nil && mem == nil && cpu == nil && disk == nil {
 		writeError(w, http.StatusBadRequest, "no supported changes supplied")
 		return
 	}
-	if len(*startupScript) > 1024*1024 {
+	if startupScript != nil && len(*startupScript) > 1024*1024 {
 		writeError(w, http.StatusRequestEntityTooLarge, "startup script is too large")
 		return
 	}
 
-	c.StartupScript = *startupScript
+	running := c.Status == container.Running
+	// Disk limits are enforced by the per-container data image which cardinal
+	// resizes at next start; memory/CPU are applied to the cgroup live.
+	diskChanged := false
+
+	if startupScript != nil {
+		c.StartupScript = *startupScript
+	}
+	if mem != nil {
+		c.MemoryLimit = *mem
+	}
+	if cpu != nil {
+		c.CPUCount = *cpu
+	}
+	if disk != nil {
+		c.DiskLimit = *disk
+		diskChanged = true
+	}
+
 	if err := c.Save(); err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("save container: %v", err))
 		return
 	}
+
+	// Apply new memory/CPU limits to the running container's cgroup. cgroup v2
+	// accepts a rewritten limit immediately — no restart, no data loss.
+	if running && (mem != nil || cpu != nil) {
+		cgPath := c.CgroupPath
+		if cgPath == "" {
+			cgPath = filepath.Join("/sys/fs/cgroup/cardinal", c.ID)
+		}
+		if cgPath != "" {
+			if mem != nil {
+				val := []byte("max")
+				if *mem > 0 {
+					val = []byte(strconv.FormatInt(*mem, 10))
+				}
+				if err := os.WriteFile(filepath.Join(cgPath, "memory.max"), val, 0644); err != nil {
+					fmt.Fprintf(os.Stderr, "update memory.max for %s: %v\n", c.ID, err)
+				}
+			}
+			if cpu != nil {
+				val := []byte("max")
+				if *cpu > 0 {
+					quota := int64(*cpu * 100000)
+					val = []byte(fmt.Sprintf("%d %d", quota, 100000))
+				}
+				if err := os.WriteFile(filepath.Join(cgPath, "cpu.max"), val, 0644); err != nil {
+					fmt.Fprintf(os.Stderr, "update cpu.max for %s: %v\n", c.ID, err)
+				}
+			}
+		}
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"ok": true,
-		"restartRequired": c.Status == container.Running,
+		"ok":               true,
+		"restartRequired":  diskChanged || (startupScript != nil && running),
+		"diskLimitChanged": diskChanged,
 	})
 }
 

@@ -63,7 +63,7 @@ func SetupDiskLimit(overlayBase, id string, limitBytes int64) error {
 	_ = os.MkdirAll(filepath.Dir(imgPath), 0755)
 
 	// Create disk image if it doesn't exist
-	if _, err := os.Stat(imgPath); os.IsNotExist(err) {
+	if st, err := os.Stat(imgPath); os.IsNotExist(err) {
 		f, err := os.Create(imgPath)
 		if err != nil {
 			return fmt.Errorf("create disk image: %w", err)
@@ -77,6 +77,42 @@ func SetupDiskLimit(overlayBase, id string, limitBytes int64) error {
 		}
 		if out, err := exec.Command("mkfs.ext4", "-F", imgPath).CombinedOutput(); err != nil {
 			return fmt.Errorf("mkfs.ext4: %s: %w", strings.TrimSpace(string(out)), err)
+		}
+	} else if err == nil && limitBytes > 0 && st.Size() != limitBytes {
+		// Limit changed for an existing image. The image (and its filesystem)
+		// is not mounted yet at this point, so we can resize it in place — the
+		// data inside is fully preserved because it's the same <id>/disk.img.
+		orig := st.Size()
+		if limitBytes > orig {
+			// Grow: enlarge the backing file, then the filesystem.
+			f, ferr := os.OpenFile(imgPath, os.O_WRONLY, 0)
+			if ferr == nil {
+				ferr = f.Truncate(limitBytes)
+				_ = f.Close()
+			}
+			if ferr != nil {
+				return fmt.Errorf("grow disk image file: %w", ferr)
+			}
+			if out, rerr := exec.Command("resize2fs", imgPath).CombinedOutput(); rerr != nil {
+				// Undo the enlargement so the image stays consistent.
+				if uf, uerr := os.OpenFile(imgPath, os.O_WRONLY, 0); uerr == nil {
+					_ = uf.Truncate(orig)
+					_ = uf.Close()
+				}
+				return fmt.Errorf("resize disk image (grow): %s: %w", strings.TrimSpace(string(out)), rerr)
+			}
+		} else {
+			// Shrink: resize the filesystem to its minimum first, then the file.
+			if out, rerr := exec.Command("resize2fs", "-M", imgPath).CombinedOutput(); rerr == nil {
+				if f, ferr := os.OpenFile(imgPath, os.O_WRONLY, 0); ferr == nil {
+					_ = f.Truncate(limitBytes)
+					_ = f.Close()
+				}
+			} else {
+				// Not enough free space to shrink safely — keep the current
+				// image size rather than risk data loss.
+				log.Warn("skip shrinking disk image %s (needs free space): %v", imgPath, rerr)
+			}
 		}
 	}
 
