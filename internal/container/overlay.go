@@ -103,7 +103,7 @@ func SetupDiskLimit(overlayBase, id string, limitBytes int64) error {
 			}
 		} else {
 			// Shrink: resize the filesystem to its minimum first, then the file.
-			if out, rerr := exec.Command("resize2fs", "-M", imgPath).CombinedOutput(); rerr == nil {
+			if _, rerr := exec.Command("resize2fs", "-M", imgPath).CombinedOutput(); rerr == nil {
 				if f, ferr := os.OpenFile(imgPath, os.O_WRONLY, 0); ferr == nil {
 					_ = f.Truncate(limitBytes)
 					_ = f.Close()
