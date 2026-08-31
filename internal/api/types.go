@@ -81,18 +81,18 @@ type ContainerState struct {
 }
 
 type ContainerConfig struct {
-	Hostname     string              `json:"Hostname"`
-	User         string              `json:"User,omitempty"`
-	ExposedPorts map[string]struct{} `json:"ExposedPorts,omitempty"`
-	Env          []string            `json:"Env,omitempty"`
-	Cmd          []string            `json:"Cmd,omitempty"`
-	Image        string              `json:"Image"`
-	Volumes      map[string]struct{} `json:"Volumes,omitempty"`
-	WorkingDir   string              `json:"WorkingDir,omitempty"`
-	Entrypoint   []string            `json:"Entrypoint,omitempty"`
-	Labels       map[string]string   `json:"Labels,omitempty"`
-	StopSignal   string              `json:"StopSignal,omitempty"`
-	Healthcheck  interface{}         `json:"Healthcheck,omitempty"`
+	Hostname      string              `json:"Hostname"`
+	User          string              `json:"User,omitempty"`
+	ExposedPorts  map[string]struct{} `json:"ExposedPorts,omitempty"`
+	Env           []string            `json:"Env,omitempty"`
+	Cmd           []string            `json:"Cmd,omitempty"`
+	Image         string              `json:"Image"`
+	Volumes       map[string]struct{} `json:"Volumes,omitempty"`
+	WorkingDir    string              `json:"WorkingDir,omitempty"`
+	Entrypoint    []string            `json:"Entrypoint,omitempty"`
+	Labels        map[string]string   `json:"Labels,omitempty"`
+	StopSignal    string              `json:"StopSignal,omitempty"`
+	Healthcheck   interface{}         `json:"Healthcheck,omitempty"`
 	StartupScript string              `json:"StartupScript,omitempty"`
 }
 
@@ -213,20 +213,20 @@ type RuntimeInfo struct {
 
 // CreateContainerRequest is the JSON body for POST /containers/create
 type CreateContainerRequest struct {
-	Hostname     string              `json:"Hostname"`
-	User         string              `json:"User,omitempty"`
-	ExposedPorts map[string]struct{} `json:"ExposedPorts,omitempty"`
-	Tty          bool                `json:"Tty"`
-	StdinOnce    bool                `json:"StdinOnce"`
-	Env          []string            `json:"Env,omitempty"`
-	Cmd          []string            `json:"Cmd,omitempty"`
-	Image        string              `json:"Image"`
-	Volumes      map[string]struct{} `json:"Volumes,omitempty"`
-	WorkingDir   string              `json:"WorkingDir,omitempty"`
-	Entrypoint   []string            `json:"Entrypoint,omitempty"`
-	Labels       map[string]string   `json:"Labels,omitempty"`
-	HostConfig   *CreateHostConfig   `json:"HostConfig,omitempty"`
-	Healthcheck  interface{}         `json:"Healthcheck,omitempty"`
+	Hostname      string              `json:"Hostname"`
+	User          string              `json:"User,omitempty"`
+	ExposedPorts  map[string]struct{} `json:"ExposedPorts,omitempty"`
+	Tty           bool                `json:"Tty"`
+	StdinOnce     bool                `json:"StdinOnce"`
+	Env           []string            `json:"Env,omitempty"`
+	Cmd           []string            `json:"Cmd,omitempty"`
+	Image         string              `json:"Image"`
+	Volumes       map[string]struct{} `json:"Volumes,omitempty"`
+	WorkingDir    string              `json:"WorkingDir,omitempty"`
+	Entrypoint    []string            `json:"Entrypoint,omitempty"`
+	Labels        map[string]string   `json:"Labels,omitempty"`
+	HostConfig    *CreateHostConfig   `json:"HostConfig,omitempty"`
+	Healthcheck   interface{}         `json:"Healthcheck,omitempty"`
 	StartupScript string              `json:"StartupScript,omitempty"`
 }
 
