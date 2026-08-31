@@ -3,15 +3,47 @@ set -euo pipefail
 
 # cardinal Container Runtime Installer — Universal Linux
 # Usage: curl -sSL https://raw.githubusercontent.com/animesao/cardinal/main/install.sh | sudo bash
+#
+# Downloads from the site mirror first (works where GitHub is slow/blocked);
+# falls back to GitHub Releases. Every download has a hard timeout and an
+# IPv4 retry, so the installer can never hang silently.
 
 REPO="animesao/cardinal"
 CARDINAL_BIN="/usr/local/bin/cardinal"
+# Site mirror first; set CARDINAL_MIRROR="" to force GitHub-only.
+CARDINAL_MIRROR="${CARDINAL_MIRROR:-https://cardinal.spcfy.eu/downloads/cardinal}"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 log()  { echo -e "${GREEN}[+]${NC} $1"; }
 warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 err()  { echo -e "${RED}[x]${NC} $1"; exit 1; }
 info() { echo -e "${CYAN}[i]${NC} $1"; }
+
+# ---- robust download: retries, hard timeouts, IPv4 fallback (never hangs) ----
+download() {
+  local url="$1" dest="$2"
+  local tmp="${dest}.tmp.$$"
+  local try
+  for try in 1 2 3; do
+    # Try normally first, then force IPv4 — some networks black-hole IPv6 and
+    # stall transfers without any error (the classic "installer hangs" case).
+    if curl -fsSL --retry 2 --connect-timeout 15 --max-time 300 "${url}" -o "${tmp}" \
+      || curl -4 -fsSL --retry 2 --connect-timeout 15 --max-time 300 "${url}" -o "${tmp}"; then
+      if [ -s "${tmp}" ]; then
+        mv -f "${tmp}" "${dest}"
+        return 0
+      fi
+      echo "warning: downloaded empty file from ${url}" >&2
+      rm -f "${tmp}"
+    else
+      echo "warning: download attempt ${try}/3 failed for ${url}" >&2
+      rm -f "${tmp}"
+    fi
+    sleep 2
+  done
+  echo "error: failed to download ${url} after 3 attempts" >&2
+  return 1
+}
 
 if [[ $EUID -ne 0 ]]; then err "Must run as root: sudo bash install.sh"; fi
 if [[ ! -f /etc/os-release ]]; then err "Cannot detect OS — /etc/os-release not found"; fi
@@ -102,13 +134,26 @@ if [[ -n "$PKG_DEPS" ]]; then
   $PKG_INSTALL $PKG_DEPS 2>/dev/null || warn "Some dependencies may be missing"
 fi
 
-# ---- Detect latest version ----
+# ---- Detect latest version: site mirror first, then GitHub API ----
 log "Fetching latest release..."
-LATEST_TAG=$(curl -sfL "https://api.github.com/repos/$REPO/releases/latest" \
-  | grep '"tag_name"' | cut -d'"' -f4)
-
+LATEST_TAG=""
+if [[ -n "$CARDINAL_MIRROR" ]]; then
+  MV="$(curl -sfL --retry 2 --connect-timeout 12 --max-time 25 "$CARDINAL_MIRROR/VERSION" 2>/dev/null | tail -1 | tr -d '[:space:]')"
+  if [[ -n "$MV" ]] && [[ "$MV" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    LATEST_TAG="${MV}"
+    [[ "$LATEST_TAG" != v* ]] && LATEST_TAG="v$LATEST_TAG"
+    log "Latest version (mirror): $LATEST_TAG"
+  else
+    log "Mirror has no version ($CARDINAL_MIRROR) — using GitHub API"
+  fi
+fi
 if [[ -z "$LATEST_TAG" ]]; then
-  err "Could not detect latest release. Check https://github.com/$REPO/releases"
+  log "Fetching latest release from GitHub..."
+  LATEST_TAG=$(curl -sfL --connect-timeout 12 --max-time 25 "https://api.github.com/repos/$REPO/releases/latest" \
+    | grep '"tag_name"' | cut -d'"' -f4)
+fi
+if [[ -z "$LATEST_TAG" ]]; then
+  err "Could not detect latest release (mirror and GitHub both unreachable). Check https://github.com/$REPO/releases"
 fi
 log "Latest version: $LATEST_TAG"
 
@@ -120,22 +165,39 @@ VERSION="${LATEST_TAG#v}"
 ARCHIVE_NAME="cardinal_${VERSION}_linux_${ARCH}.tar.gz"
 CHECKSUMS_NAME="cardinal_${VERSION}_checksums.txt"
 log "Downloading cardinal ${LATEST_TAG} (${ARCH})..."
-curl -fsSL "https://github.com/$REPO/releases/download/${LATEST_TAG}/${ARCHIVE_NAME}" \
-  -o "$TMP_ARCHIVE"
 
-# Verify archive checksum before extraction
+dl_ok=0
+if [[ -n "$CARDINAL_MIRROR" ]]; then
+  if download "$CARDINAL_MIRROR/$LATEST_TAG/$ARCHIVE_NAME" "$TMP_ARCHIVE"; then
+    dl_ok=1
+  else
+    log "Mirror download failed — falling back to GitHub"
+  fi
+fi
+if [[ "$dl_ok" = "0" ]]; then
+  download "https://github.com/$REPO/releases/download/${LATEST_TAG}/${ARCHIVE_NAME}" "$TMP_ARCHIVE" \
+    || err "Download failed: ${ARCHIVE_NAME}"
+fi
+
+# Verify archive checksum (mirror SHA256SUMS first, then GitHub checksums file)
 SUMS_URL="https://github.com/$REPO/releases/download/${LATEST_TAG}/${CHECKSUMS_NAME}"
-if curl -fsSL "$SUMS_URL" -o "$TMP_SUMS"; then
+SUMS_SRC=""
+if [[ "$dl_ok" = "1" ]] && download "$CARDINAL_MIRROR/$LATEST_TAG/SHA256SUMS" "$TMP_SUMS"; then
+  SUMS_SRC="mirror"
+elif download "$SUMS_URL" "$TMP_SUMS"; then
+  SUMS_SRC="github"
+fi
+if [[ -n "$SUMS_SRC" ]]; then
   EXPECTED="$(grep -E "^[0-9a-fA-F]{64}[[:space:]]+${ARCHIVE_NAME}\$" "$TMP_SUMS" | awk '{print $1}')"
   if [[ -z "$EXPECTED" ]]; then
-    warn "Checksums file does not contain ${ARCHIVE_NAME}; cannot verify"
+    warn "Checksums file ($SUMS_SRC) does not contain ${ARCHIVE_NAME}; cannot verify"
   else
     ACTUAL="$(sha256sum "$TMP_ARCHIVE" | awk '{print $1}')"
     if [[ "$ACTUAL" != "$EXPECTED" ]]; then
       rm -f "$TMP_BIN" "$TMP_ARCHIVE" "$TMP_SUMS"
       err "SHA256 mismatch: expected ${EXPECTED}, got ${ACTUAL}"
     fi
-    log "SHA256 verified: ${ACTUAL}"
+    log "SHA256 verified (${SUMS_SRC}): ${ACTUAL}"
   fi
 else
   warn "Checksums file not available for this release; skipping verification"
@@ -161,7 +223,7 @@ if ! "$CARDINAL_BIN" --version &>/dev/null; then
   if command -v go &>/dev/null; then
     log "Building cardinal from source..."
     TMPDIR=$(mktemp -d)
-    git clone --depth 1 "https://github.com/$REPO.git" "$TMPDIR" 2>/dev/null || {
+    timeout 240 git clone --depth 1 "https://github.com/$REPO.git" "$TMPDIR" 2>/dev/null || {
       err "Git clone failed. Install Go manually and run: CGO_ENABLED=0 go build"
     }
     cd "$TMPDIR"
@@ -174,11 +236,13 @@ if ! "$CARDINAL_BIN" --version &>/dev/null; then
   else
     warn "Go not installed. Installing Go to build from source..."
     GO_VER="1.23.4"
-    curl -fsSL "https://go.dev/dl/go${GO_VER}.linux-${ARCH}.tar.gz" -o /tmp/go.tar.gz
+    curl -fsSL --connect-timeout 15 --max-time 300 "https://go.dev/dl/go${GO_VER}.linux-${ARCH}.tar.gz" -o /tmp/go.tar.gz \
+      || err "Go download failed — install Go manually and re-run"
     tar -C /usr/local -xzf /tmp/go.tar.gz
     export PATH=$PATH:/usr/local/go/bin
     TMPDIR=$(mktemp -d)
-    git clone --depth 1 "https://github.com/$REPO.git" "$TMPDIR"
+    timeout 240 git clone --depth 1 "https://github.com/$REPO.git" "$TMPDIR" \
+      || err "Git clone failed. Install Go manually and run: CGO_ENABLED=0 go build"
     cd "$TMPDIR"
     CGO_ENABLED=0 /usr/local/go/bin/go build -tags netgo -installsuffix netgo -ldflags="-s -w" -o cardinal .
     cp cardinal "$CARDINAL_BIN"
