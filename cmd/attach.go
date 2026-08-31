@@ -37,28 +37,37 @@ func Attach(args []string) {
 		fmt.Fprintf(os.Stderr, "console: %v\n", err)
 		os.Exit(1)
 	}
-	defer func() { _ = conn.Close() }()
+
+	var closeOnce sync.Once
+	closeConn := func() {
+		closeOnce.Do(func() { _ = conn.Close() })
+	}
+	defer closeConn()
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
 
-	var wg sync.WaitGroup
-	wg.Add(2)
+	// Closing either direction must stop the other direction too. Without this,
+	// attach could remain blocked forever in io.Copy(os.Stdin -> socket) after
+	// the container's console socket had already closed.
+	done := make(chan struct{}, 2)
+	copyStream := func(dst io.Writer, src io.Reader) {
+		_, _ = io.Copy(dst, src)
+		closeConn()
+		done <- struct{}{}
+	}
 
+	go copyStream(conn, os.Stdin)
+	go copyStream(os.Stdout, conn)
 	go func() {
-		_, _ = io.Copy(conn, os.Stdin)
-		wg.Done()
+		select {
+		case <-sigCh:
+			closeConn()
+		case <-done:
+		}
 	}()
 
-	go func() {
-		_, _ = io.Copy(os.Stdout, conn)
-		wg.Done()
-	}()
-
-	go func() {
-		<-sigCh
-		_ = conn.Close()
-	}()
-
-	wg.Wait()
+	<-done
+	closeConn()
 }

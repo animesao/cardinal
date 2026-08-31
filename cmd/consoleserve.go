@@ -62,28 +62,29 @@ func ConsoleServe(args []string) {
 		buf := make([]byte, consoleBufSize)
 		for {
 			n, err := stdoutR.Read(buf)
+			if n > 0 {
+				_, _ = logFile.Write(buf[:n])
+
+				mu.Lock()
+				for c := range clients {
+					if err := c.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
+						delete(clients, c)
+						_ = c.Close()
+						continue
+					}
+					if _, err := c.Write(buf[:n]); err != nil {
+						delete(clients, c)
+						_ = c.Close()
+						continue
+					}
+					_ = c.SetWriteDeadline(time.Time{})
+				}
+				mu.Unlock()
+			}
 			if err != nil {
-				_, _ = logFile.WriteString(fmt.Sprintf("[console-serve] stdout read done: %v\n", err))
+				_, _ = logFile.WriteString(fmt.Sprintf("[console-serve] stdout read done: %v\\n", err))
 				return
 			}
-
-			_, _ = logFile.Write(buf[:n])
-
-			mu.Lock()
-			for c := range clients {
-				if err := c.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
-					delete(clients, c)
-					_ = c.Close()
-					continue
-				}
-				if _, err := c.Write(buf[:n]); err != nil {
-					delete(clients, c)
-					_ = c.Close()
-					continue
-				}
-				_ = c.SetWriteDeadline(time.Time{})
-			}
-			mu.Unlock()
 		}
 	}()
 
