@@ -42,6 +42,8 @@ curl http://localhost:8080
 ```bash
 # Universal installer (Linux distributions)
 curl -fsSL https://raw.githubusercontent.com/animesao/cardinal/main/install.sh | sudo bash
+# Site mirror — same installer, hosted by cardinal.spcfy.eu (works if GitHub is slow/blocked)
+curl -fsSL https://cardinal.spcfy.eu/downloads/install-cardinal.sh | sudo bash
 
 # Debian/Ubuntu APT repository installer (optional)
 curl -fsSL https://raw.githubusercontent.com/animesao/cardinal/main/scripts/install-apt.sh | sudo bash
@@ -759,15 +761,21 @@ Packages install into the overlay and persist across restarts.
 [cardinal-wings](https://github.com/animesao/cardinal-wings) is a REST API daemon for managing containers remotely. It runs as a systemd service and allows frontends (like cardinal-panel) to control containers over HTTP.
 
 ```bash
-# Install
-bash <(curl -sfL https://raw.githubusercontent.com/animesao/cardinal-wings/main/install.sh)
+# Install (site mirror — no GitHub needed; prints URL + API token for the panel)
+curl -fsSL https://cardinal.spcfy.eu/downloads/install-wings.sh -o /tmp/install-wings.sh
+sudo bash /tmp/install-wings.sh
 
 # Start
 systemctl enable --now cardinal-wings
 
 # API (auth via Bearer token from /etc/cardinal-wings/config.toml)
-curl -H "Authorization: Bearer <api_key>" http://localhost:8080/api/containers
+curl -H "Authorization: Bearer <api_key>" http://localhost:8080/v1/containers
 ```
+
+> If GitHub is unreachable (e.g. `curl: (28) SSL connection timeout`), the
+> cardinal and cardinal-wings installers pull binaries from
+> [cardinal.spcfy.eu/downloads](https://cardinal.spcfy.eu/downloads) first and
+> only fall back to GitHub.
 
 ---
 
