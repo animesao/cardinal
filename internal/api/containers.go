@@ -665,16 +665,18 @@ func handleContainerUpdate(w http.ResponseWriter, r *http.Request, c *container.
 	}
 
 	var req struct {
-		StartupScript      *string  `json:"StartupScript"`
-		StartupScriptLower *string  `json:"startupScript"`
-		StartupScriptSnake *string  `json:"startup_script"`
-		MemoryLimit        *int64   `json:"memory_limit"`
-		MemoryBytes        *int64   `json:"memory_bytes"`
-		MemoryBytesCamel   *int64   `json:"memoryBytes"`
-		CPUCount           *float64 `json:"cpu_count"`
-		CPUs               *float64 `json:"cpus"`
-		DiskLimit          *int64   `json:"disk_limit"`
-		DiskBytes          *int64   `json:"disk_bytes"`
+		StartupScript      *string   `json:"StartupScript"`
+		StartupScriptLower *string   `json:"startupScript"`
+		StartupScriptSnake *string   `json:"startup_script"`
+		MemoryLimit        *int64    `json:"memory_limit"`
+		MemoryBytes        *int64    `json:"memory_bytes"`
+		MemoryBytesCamel   *int64    `json:"memoryBytes"`
+		CPUCount           *float64  `json:"cpu_count"`
+		CPUs               *float64  `json:"cpus"`
+		DiskLimit          *int64    `json:"disk_limit"`
+		DiskBytes          *int64    `json:"disk_bytes"`
+		Env                *[]string `json:"env"`
+		EnvUpper           *[]string `json:"Env"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid JSON: %v", err))
@@ -704,7 +706,7 @@ func handleContainerUpdate(w http.ResponseWriter, r *http.Request, c *container.
 		disk = req.DiskBytes
 	}
 
-	if startupScript == nil && mem == nil && cpu == nil && disk == nil {
+	if startupScript == nil && mem == nil && cpu == nil && disk == nil && req.Env == nil && req.EnvUpper == nil {
 		writeError(w, http.StatusBadRequest, "no supported changes supplied")
 		return
 	}
@@ -720,6 +722,18 @@ func handleContainerUpdate(w http.ResponseWriter, r *http.Request, c *container.
 
 	if startupScript != nil {
 		c.StartupScript = *startupScript
+	}
+	// Env changes are persisted and applied to the container on the next start
+	// (init merges c.Env over the image environment). No live change is
+	// possible — the environment is fixed when the process is spawned.
+	envChanged := false
+	if req.Env != nil || req.EnvUpper != nil {
+		env := req.Env
+		if env == nil {
+			env = req.EnvUpper
+		}
+		c.Env = *env
+		envChanged = true
 	}
 	if mem != nil {
 		c.MemoryLimit = *mem
@@ -769,7 +783,7 @@ func handleContainerUpdate(w http.ResponseWriter, r *http.Request, c *container.
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"ok":               true,
-		"restartRequired":  diskChanged || (startupScript != nil && running),
+		"restartRequired":  diskChanged || ((startupScript != nil || envChanged) && running),
 		"diskLimitChanged": diskChanged,
 	})
 }
