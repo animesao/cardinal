@@ -733,28 +733,22 @@ echo "  CARDINAL_PORT_UDP_*     - Port mappings (UDP)"
 		}
 	}
 
-	// If startup script is provided, write it and run it before CMD
+	// If a startup script is provided it IS the container command (panel-style
+	// startup command / Pterodactyl semantics): exec it as PID 1 and never fall
+	// through to the image entrypoint/CMD. This is what lets the panel's
+	// "Команда запуска" replace the image default — e.g. run Paper with the
+	// panel-supplied command instead of the image's own init/download logic
+	// (itzg/minecraft-server and friends), which previously still started after
+	// the script finished.
 	if c.StartupScript != "" {
 		scriptPath := "/startup.sh"
 		if err := os.WriteFile(scriptPath, []byte(c.StartupScript), 0755); err != nil {
 			return fmt.Errorf("write startup script: %w", err)
 		}
-		cmd := exec.Command("/bin/sh", scriptPath)
-		// Startup scripts must receive the image environment (JAVA_HOME, PATH,
-		// locale, etc.), not the host-side cardinal environment. Without this,
-		// eclipse-temurin images report `java: not found` even though Java exists
-		// under /opt/java/openjdk/bin.
-		cmd.Env = c.Env
-		// Preserve the container stdin for startup processes. Without this,
-		// exec.Cmd uses the null device when Stdin is nil, so interactive
-		// servers such as Paper receive logs but never receive commands from
-		// cardinal attach or the desktop console.
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("startup script: %w", err)
-		}
+		// The script inherits the container environment (image JAVA_HOME, PATH,
+		// locale, CARDINAL_* vars) and stdin, so interactive servers such as
+		// Paper receive commands from cardinal attach / the desktop console.
+		return syscall.Exec("/bin/sh", []string{"/bin/sh", scriptPath}, c.Env)
 	}
 
 	cmdPath := c.Cmd[0]
