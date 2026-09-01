@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,7 +22,100 @@ const (
 	registryURL = "https://registry-1.docker.io"
 	authURL     = "https://auth.docker.io/token"
 	authService = "registry.docker.io"
+	// dockerHubHost is the registry host used when a repository reference has
+	// no explicit registry prefix (e.g. "ubuntu" or "itzg/minecraft-server").
+	dockerHubHost = "registry-1.docker.io"
 )
+
+// registryHostAndRepo splits a repository reference into the registry host
+// and the unqualified repository path. References whose first component looks
+// like a host (contains '.' or ':', or is "localhost") target that registry
+// (ghcr.io/..., quay.io/..., gcr.io/...); everything else is Docker Hub.
+func registryHostAndRepo(name string) (string, string) {
+	first, rest, _ := strings.Cut(name, "/")
+	if strings.ContainsAny(first, ".:") || first == "localhost" {
+		return first, rest
+	}
+	return dockerHubHost, name
+}
+
+// registryChallengeToken obtains a pull token from a foreign registry by
+// following its WWW-Authenticate challenge (Docker token auth, as used by
+// ghcr.io, quay.io, gcr.io and self-hosted registries). Credentials from
+// GetCredentials (auth.json or DOCKER_USERNAME/DOCKER_PASSWORD) are attached
+// when present; anonymous pulls work for public images.
+func registryChallengeToken(ctx context.Context, host, repo string) (string, error) {
+	probeURL := "https://" + host + "/v2/"
+	req, err := http.NewRequestWithContext(ctx, "GET", probeURL, nil)
+	if err != nil {
+		return "", err
+	}
+	if u, p := GetCredentials(host); u != "" || p != "" {
+		req.SetBasicAuth(u, p)
+	}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	challenge := resp.Header.Get("WWW-Authenticate")
+	resp.Body.Close()
+
+	realm, service, scope := parseBearerChallenge(challenge)
+	if realm == "" {
+		return "", fmt.Errorf("registry %s did not return a WWW-Authenticate challenge", host)
+	}
+	if scope == "" {
+		scope = "repository:" + repo + ":pull"
+	}
+	u := realm + "?service=" + url.QueryEscape(service) + "&scope=" + url.QueryEscape(scope)
+	req2, err := http.NewRequestWithContext(ctx, "GET", u, nil)
+	if err != nil {
+		return "", err
+	}
+	if u2, p := GetCredentials(host); u2 != "" || p != "" {
+		req2.SetBasicAuth(u2, p)
+	}
+	resp2, err := httpClient.Do(req2)
+	if err != nil {
+		return "", err
+	}
+	defer resp2.Body.Close()
+	if resp2.StatusCode < http.StatusOK || resp2.StatusCode >= http.StatusMultipleChoices {
+		body, _ := io.ReadAll(resp2.Body)
+		return "", fmt.Errorf("token HTTP %d: %s", resp2.StatusCode, string(body))
+	}
+	var ar authResponse
+	if err := json.NewDecoder(resp2.Body).Decode(&ar); err != nil {
+		return "", err
+	}
+	if ar.Token != "" {
+		return ar.Token, nil
+	}
+	return ar.AccessToken, nil
+}
+
+// parseBearerChallenge extracts realm, service and scope from a
+// WWW-Authenticate header of the form
+//
+//	Bearer realm="https://ghcr.io/token",service="ghcr.io",scope="repository:x:y:pull"
+func parseBearerChallenge(header string) (realm, service, scope string) {
+	for _, part := range strings.Split(header, ",") {
+		key, value, ok := strings.Cut(part, "=")
+		if !ok {
+			continue
+		}
+		value = strings.Trim(value, "\"")
+		switch strings.ToLower(strings.TrimSpace(key)) {
+		case "bearer realm":
+			realm = value
+		case "service":
+			service = value
+		case "scope":
+			scope = value
+		}
+	}
+	return realm, service, scope
+}
 
 var httpClient = &http.Client{Timeout: 300 * time.Second}
 
@@ -203,7 +297,8 @@ func getResolvedManifest(repo, ref, token, platformOS, platformArch string) (*Ma
 }
 
 func fetchRawManifest(repo, ref, token string) (*ManifestV2, []byte, error) {
-	u := fmt.Sprintf("%s/v2/%s/manifests/%s", registryURL, repo, ref)
+	host, repoPath := registryHostAndRepo(repo)
+	u := fmt.Sprintf("https://%s/v2/%s/manifests/%s", host, repoPath, ref)
 	req, _ := http.NewRequest("GET", u, nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept",
@@ -254,26 +349,7 @@ func ReadConfig(name, tag string) (*ContainerConfig, error) {
 }
 
 func getToken(repo string) (string, error) {
-	u := fmt.Sprintf("%s?service=%s&scope=repository:%s:pull", authURL, authService, repo)
-	resp, err := httpClient.Get(u)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("token HTTP %d: %s", resp.StatusCode, string(body))
-	}
-
-	var ar authResponse
-	if err := json.NewDecoder(resp.Body).Decode(&ar); err != nil {
-		return "", err
-	}
-	if ar.Token != "" {
-		return ar.Token, nil
-	}
-	return ar.AccessToken, nil
+	return getTokenWithContext(context.Background(), repo)
 }
 
 func getManifest(repo, ref, token string) (*ManifestV2, error) {
@@ -281,7 +357,8 @@ func getManifest(repo, ref, token string) (*ManifestV2, error) {
 }
 
 func downloadBlob(repo, digest, token string) ([]byte, error) {
-	u := fmt.Sprintf("%s/v2/%s/blobs/%s", registryURL, repo, digest)
+	host, repoPath := registryHostAndRepo(repo)
+	u := fmt.Sprintf("https://%s/v2/%s/blobs/%s", host, repoPath, digest)
 	req, _ := http.NewRequest("GET", u, nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
@@ -307,7 +384,8 @@ func downloadBlob(repo, digest, token string) ([]byte, error) {
 }
 
 func downloadBlobToFile(repo, digest, token, dest string, onProgress progressFn) error {
-	u := fmt.Sprintf("%s/v2/%s/blobs/%s", registryURL, repo, digest)
+	host, repoPath := registryHostAndRepo(repo)
+	u := fmt.Sprintf("https://%s/v2/%s/blobs/%s", host, repoPath, digest)
 	req, _ := http.NewRequest("GET", u, nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/vnd.docker.image.rootfs.diff.tar.gzip")
@@ -444,7 +522,11 @@ func bar(pct, width int) string {
 // Context-aware HTTP helpers that accept context for cancellation support.
 
 func getTokenWithContext(ctx context.Context, repo string) (string, error) {
-	u := fmt.Sprintf("%s?service=%s&scope=repository:%s:pull", authURL, authService, repo)
+	host, repoPath := registryHostAndRepo(repo)
+	if host != dockerHubHost {
+		return registryChallengeToken(ctx, host, repoPath)
+	}
+	u := fmt.Sprintf("%s?service=%s&scope=repository:%s:pull", authURL, authService, repoPath)
 	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
 	if err != nil {
 		return "", err
@@ -517,7 +599,8 @@ func getResolvedManifestWithContext(ctx context.Context, repo, ref, token, platf
 }
 
 func fetchRawManifestWithContext(ctx context.Context, repo, ref, token string) (*ManifestV2, []byte, error) {
-	u := fmt.Sprintf("%s/v2/%s/manifests/%s", registryURL, repo, ref)
+	host, repoPath := registryHostAndRepo(repo)
+	u := fmt.Sprintf("https://%s/v2/%s/manifests/%s", host, repoPath, ref)
 	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
 	if err != nil {
 		return nil, nil, err
@@ -549,7 +632,8 @@ func fetchRawManifestWithContext(ctx context.Context, repo, ref, token string) (
 }
 
 func downloadBlobWithContext(ctx context.Context, repo, digest, token string) ([]byte, error) {
-	u := fmt.Sprintf("%s/v2/%s/blobs/%s", registryURL, repo, digest)
+	host, repoPath := registryHostAndRepo(repo)
+	u := fmt.Sprintf("https://%s/v2/%s/blobs/%s", host, repoPath, digest)
 	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
 	if err != nil {
 		return nil, err
