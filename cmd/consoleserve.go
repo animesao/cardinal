@@ -3,7 +3,6 @@
 package cmd
 
 import (
-	"fmt"
 	"io"
 	"net"
 	"os"
@@ -36,7 +35,6 @@ func ConsoleServe(args []string) {
 	stdinW := os.NewFile(3, "stdinW")
 	stdoutR := os.NewFile(4, "stdoutR")
 	if stdinW == nil || stdoutR == nil {
-		_, _ = logFile.WriteString("[console-serve] failed: missing FDs\n")
 		os.Exit(1)
 	}
 	defer func() { _ = stdinW.Close() }()
@@ -47,13 +45,10 @@ func ConsoleServe(args []string) {
 
 	listener, err := net.Listen("unix", sockPath)
 	if err != nil {
-		_, _ = logFile.WriteString(fmt.Sprintf("[console-serve] listen error: %v\n", err))
 		os.Exit(1)
 	}
 	defer os.Remove(sockPath)
 	defer listener.Close()
-
-	_, _ = logFile.WriteString("[console-serve] started\n")
 
 	var mu sync.Mutex
 	clients := make(map[net.Conn]struct{})
@@ -82,7 +77,6 @@ func ConsoleServe(args []string) {
 				mu.Unlock()
 			}
 			if err != nil {
-				_, _ = logFile.WriteString(fmt.Sprintf("[console-serve] stdout read done: %v\\n", err))
 				return
 			}
 		}
@@ -91,11 +85,8 @@ func ConsoleServe(args []string) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			_, _ = logFile.WriteString(fmt.Sprintf("[console-serve] listener done: %v\n", err))
 			break
 		}
-
-		_, _ = logFile.WriteString("[console-serve] client connected\n")
 
 		// Send log tail before adding to broadcast list (no lock needed)
 		if fi, err := os.Stat(logPath); err == nil {
@@ -129,6 +120,4 @@ func ConsoleServe(args []string) {
 			mu.Unlock()
 		}(conn)
 	}
-
-	_, _ = logFile.WriteString("[console-serve] exiting\n")
 }
