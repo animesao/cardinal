@@ -64,10 +64,7 @@ func registryChallengeToken(ctx context.Context, host, repo string) (string, err
 	if realm == "" {
 		return "", fmt.Errorf("registry %s did not return a WWW-Authenticate challenge", host)
 	}
-	if scope == "" {
-		scope = "repository:" + repo + ":pull"
-	}
-	u := realm + "?service=" + url.QueryEscape(service) + "&scope=" + url.QueryEscape(scope)
+	u := realm + "?service=" + url.QueryEscape(service) + "&scope=" + url.QueryEscape(pullScope(scope, repo))
 	req2, err := http.NewRequestWithContext(ctx, "GET", u, nil)
 	if err != nil {
 		return "", err
@@ -92,6 +89,20 @@ func registryChallengeToken(ctx context.Context, host, repo string) (string, err
 		return ar.Token, nil
 	}
 	return ar.AccessToken, nil
+}
+
+// pullScope picks the token scope to request for a repository. ghcr.io (and
+// some other registries) answer the root /v2/ probe with a placeholder scope
+// ("repository:user/image:pull") that has nothing to do with the repository
+// we actually want; requesting a token for that scope fails with 403 DENIED.
+// Only trust the challenge scope when it already references our repository,
+// otherwise build the scope ourselves.
+func pullScope(challengeScope, repo string) string {
+	want := "repository:" + repo + ":pull"
+	if challengeScope == "" || !strings.Contains(strings.ToLower(challengeScope), strings.ToLower(repo)) {
+		return want
+	}
+	return challengeScope
 }
 
 // parseBearerChallenge extracts realm, service and scope from a
