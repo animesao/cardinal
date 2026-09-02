@@ -40,10 +40,8 @@ curl http://localhost:8080
 ## Quick Start
 
 ```bash
-# Universal installer (Linux distributions)
+# Universal installer (Linux distributions) — downloads only from GitHub
 curl -fsSL https://raw.githubusercontent.com/animesao/cardinal/main/install.sh | sudo bash
-# Site mirror — same installer, hosted by cardinal.spcfy.eu (works if GitHub is slow/blocked)
-curl -fsSL https://cardinal.spcfy.eu/downloads/install-cardinal.sh | sudo bash
 
 # Debian/Ubuntu APT repository installer (optional)
 curl -fsSL https://raw.githubusercontent.com/animesao/cardinal/main/scripts/install-apt.sh | sudo bash
@@ -772,10 +770,10 @@ systemctl enable --now cardinal-wings
 curl -H "Authorization: Bearer <api_key>" http://localhost:8080/v1/containers
 ```
 
-> If GitHub is unreachable (e.g. `curl: (28) SSL connection timeout`), the
-> cardinal and cardinal-wings installers pull binaries from
-> [cardinal.spcfy.eu/downloads](https://cardinal.spcfy.eu/downloads) first and
-> only fall back to GitHub.
+> If GitHub is unreachable (e.g. `curl: (28) SSL connection timeout`), install
+> [cardinal-wings](https://github.com/animesao/cardinal-wings) manually from its
+> GitHub releases. The cardinal installer downloads everything exclusively
+> from [the official cardinal repository](https://github.com/animesao/cardinal).
 
 ---
 
