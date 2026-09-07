@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.12`
-**Project release:** `v2.0.12`
+**Documentation version:** `2.0.28`
+**Project release:** `v2.0.28`
 <!-- cardinal-version:end -->
 
 <p align="center">
@@ -9,7 +9,7 @@
 
 <p align="center">
   <!-- cardinal-version-badge:start -->
-  <img src="https://img.shields.io/badge/version-v2.0.12-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-v2.0.28-blue?style=flat-square">
   <!-- cardinal-version-badge:end -->
   <img src="https://img.shields.io/badge/go-1.25%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square">
