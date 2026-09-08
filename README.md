@@ -46,9 +46,6 @@ curl -fsSL https://raw.githubusercontent.com/animesao/cardinal/main/install.sh |
 # Debian/Ubuntu APT repository installer (optional)
 curl -fsSL https://raw.githubusercontent.com/animesao/cardinal/main/scripts/install-apt.sh | sudo bash
 
-# cardinal-client
-curl -sSL https://raw.githubusercontent.com/animesao/cardinal-client/main/install.sh | sudo bash
-
 # Pull & run
 cardinal pull nginx:alpine
 cardinal run -d -n web -p 8080:80 nginx:alpine
