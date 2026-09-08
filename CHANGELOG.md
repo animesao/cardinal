@@ -1,7 +1,24 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.12`
-**Project release:** `v2.0.12`
+**Documentation version:** `2.0.29`
+**Project release:** `v2.0.29`
 <!-- cardinal-version:end -->
+
+## 2.0.29 (2026-09-08)
+
+### Release hygiene: version sync
+
+- Fix version drift that blocked `scripts/sync-docs-version.sh --check`: root `VERSION` was stuck at `2.0.12` while tags and `README.md` had moved to `v2.0.28`. Bumped to `2.0.29`, re-synchronized all documentation version markers, the README version badge, the README release block, and the changelog current-release marker.
+- Removed stale `cardinal-client` installer reference from `README.md` Quick Start (installer ships cardinal only, from GitHub).
+
+### Catch-up since 2.0.12 (previously unreleased notes for 2.0.13-2.0.28)
+
+- Installer: universal installer ships cardinal + wings + bootstrap in one shot; mirror-first downloads with hard timeouts and IPv4 fallback; installer fetches cardinal only from GitHub.
+- Registries: pull images from foreign registries (ghcr, quay, gcr); no ghcr placeholder scope for token requests.
+- Runtime: startup script runs as the container main process; startup script and env updates apply via `cardinal set`; console-serve lifecycle lines no longer pollute container logs; attach and console stream handling improved.
+- Resources: live memory/CPU cgroup and disk-resize updates via `POST /containers/{id}/update`; dropped unused resize2fs output.
+- Supervisor: `always` containers pass through recovery after reboot; scheduled backups and systemd bootstrap recovery kept.
+- API: `POST /v1/images/{ref}/pull` endpoint for Wings; container API types formatted.
+- Docs: site-first install links and correct wings API endpoint.
 
 ## 2.0.3 (2026-08-25)
 
@@ -136,7 +153,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.0.12**. Detailed release notes below are maintained manually.
+> Current release: **v2.0.29**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
