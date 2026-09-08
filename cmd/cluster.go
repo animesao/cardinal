@@ -161,6 +161,7 @@ func clusterJoinToken(args []string) {
 	if info == nil {
 		fmt.Fprintf(os.Stderr, "Error: cluster not initialized\n")
 		exitFunc(1)
+		return
 	}
 
 	fmt.Printf("Cluster: %s (%s)\n", info.ClusterName, shortID(info.ClusterID))
@@ -173,6 +174,7 @@ func clusterInfo(args []string) {
 	if info == nil {
 		fmt.Fprintln(os.Stderr, "Not part of a cluster")
 		exitFunc(1)
+		return
 	}
 
 	nodes, err := orchestrator.ListNodes()
@@ -306,6 +308,7 @@ func clusterNodeInspect(args []string) {
 	if found == nil {
 		fmt.Fprintf(os.Stderr, "Node %q not found\n", query)
 		exitFunc(1)
+		return
 	}
 
 	fmt.Printf("  ID:        %s\n", found.ID)

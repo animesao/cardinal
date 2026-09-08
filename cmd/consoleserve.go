@@ -29,6 +29,7 @@ func ConsoleServe(args []string) {
 	logFile, err := container.OpenFreshLogFile(logPath, 0644)
 	if err != nil {
 		exitFunc(1)
+		return
 	}
 	defer func() { _ = logFile.Close() }()
 
@@ -36,6 +37,7 @@ func ConsoleServe(args []string) {
 	stdoutR := os.NewFile(4, "stdoutR")
 	if stdinW == nil || stdoutR == nil {
 		exitFunc(1)
+		return
 	}
 	defer func() { _ = stdinW.Close() }()
 	defer func() { _ = stdoutR.Close() }()
