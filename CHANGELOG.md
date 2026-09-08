@@ -1,7 +1,13 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.30`
-**Project release:** `v2.0.30`
+**Documentation version:** `2.0.31`
+**Project release:** `v2.0.31`
 <!-- cardinal-version:end -->
+
+## 2.0.31 (2026-09-08)
+
+### Lint fix
+
+- Fix `staticcheck` SA5011 possible nil pointer dereferences in `cmd/cluster.go` (`clusterJoinToken`, `clusterInfo`, node lookup) and `cmd/consoleserve.go`: added `return` after the `exitFunc(1)` nil guards. The analyzer cannot prove a function variable never returns, and the `return` also keeps stubbed-`exitFunc` paths (tests) from dereferencing nil.
 
 ## 2.0.30 (2026-09-08)
 
@@ -164,7 +170,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.0.30**. Detailed release notes below are maintained manually.
+> Current release: **v2.0.31**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
