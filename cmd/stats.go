@@ -12,12 +12,9 @@ import (
 )
 
 func Stats(args []string) {
-	fs := flag.NewFlagSet("stats", flag.ExitOnError)
+	fs := flag.NewFlagSet("stats", flag.ContinueOnError)
 	noStream := fs.Bool("no-stream", false, "Show one-time stats and exit")
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing stats options: %v\n", err)
-		os.Exit(1)
-	}
+	mustParse(fs, args, "stats")
 
 	remainder := fs.Args()
 	if len(remainder) == 0 {
@@ -25,7 +22,7 @@ func Stats(args []string) {
 		containers, err := container.List(false)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		if len(containers) == 0 {
 			fmt.Println("No running containers")
@@ -52,7 +49,7 @@ func Stats(args []string) {
 	}
 	if c == nil {
 		fmt.Fprintf(os.Stderr, "Container not found: %s\n", name)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	showStatsLoop([]*container.Container{c}, *noStream)
 }

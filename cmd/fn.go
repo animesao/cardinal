@@ -18,7 +18,7 @@ import (
 func Fn(args []string) {
 	if len(args) < 1 {
 		printFnUsage()
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	subcommand := args[0]
@@ -36,7 +36,7 @@ func Fn(args []string) {
 	default:
 		fmt.Printf("unknown function command: %s\n", subcommand)
 		printFnUsage()
-		os.Exit(1)
+		exitFunc(1)
 	}
 }
 
@@ -53,7 +53,7 @@ Commands:
 }
 
 func fnDeploy(args []string) {
-	fs := flag.NewFlagSet("fn deploy", flag.ExitOnError)
+	fs := flag.NewFlagSet("fn deploy", flag.ContinueOnError)
 	name := fs.String("name", "", "Function name")
 	port := fs.Int("port", 8080, "Container port")
 	handler := fs.String("handler", "/handler", "Handler path")
@@ -67,10 +67,7 @@ func fnDeploy(args []string) {
 	fs.Var(&envVars, "e", "Environment variables")
 	fs.Var(&envVars, "env", "Environment variables")
 
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing fn deploy options: %v\n", err)
-		os.Exit(1)
-	}
+	mustParse(fs, args, "fn deploy")
 
 	image := ""
 	freeArgs := fs.Args()
@@ -80,7 +77,7 @@ func fnDeploy(args []string) {
 
 	if *name == "" || image == "" {
 		fmt.Println("Usage: cardinal fn deploy --name <name> [--port N] [--timeout N] [--idle N] <image>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	env := make(map[string]string)
@@ -104,7 +101,7 @@ func fnDeploy(args []string) {
 	fn, err := orchestrator.DeployFunction(context.Background(), *name, image, *port, opts)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Printf("Deployed function %s\n", fn.Name)
@@ -119,7 +116,7 @@ func fnList(args []string) {
 	fns, err := orchestrator.ListFunctions()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if len(fns) == 0 {
@@ -145,7 +142,7 @@ func fnList(args []string) {
 func fnRemove(args []string) {
 	if len(args) < 1 {
 		fmt.Println("Usage: cardinal fn rm <name> [<name>...]")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	for _, name := range args {
@@ -160,7 +157,7 @@ func fnRemove(args []string) {
 func fnCall(args []string) {
 	if len(args) < 1 {
 		fmt.Println("Usage: cardinal fn call <name> [--data <payload>]")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	name := args[0]
@@ -187,7 +184,7 @@ func fnCall(args []string) {
 	result, err := orchestrator.InvokeFunction(context.Background(), name, payload)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	// Try to pretty-print JSON response

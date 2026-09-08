@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.29`
-**Project release:** `v2.0.29`
+**Documentation version:** `2.0.30`
+**Project release:** `v2.0.30`
 <!-- cardinal-version:end -->
 
 # FaaS / Serverless

@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.29`
-**Project release:** `v2.0.29`
+**Documentation version:** `2.0.30`
+**Project release:** `v2.0.30`
 <!-- cardinal-version:end -->
 
 # Примеры команд cardinal
@@ -506,7 +506,7 @@ cardinal run -d --restart always \
   -image nginx:alpine
 ```
 
-> **Сетевой доступ:** если приложению нужен интернет (DNS), добавьте `-network host`. Без этого bridge-контейнеры не резолвят внешние хосты.
+> **Сетевой доступ:** bridge-контейнеры получают интернет и DNS из коробки (по умолчанию `8.8.8.8`/`8.8.4.4`, свой сервер — через `--dns`). `-network host` нужен только если приложение должно слушать хостовые интерфейсы напрямую.
 
 ## 18. Обслуживание и recovery после reboot
 

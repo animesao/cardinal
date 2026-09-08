@@ -12,13 +12,10 @@ import (
 )
 
 func Down(args []string) {
-	fs := flag.NewFlagSet("down", flag.ExitOnError)
+	fs := flag.NewFlagSet("down", flag.ContinueOnError)
 	configPath := fs.String("f", "", "Path to config file")
 	all := fs.Bool("a", false, "Remove all containers (ignore config)")
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing down options: %v\n", err)
-		os.Exit(1)
-	}
+	mustParse(fs, args, "down")
 
 	freeArgs := fs.Args()
 	var filter string
@@ -30,7 +27,7 @@ func Down(args []string) {
 		allContainers, err := container.List(true)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error listing containers: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		removed := 0
 		for _, c := range allContainers {
@@ -48,7 +45,7 @@ func Down(args []string) {
 	cfg, path, err := config.Load(*configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Printf("Using config: %s\n", path)

@@ -41,22 +41,22 @@ func Exec(args []string) {
 
 	if len(remaining) < 2 {
 		fmt.Println("Usage: cardinal exec [-i] [-t] <container> <cmd> [args...]")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	c, err := container.Load(remaining[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if c.Status != container.Running {
 		fmt.Fprintf(os.Stderr, "Container %s is not running\n", remaining[0])
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if err := c.ExecOpts(remaining[1:], interactive, tty); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 }

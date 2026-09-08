@@ -52,7 +52,7 @@ var dangerousCaps = map[string]struct{}{
 //
 // Returns true if the configuration is acceptable (after the user-supplied
 // overrides were honored). Returns false after printing the error so the
-// caller can os.Exit(ExitCodeUserError).
+// caller can exitFunc(ExitCodeUserError).
 func validateDangerousRuntimeOptions(capAdd []string, user string, allowDangerousCaps, allowRoot bool) bool {
 	dangerous := dangerousCapsRequested(capAdd)
 	if len(dangerous) > 0 && !allowDangerousCaps {

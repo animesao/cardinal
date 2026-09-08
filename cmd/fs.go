@@ -19,7 +19,7 @@ func Fs(args []string) {
 		fmt.Println("  cardinal fs tree <container> [path]")
 		fmt.Println("  cardinal fs find <container> [path] [--name <pattern>] [--grep <text>] [--type f|d] [--max-depth <n>]")
 		fmt.Println("  cardinal fs find [--name <pattern>] [--grep <text>] [--type f|d] [--max-depth <n>]  (search all containers)")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	sub := args[0]
@@ -28,16 +28,16 @@ func Fs(args []string) {
 	if len(args) > 1 && strings.HasPrefix(args[1], "--") {
 		if sub != "find" {
 			fmt.Fprintf(os.Stderr, "Error: container required for 'cardinal fs %s'\n", sub)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		containers, err := container.List(true)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		if len(containers) == 0 {
 			fmt.Fprintln(os.Stderr, "No containers found")
-			os.Exit(1)
+			exitFunc(1)
 		}
 		for _, c := range containers {
 			_, _, merged := c.OverlayDirs()
@@ -58,7 +58,7 @@ func Fs(args []string) {
 	c, err := container.Load(id)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	_, _, merged := c.OverlayDirs()
@@ -78,7 +78,7 @@ func Fs(args []string) {
 		fsFind(merged, label, args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown fs command: %s\n", sub)
-		os.Exit(1)
+		exitFunc(1)
 	}
 }
 
@@ -92,7 +92,7 @@ func fsLs(merged string, args []string) {
 	entries, err := os.ReadDir(fullPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	for _, e := range entries {
@@ -114,14 +114,14 @@ func fsLs(merged string, args []string) {
 func fsCat(merged string, args []string) {
 	if len(args) < 1 {
 		fmt.Fprintln(os.Stderr, "Error: path required")
-		os.Exit(1)
+		exitFunc(1)
 	}
 	fullPath := filepath.Join(merged, args[0])
 
 	data, err := os.ReadFile(fullPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	fmt.Print(string(data))
 }
@@ -156,7 +156,7 @@ func fsTree(merged string, args []string) {
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 }
 
@@ -187,7 +187,7 @@ func fsFind(merged, label string, args []string) {
 		case args[i] == "--max-depth" && i+1 < len(args):
 			if _, err := fmt.Sscanf(args[i+1], "%d", &opts.maxDepth); err != nil {
 				fmt.Fprintf(os.Stderr, "invalid max depth %q: %v\n", args[i+1], err)
-				os.Exit(1)
+				exitFunc(1)
 			}
 			i += 2
 		default:
@@ -196,7 +196,7 @@ func fsFind(merged, label string, args []string) {
 				i++
 			} else {
 				fmt.Fprintf(os.Stderr, "unknown flag: %s\n", args[i])
-				os.Exit(1)
+				exitFunc(1)
 			}
 		}
 	}
@@ -261,6 +261,6 @@ func fsFind(merged, label string, args []string) {
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 }

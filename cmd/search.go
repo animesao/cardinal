@@ -99,7 +99,7 @@ func Search(args []string) {
 	if len(args) < 1 {
 		fmt.Fprintln(os.Stderr, "Usage: cardinal search <term>")
 		fmt.Fprintln(os.Stderr, "       cardinal search python:3.11  (filter by tag)")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	query := strings.Join(args, " ")
@@ -116,19 +116,19 @@ func Search(args []string) {
 	resp, err := http.Get(u)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error searching: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		fmt.Fprintf(os.Stderr, "Error: Docker Hub returned HTTP %d\n", resp.StatusCode)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	var sr searchResult
 	if err := json.NewDecoder(resp.Body).Decode(&sr); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing response: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if sr.Count == 0 {

@@ -14,7 +14,7 @@ func Images(args []string) {
 	images, err := image.ListImages()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if len(images) == 0 {
@@ -31,7 +31,7 @@ func Images(args []string) {
 func Rmi(args []string) {
 	if len(args) < 1 {
 		fmt.Println("Usage: cardinal rmi <image>[:<tag>]")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	name := args[0]
@@ -46,7 +46,7 @@ func Rmi(args []string) {
 
 	if err := image.RemoveImage(name, tag); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	fmt.Println("Removed:", args[0])
 }

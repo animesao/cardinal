@@ -14,7 +14,7 @@ import (
 func Port(args []string) {
 	if len(args) < 1 {
 		printPortUsage()
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	sub := args[0]
@@ -40,13 +40,13 @@ func printPortUsage() {
 func portShow(args []string) {
 	if len(args) < 1 {
 		fmt.Println("Usage: cardinal port <container>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	c, err := container.Load(args[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if len(c.Ports) == 0 {
@@ -96,29 +96,29 @@ func parsePortRef(s string) (hostPort int, protocol string, err error) {
 func portAdd(args []string) {
 	if len(args) < 2 {
 		fmt.Println("Usage: cardinal port add <container> <host>:<container>[/proto]")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	c, err := container.Load(args[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	hostPort, containerPort, protocol, err := parsePortSpec(args[1])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if c.FindPort(hostPort, protocol) != nil {
 		fmt.Fprintf(os.Stderr, "Error: port %d/%s already mapped for container %s\n", hostPort, protocol, c.Name)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if err := c.AddPort(hostPort, containerPort, protocol); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Printf("Added port mapping: %s -> %d:%d/%s\n", c.Name, hostPort, containerPort, protocol)
@@ -127,24 +127,24 @@ func portAdd(args []string) {
 func portRemove(args []string) {
 	if len(args) < 2 {
 		fmt.Println("Usage: cardinal port remove <container> <host>[/proto]")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	c, err := container.Load(args[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	hostPort, protocol, err := parsePortRef(args[1])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if err := c.RemovePort(hostPort, protocol); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Printf("Removed port mapping: %s -> %d/%s\n", c.Name, hostPort, protocol)

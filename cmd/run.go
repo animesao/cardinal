@@ -90,7 +90,7 @@ func Run(args []string) {
 		normalizedRun = append(normalizedRun, a)
 	}
 	args = normalizedRun
-	fs := flag.NewFlagSet("run", flag.ExitOnError)
+	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	detach := fs.Bool("d", false, "Detach mode")
 	name := fs.String("n", "", "Container name")
 	interactive := fs.Bool("i", false, "Interactive mode")
@@ -160,10 +160,7 @@ func Run(args []string) {
 	// options after the image (for example: image --workdir /app) to be
 	// recognized as runtime options instead of being passed to the image CMD.
 	args = reorderRunFlags(args, fs)
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing run options: %v\n", err)
-		os.Exit(1)
-	}
+	mustParse(fs, args, "run")
 
 	freeArgs := fs.Args()
 
@@ -174,7 +171,7 @@ func Run(args []string) {
 	// physical memory). See SECURITY.md "Container runtime hardening".
 	if len(capAdd) > 0 || *user != "" {
 		if !validateDangerousRuntimeOptions(capAdd, *user, *allowDangerousCaps, *allowRoot) {
-			os.Exit(ExitCodeUserError)
+			exitFunc(ExitCodeUserError)
 		}
 	}
 
@@ -200,7 +197,7 @@ func Run(args []string) {
 	if !hasImageFlag {
 		if len(freeArgs) < 1 {
 			fmt.Println("Usage: cardinal run [opts] <image> [cmd...]")
-			os.Exit(1)
+			exitFunc(1)
 		}
 		imageRef = freeArgs[0]
 	}
@@ -219,7 +216,7 @@ func Run(args []string) {
 	img, err := image.Pull(imageRef)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error pulling image: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	parsePort := func(s string) (container.PortMap, error) {
@@ -249,7 +246,7 @@ func Run(args []string) {
 			pm, err := parsePort(p)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
+				exitFunc(1)
 			}
 			ports = append(ports, pm)
 		}
@@ -261,7 +258,7 @@ func Run(args []string) {
 			spec, err := container.ParseVolumeSpec(strings.TrimSpace(v))
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: invalid volume %q: %v\n", v, err)
-				os.Exit(1)
+				exitFunc(1)
 			}
 			volumes = append(volumes, container.VolumeMount{
 				Type:           spec.Type,
@@ -283,7 +280,7 @@ func Run(args []string) {
 		fileEnv, err := container.ParseEnvFile(*envFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error reading env file: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		env = append(env, fileEnv...)
 	}
@@ -291,38 +288,38 @@ func Run(args []string) {
 	memoryLimit, _ := container.ParseMemoryString(*memory)
 	if *memory != "" && memoryLimit == 0 {
 		fmt.Fprintf(os.Stderr, "Error: invalid memory value: %s\n", *memory)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	diskLimit, _ := container.ParseDiskString(*disk)
 	if *disk != "" && diskLimit == 0 {
 		fmt.Fprintf(os.Stderr, "Error: invalid disk value: %s\n", *disk)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if *restartDelay != "" {
 		delay, err := time.ParseDuration(*restartDelay)
 		if err != nil || delay <= 0 {
 			fmt.Fprintf(os.Stderr, "Error: invalid restart delay %q (use e.g. 10s, 1m)\n", *restartDelay)
-			os.Exit(1)
+			exitFunc(1)
 		}
 	}
 	if *restartMaxAttempts < 0 {
 		fmt.Fprintln(os.Stderr, "Error: restart-max-attempts cannot be negative")
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if *restartWindow != "" {
 		window, err := time.ParseDuration(*restartWindow)
 		if err != nil || window <= 0 {
 			fmt.Fprintf(os.Stderr, "Error: invalid restart window %q (use e.g. 10m)\n", *restartWindow)
-			os.Exit(1)
+			exitFunc(1)
 		}
 	}
 
 	if *name != "" {
 		if existing := container.FindByName(*name); existing != nil {
 			fmt.Fprintf(os.Stderr, "Error: container with name %q already exists (%s)\n", *name, shortID(existing.ID))
-			os.Exit(1)
+			exitFunc(1)
 		}
 	}
 
@@ -381,7 +378,7 @@ func Run(args []string) {
 			data, err := os.ReadFile(path)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error reading startup script file %q: %v\n", path, err)
-				os.Exit(1)
+				exitFunc(1)
 			}
 			startupScriptVal = string(data)
 		}
@@ -429,7 +426,7 @@ func Run(args []string) {
 	c := container.New(img, opts)
 	if err := c.Save(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving container: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	// For foreground (non-detached) runs, listen for signals so SIGTERM/SIGINT
@@ -448,7 +445,7 @@ func Run(args []string) {
 
 	if err := c.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting container: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if *restart == "always" || *restart == "unless-stopped" {
 		ensureBootstrap()

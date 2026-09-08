@@ -34,22 +34,22 @@ func Registry(args []string) {
 	case "add":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "Usage: cardinal registry add <hostname>")
-			os.Exit(2)
+			exitFunc(1)
 		}
 		if err := image.AddToAllowlist(args[1]); err != nil {
 			fmt.Fprintf(os.Stderr, "registry add: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		fmt.Printf("Added %s to the registry allowlist\n", args[1])
 		fmt.Println("Strict allowlist is enforced only when CARDINAL_REGISTRY_STRICT=1 is set.")
 	case "remove", "rm":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "Usage: cardinal registry remove <hostname>")
-			os.Exit(2)
+			exitFunc(1)
 		}
 		if err := image.RemoveFromAllowlist(args[1]); err != nil {
 			fmt.Fprintf(os.Stderr, "registry remove: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		fmt.Printf("Removed %s from the registry allowlist\n", args[1])
 	case "login":
@@ -59,7 +59,7 @@ func Registry(args []string) {
 	default:
 		fmt.Fprintf(os.Stderr, "unknown registry subcommand: %s\n", args[0])
 		fmt.Fprintln(os.Stderr, "Usage: cardinal registry [allowlist|add|remove|login|logout]")
-		os.Exit(2)
+		exitFunc(1)
 	}
 }
 

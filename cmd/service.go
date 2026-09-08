@@ -16,7 +16,7 @@ import (
 func Service(args []string) {
 	if len(args) < 1 {
 		printServiceUsage()
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	subcommand := args[0]
@@ -36,7 +36,7 @@ func Service(args []string) {
 	default:
 		fmt.Printf("unknown service command: %s\n", subcommand)
 		printServiceUsage()
-		os.Exit(1)
+		exitFunc(1)
 	}
 }
 
@@ -107,7 +107,7 @@ func serviceCreate(args []string) {
 
 	if name == "" || image == "" {
 		fmt.Println("Usage: cardinal service create --name <name> [--replicas N] [--port P:T] <image>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	opts := orchestrator.ServiceOpts{
@@ -118,7 +118,7 @@ func serviceCreate(args []string) {
 	svc, err := orchestrator.CreateService(name, image, replicas, opts)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Printf("Created service %s\n", svc.Name)
@@ -130,7 +130,7 @@ func serviceList(args []string) {
 	services, err := orchestrator.ListServices()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if len(services) == 0 {
@@ -162,7 +162,7 @@ func serviceList(args []string) {
 func serviceRemove(args []string) {
 	if len(args) < 1 {
 		fmt.Println("Usage: cardinal service rm <name>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	for _, name := range args {
@@ -177,20 +177,20 @@ func serviceRemove(args []string) {
 func serviceScale(args []string) {
 	if len(args) < 2 {
 		fmt.Println("Usage: cardinal service scale <name> <replicas>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	name := args[0]
 	replicas, err := strconv.Atoi(args[1])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: invalid replica count %q\n", args[1])
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	svc, err := orchestrator.ScaleService(name, replicas)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Printf("Service %s scaled to %d replicas\n", svc.Name, svc.Replicas)
@@ -223,13 +223,13 @@ func serviceUpdate(args []string) {
 
 	if name == "" || image == "" {
 		fmt.Println("Usage: cardinal service update <name> --image <new_image>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	svc, err := orchestrator.UpdateService(context.Background(), name, image, orchestrator.ServiceOpts{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Printf("Service %s updated\n  Image: %s\n  Replicas: %d\n", svc.Name, svc.Image, svc.Replicas)

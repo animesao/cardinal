@@ -16,7 +16,7 @@ import (
 func Volume(args []string) {
 	if len(args) < 1 {
 		printVolumeUsage()
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	subcommand := args[0]
@@ -36,7 +36,7 @@ func Volume(args []string) {
 	default:
 		fmt.Printf("unknown volume command: %s\n", subcommand)
 		printVolumeUsage()
-		os.Exit(1)
+		exitFunc(1)
 	}
 }
 
@@ -54,16 +54,13 @@ Commands:
 }
 
 func volumeCreate(args []string) {
-	fs := flag.NewFlagSet("volume create", flag.ExitOnError)
+	fs := flag.NewFlagSet("volume create", flag.ContinueOnError)
 	driver := fs.String("d", "local", "Volume driver")
 	var labels stringSlice
 	fs.Var(&labels, "l", "Set volume labels")
 	fs.Var(&labels, "label", "Set volume labels")
 
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing volume create options: %v\n", err)
-		os.Exit(1)
-	}
+	mustParse(fs, args, "volume create")
 
 	freeArgs := fs.Args()
 	var name string
@@ -85,7 +82,7 @@ func volumeCreate(args []string) {
 	vol, err := container.CreateVolume(name, *driver, labelMap, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Printf("Created volume: %s\n", vol.Name)
@@ -97,7 +94,7 @@ func volumeList(args []string) {
 	volumes, err := container.ListVolumes()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if len(volumes) == 0 {
@@ -122,7 +119,7 @@ func volumeList(args []string) {
 func volumeRemove(args []string) {
 	if len(args) < 1 {
 		fmt.Println("Usage: cardinal volume rm <name> [<name>...]")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	for _, name := range args {
@@ -137,7 +134,7 @@ func volumeRemove(args []string) {
 func volumeInspect(args []string) {
 	if len(args) < 1 {
 		fmt.Println("Usage: cardinal volume inspect <name>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	for _, name := range args {
@@ -163,7 +160,7 @@ func volumePrune(args []string) {
 	volumes, err := container.ListVolumes()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	// Check which volumes are in use

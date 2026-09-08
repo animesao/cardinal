@@ -16,7 +16,7 @@ import (
 func Cluster(args []string) {
 	if len(args) < 1 {
 		printClusterUsage()
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	subcommand := args[0]
@@ -42,7 +42,7 @@ func Cluster(args []string) {
 	default:
 		fmt.Printf("unknown cluster command: %s\n", subcommand)
 		printClusterUsage()
-		os.Exit(1)
+		exitFunc(1)
 	}
 }
 
@@ -63,17 +63,14 @@ Commands:
 }
 
 func clusterInit(args []string) {
-	fs := flag.NewFlagSet("cluster init", flag.ExitOnError)
+	fs := flag.NewFlagSet("cluster init", flag.ContinueOnError)
 	name := fs.String("name", "default", "Cluster name")
 	bind := fs.String("bind", "127.0.0.1", "Cluster bind address")
 	port := fs.Int("port", 7946, "Cluster port")
 	apiPort := fs.Int("api-port", 2375, "API server port (for remote replica requests)")
 	startAPI := fs.Bool("serve", false, "Start API server after init")
 	token := fs.String("token", "", "API authentication token (or CARDINAL_TOKEN env)")
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing cluster options: %v\n", err)
-		os.Exit(1)
-	}
+	mustParse(fs, args, "cluster")
 	if *token == "" {
 		*token = os.Getenv("CARDINAL_TOKEN")
 	}
@@ -83,7 +80,7 @@ func clusterInit(args []string) {
 
 	if err := orchestrator.InitCluster(*name, *bind, *port); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	fmt.Printf("Cluster %q initialized\n", *name)
 
@@ -107,7 +104,7 @@ func clusterInit(args []string) {
 func clusterJoin(args []string) {
 	if len(args) < 1 {
 		fmt.Println("Usage: cardinal cluster join <peer_addr>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	peerAddr := args[0]
@@ -116,15 +113,12 @@ func clusterJoin(args []string) {
 	startAPI := false
 	token := ""
 
-	fs := flag.NewFlagSet("cluster join", flag.ExitOnError)
+	fs := flag.NewFlagSet("cluster join", flag.ContinueOnError)
 	fs.StringVar(&bind, "bind", "127.0.0.1", "Bind address")
 	fs.IntVar(&port, "port", 2375, "API port")
 	fs.BoolVar(&startAPI, "serve", false, "Start API server after join")
 	fs.StringVar(&token, "token", "", "API authentication token (or CARDINAL_TOKEN env)")
-	if err := fs.Parse(args[1:]); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing cluster join options: %v\n", err)
-		os.Exit(1)
-	}
+	mustParse(fs, args[1:], "cluster join")
 	if token == "" {
 		token = os.Getenv("CARDINAL_TOKEN")
 	}
@@ -134,7 +128,7 @@ func clusterJoin(args []string) {
 
 	if err := orchestrator.JoinCluster(peerAddr, bind, port); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	fmt.Printf("Joined cluster via %s\n", peerAddr)
 
@@ -151,7 +145,7 @@ func clusterJoin(args []string) {
 func clusterLeave(args []string) {
 	if err := orchestrator.LeaveCluster(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	fmt.Println("Left the cluster")
 }
@@ -160,13 +154,13 @@ func clusterJoinToken(args []string) {
 	node, err := orchestrator.GetNode()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: not part of a cluster: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	info := orchestrator.GetClusterInfo()
 	if info == nil {
 		fmt.Fprintf(os.Stderr, "Error: cluster not initialized\n")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Printf("Cluster: %s (%s)\n", info.ClusterName, shortID(info.ClusterID))
@@ -178,7 +172,7 @@ func clusterInfo(args []string) {
 	info := orchestrator.GetClusterInfo()
 	if info == nil {
 		fmt.Fprintln(os.Stderr, "Not part of a cluster")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	nodes, err := orchestrator.ListNodes()
@@ -230,7 +224,7 @@ Manage cluster nodes
 Commands:
   ls               List all nodes
   inspect <id>     Show detailed node info`)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	switch args[0] {
@@ -247,7 +241,7 @@ func clusterNodeList(args []string) {
 	nodes, err := orchestrator.ListNodes()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if len(nodes) == 0 {
@@ -291,14 +285,14 @@ func clusterNodeList(args []string) {
 func clusterNodeInspect(args []string) {
 	if len(args) < 1 {
 		fmt.Println("Usage: cardinal cluster node inspect <id>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	query := args[0]
 	nodes, err := orchestrator.ListNodes()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	var found *orchestrator.Node
@@ -311,7 +305,7 @@ func clusterNodeInspect(args []string) {
 
 	if found == nil {
 		fmt.Fprintf(os.Stderr, "Node %q not found\n", query)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Printf("  ID:        %s\n", found.ID)
@@ -336,7 +330,7 @@ func clusterList(args []string) {
 	nodes, err := orchestrator.ListNodes()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if len(nodes) == 0 {
@@ -371,14 +365,11 @@ func shortID(id string) string {
 }
 
 func clusterServe(args []string) {
-	fs := flag.NewFlagSet("cluster serve", flag.ExitOnError)
+	fs := flag.NewFlagSet("cluster serve", flag.ContinueOnError)
 	port := fs.Int("p", 2375, "API port")
 	host := fs.String("H", "127.0.0.1", "API host (external addresses require --token or CARDINAL_TOKEN)")
 	token := fs.String("token", "", "API authentication token (or CARDINAL_TOKEN env)")
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing cluster options: %v\n", err)
-		os.Exit(1)
-	}
+	mustParse(fs, args, "cluster")
 	if *token == "" {
 		*token = os.Getenv("CARDINAL_TOKEN")
 	}
@@ -391,7 +382,7 @@ func clusterServe(args []string) {
 
 	if err := api.StartServer(*port, *host); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 }
 

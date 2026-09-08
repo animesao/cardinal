@@ -1,7 +1,18 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.29`
-**Project release:** `v2.0.29`
+**Documentation version:** `2.0.30`
+**Project release:** `v2.0.30`
 <!-- cardinal-version:end -->
+
+## 2.0.30 (2026-09-08)
+
+### CLI hardening: no more untrappable exits
+
+- Add a process-exit seam (`cmd/exit.go`): every command now terminates via a stubbable `exitFunc` instead of a raw `os.Exit`, plus `failf` and `mustParse` helpers. Production behaviour is unchanged; commands are now unit-testable without killing the test binary.
+- Migrate all 25 stdlib flag sets from `flag.ExitOnError` to `flag.ContinueOnError`: the flag package can no longer terminate the process itself. `-h`/`--help` still prints usage to stderr and exits 0; parse failures print `Error parsing <name> options` and exit 1.
+- Unify exit codes: the 8 remaining `exit 2` paths (usage errors in `backup`, `doctor`, `registry`) now exit 1, matching cobra and every other command.
+- `internal/container.generateID`: `panic` with a stack trace instead of `os.Exit` on `crypto/rand` failure (unrecoverable OS entropy fault; panic stays visible and recoverable for library-style callers).
+- Regression tests (`cmd/exit_test.go`): exit-code capture, help/usage path, `stripGlobalFlags` and `hasLongHelpArgument` tables.
+- Docs: corrected the outdated "bridge needs `-network host` for DNS" advice — bridge containers resolve external names out of the box (default `8.8.8.8`/`8.8.4.4`, override with `--dns`); `-network host` is only for binding host interfaces directly.
 
 ## 2.0.29 (2026-09-08)
 
@@ -153,7 +164,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.0.29**. Detailed release notes below are maintained manually.
+> Current release: **v2.0.30**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

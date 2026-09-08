@@ -26,13 +26,10 @@ const depTimeout = 120 * time.Second
 const depPollInterval = 2 * time.Second
 
 func Up(args []string) {
-	fs := flag.NewFlagSet("up", flag.ExitOnError)
+	fs := flag.NewFlagSet("up", flag.ContinueOnError)
 	configPath := fs.String("f", "", "Path to config file")
 	generate := fs.Bool("generate", false, "Generate cardinal.toml from existing containers")
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing up options: %v\n", err)
-		os.Exit(1)
-	}
+	mustParse(fs, args, "up")
 
 	if *generate {
 		outPath := *configPath
@@ -42,12 +39,12 @@ func Up(args []string) {
 		all, err := container.List(true)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error listing containers: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		f, err := os.Create(outPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating %s: %v\n", outPath, err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		genCfg := config.Config{Container: make(map[string]config.ContainerConfig)}
 		written := 0
@@ -146,11 +143,11 @@ func Up(args []string) {
 		}
 		if err := toml.NewEncoder(f).Encode(genCfg); err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing %s: %v\n", outPath, err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		if err := f.Close(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error closing %s: %v\n", outPath, err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		fmt.Printf("Generated %s with %d containers\n", outPath, written)
 		return
@@ -165,7 +162,7 @@ func Up(args []string) {
 	cfg, path, err := config.Load(*configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Printf("Using config: %s\n", path)

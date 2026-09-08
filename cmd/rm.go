@@ -22,15 +22,12 @@ func Rm(args []string) {
 	// Suppress default flag error output — we handle errors ourselves
 	// to keep consistent UX with other commands.
 	fs.SetOutput(os.Stderr)
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing rm options: %v\n", err)
-		os.Exit(1)
-	}
+	mustParse(fs, args, "rm")
 
 	if fs.NArg() < 1 {
 		fmt.Println("Usage: cardinal rm [-f] [-r] [--force] <container> [container...]")
 		fmt.Println("  -f, -r, --force   Force remove (including running containers)")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	isForce := *force || *forceR || *forceLong
@@ -49,5 +46,5 @@ func Rm(args []string) {
 		}
 		fmt.Println(shortID(c.ID))
 	}
-	os.Exit(exitCode)
+	exitFunc(exitCode)
 }

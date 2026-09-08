@@ -13,7 +13,7 @@ import (
 )
 
 func Build(args []string) {
-	fs := flag.NewFlagSet("build", flag.ExitOnError)
+	fs := flag.NewFlagSet("build", flag.ContinueOnError)
 	tag := fs.String("t", "", "Image name and tag (e.g. myapp:latest)")
 	dockerfile := fs.String("f", "", "Path to Dockerfile (default: <context>/Dockerfile)")
 	noCache := fs.Bool("no-cache", false, "Do not use cache when building the image")
@@ -23,10 +23,7 @@ func Build(args []string) {
 	cpu := fs.Float64("cpu", 0, "CPU cores (e.g. 0.5, 2)")
 	memory := fs.Int("memory", 0, "Memory limit in bytes (e.g. 536870912 for 512MB)")
 
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing build options: %v\n", err)
-		os.Exit(1)
-	}
+	mustParse(fs, args, "build")
 
 	if *tag == "" {
 		fmt.Println("Usage: cardinal build -t <name>[:<tag>] [options] <context>")
@@ -34,7 +31,7 @@ func Build(args []string) {
 		fmt.Println("  -f Dockerfile  Path to Dockerfile (default: ./Dockerfile)")
 		fmt.Println("  --no-cache     Disable layer caching")
 		fmt.Println("  --build-arg K=V  Set build-time variables")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	freeArgs := fs.Args()
@@ -66,12 +63,12 @@ func Build(args []string) {
 
 	if _, err := os.Stat(contextDir); os.IsNotExist(err) {
 		fmt.Fprintf(os.Stderr, "Error: build context %s not found\n", contextDir)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if _, err := os.Stat(dfPath); os.IsNotExist(err) {
 		fmt.Fprintf(os.Stderr, "Error: Dockerfile not found at %s\n", dfPath)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	cfg := &builder.BuildConfig{
@@ -89,7 +86,7 @@ func Build(args []string) {
 	_, err := builder.Build(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error building image: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	shortName := imgName

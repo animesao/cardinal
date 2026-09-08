@@ -31,13 +31,13 @@ func Set(args []string) {
 		fmt.Println("  -h <name>       Hostname")
 		fmt.Println("  --network <m>   Network mode")
 		fmt.Println("  --startup <s>   Startup script or @filepath")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	containerName := args[0]
 	flagArgs := args[1:]
 
-	fs := flag.NewFlagSet("set", flag.ExitOnError)
+	fs := flag.NewFlagSet("set", flag.ContinueOnError)
 	memory := fs.String("memory", "", "Memory limit (e.g. 512m, 1g, 2g)")
 	ramAlias := fs.String("ram", "", "Memory limit (alias for --memory)")
 	cpus := fs.Float64("cpus", -1, "CPU limit (e.g. 1.5)")
@@ -56,15 +56,12 @@ func Set(args []string) {
 	networkMode := fs.String("network", "", "Network mode (bridge/none/host)")
 	startup := fs.String("startup", "", "Startup script (inline or @filepath)")
 
-	if err := fs.Parse(flagArgs); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing set options: %v\n", err)
-		os.Exit(1)
-	}
+	mustParse(fs, flagArgs, "set")
 
 	c, err := container.Load(containerName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if *memory == "" && *ramAlias != "" {
@@ -80,7 +77,7 @@ func Set(args []string) {
 		mem, err := container.ParseMemoryString(*memory)
 		if err != nil || mem == 0 {
 			fmt.Fprintf(os.Stderr, "Error: invalid memory value: %s\n", *memory)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		c.MemoryLimit = mem
 		changed = true
@@ -95,7 +92,7 @@ func Set(args []string) {
 		diskLimit, err := container.ParseDiskString(*disk)
 		if err != nil || diskLimit == 0 {
 			fmt.Fprintf(os.Stderr, "Error: invalid disk value: %s\n", *disk)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		c.DiskLimit = diskLimit
 		changed = true
@@ -110,7 +107,7 @@ func Set(args []string) {
 		delay, err := time.ParseDuration(*restartDelay)
 		if err != nil || delay <= 0 {
 			fmt.Fprintf(os.Stderr, "Error: invalid restart delay %q (use e.g. 10s, 1m)\n", *restartDelay)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		c.RestartDelay = *restartDelay
 		changed = true
@@ -163,13 +160,13 @@ func Set(args []string) {
 			data, err := os.ReadFile(path)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error reading startup script file %q: %v\n", path, err)
-				os.Exit(1)
+				exitFunc(1)
 			}
 			startupValue = string(data)
 		}
 		if len(startupValue) > 1024*1024 {
 			fmt.Fprintln(os.Stderr, "Error: startup script is too large (maximum 1 MiB)")
-			os.Exit(1)
+			exitFunc(1)
 		}
 		c.StartupScript = startupValue
 		changed = true
@@ -185,13 +182,13 @@ func Set(args []string) {
 	if wasRunning {
 		if err := c.Stop(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error stopping container: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 	}
 
 	if err := c.Save(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving container: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Printf("  %s: updated\n", shortID(c.ID))
@@ -200,7 +197,7 @@ func Set(args []string) {
 		c.Status = container.Created
 		if err := c.Start(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error starting container: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		fmt.Printf("  %s: restarted\n", shortID(c.ID))
 	}

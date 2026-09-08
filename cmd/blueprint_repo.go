@@ -162,14 +162,14 @@ func blueprintRepoAdd(args []string) {
 		fmt.Println("  cardinal blueprint repo add user/my-blueprints")
 		fmt.Println("  cardinal blueprint repo add https://github.com/user/my-blueprints --branch dev")
 		fmt.Println("  cardinal blueprint repo add https://raw.githubusercontent.com/user/my-blueprints")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	input := args[0]
 	rawURL := normalizeRepoURL(input)
 	if rawURL == "" {
 		fmt.Fprintf(os.Stderr, "Invalid repository URL: %s\n", input)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	name := ""
@@ -208,7 +208,7 @@ func blueprintRepoAdd(args []string) {
 	})
 	if err := saveBlueprintRepos(cfg); err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving config: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	fmt.Printf("Added repository: %s\n", name)
 	fmt.Printf("  URL:    %s\n", rawURL)
@@ -238,7 +238,7 @@ func blueprintRepoList() {
 func blueprintRepoRemove(args []string) {
 	if len(args) < 1 || args[0] == "" {
 		fmt.Println("Usage: cardinal blueprint repo remove <name|url|index>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 	target := args[0]
 
@@ -252,14 +252,14 @@ func blueprintRepoRemove(args []string) {
 	}
 	if found < 0 {
 		fmt.Fprintf(os.Stderr, "Repository %q not found\n", target)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	removed := cfg.Repos[found]
 	cfg.Repos = append(cfg.Repos[:found], cfg.Repos[found+1:]...)
 	if err := saveBlueprintRepos(cfg); err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving config: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	fmt.Printf("Removed repository: %s (%s)\n", removed.Name, removed.URL)
 }

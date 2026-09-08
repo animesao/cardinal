@@ -16,7 +16,7 @@ func Cp(args []string) {
 		fmt.Println("Usage: cardinal cp <src> <dst>")
 		fmt.Println("  cardinal cp <container>:<path> <host-path>")
 		fmt.Println("  cardinal cp <host-path> <container>:<path>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	src := args[0]
@@ -27,32 +27,32 @@ func Cp(args []string) {
 
 	if srcContainer != "" && dstContainer != "" {
 		fmt.Println("Copying between containers is not supported")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if srcContainer != "" {
 		c, err := container.Load(srcContainer)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 
 		outFile, err := os.Create(dst)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		defer func() { _ = outFile.Close() }()
 
 		if err := c.CopyFromContainer(srcPath, outFile); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 	} else {
 		c, err := container.Load(dstContainer)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 
 		var inReader io.Reader
@@ -63,7 +63,7 @@ func Cp(args []string) {
 			inFile, err := os.Open(src)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
+				exitFunc(1)
 			}
 			defer func() { _ = inFile.Close() }()
 			inReader = inFile
@@ -71,7 +71,7 @@ func Cp(args []string) {
 
 		if err := c.CopyToContainer(dstPath, inReader); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 	}
 

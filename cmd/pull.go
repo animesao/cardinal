@@ -11,16 +11,13 @@ import (
 )
 
 func Pull(args []string) {
-	fs := flag.NewFlagSet("pull", flag.ExitOnError)
+	fs := flag.NewFlagSet("pull", flag.ContinueOnError)
 	platform := fs.String("platform", "", "Platform (e.g. linux/amd64, linux/arm64)")
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing pull options: %v\n", err)
-		os.Exit(1)
-	}
+	mustParse(fs, args, "pull")
 
 	if fs.NArg() < 1 {
 		fmt.Println("Usage: cardinal pull [--platform linux/amd64] <image>[:<tag>]")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	ref := fs.Arg(0)
@@ -30,7 +27,7 @@ func Pull(args []string) {
 		parts := splitPlatform(*platform)
 		if len(parts) != 2 {
 			fmt.Fprintf(os.Stderr, "Error: invalid platform format %q (expected os/arch, e.g. linux/amd64)\n", *platform)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		platformOS = parts[0]
 		platformArch = parts[1]
@@ -39,7 +36,7 @@ func Pull(args []string) {
 	_, err := image.PullWithPlatform(ref, platformOS, platformArch)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 }
 

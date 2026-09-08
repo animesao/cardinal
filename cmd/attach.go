@@ -18,24 +18,24 @@ import (
 func Attach(args []string) {
 	if len(args) < 1 {
 		fmt.Println("Usage: cardinal attach <container>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	c, err := container.Load(args[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if c.Status != container.Running {
 		fmt.Fprintf(os.Stderr, "Container %s is not running\n", args[0])
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	conn, err := net.Dial("unix", state.ConsolePath(c.ID))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "console: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	var closeOnce sync.Once

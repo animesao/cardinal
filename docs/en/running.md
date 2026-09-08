@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.29`
-**Project release:** `v2.0.29`
+**Documentation version:** `2.0.30`
+**Project release:** `v2.0.30`
 <!-- cardinal-version:end -->
 
 # Running cardinal Containers
@@ -413,7 +413,7 @@ cardinal run -d \
   java -jar server.jar nogui
 ```
 
-Use `--network host` when the server or plugins need to resolve external hostnames (DNS). The server must listen on `0.0.0.0:25565`, not only on `127.0.0.1`.
+DNS works in bridge mode out of the box (default `8.8.8.8`/`8.8.4.4`, override with `--dns`). Use `--network host` only when the server must bind host interfaces directly. The server must listen on `0.0.0.0:25565`, not only on `127.0.0.1`.
 
 Check it:
 

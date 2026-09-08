@@ -31,20 +31,17 @@ type diagnostic struct {
 // packages, changes system configuration, or starts/stops containers.
 func Doctor(args []string) {
 	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
-	fs.SetOutput(os.Stderr)
 	strict := fs.Bool("strict", false, "Treat warnings as failures")
-	if err := fs.Parse(args); err != nil {
-		os.Exit(2)
-	}
+	mustParse(fs, args, "doctor")
 	if fs.NArg() != 0 {
 		fmt.Fprintln(os.Stderr, "Usage: cardinal doctor [--strict]")
-		os.Exit(2)
+		exitFunc(1)
 	}
 
 	checks := collectDiagnostics()
 	printDiagnostics("cardinal doctor", checks)
 	if diagnosticsFailed(checks, *strict) {
-		os.Exit(1)
+		exitFunc(1)
 	}
 }
 
@@ -56,11 +53,8 @@ func Security(args []string) {
 			remaining = remaining[1:]
 		}
 		fs := flag.NewFlagSet("security check", flag.ContinueOnError)
-		fs.SetOutput(os.Stderr)
 		strict := fs.Bool("strict", false, "Treat warnings as failures")
-		if err := fs.Parse(remaining); err != nil {
-			os.Exit(2)
-		}
+		mustParse(fs, remaining, "security check")
 		checks := collectDiagnostics()
 		securityChecks := make([]diagnostic, 0, len(checks))
 		for _, check := range checks {
@@ -75,12 +69,12 @@ func Security(args []string) {
 		}
 		printDiagnostics("cardinal security check", securityChecks)
 		if diagnosticsFailed(securityChecks, *strict) {
-			os.Exit(1)
+			exitFunc(1)
 		}
 		return
 	}
 	fmt.Fprintln(os.Stderr, "Usage: cardinal security check [--strict]")
-	os.Exit(2)
+	exitFunc(1)
 }
 
 func collectDiagnostics() []diagnostic {

@@ -23,7 +23,7 @@ func Inspect(args []string) {
 	}
 	if len(names) < 1 {
 		fmt.Println("Usage: cardinal inspect [--sensitive] <container> [<container>...]")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	for _, name := range names {

@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.29`
-**Project release:** `v2.0.29`
+**Documentation version:** `2.0.30`
+**Project release:** `v2.0.30`
 <!-- cardinal-version:end -->
 
 # cardinal Command Examples
@@ -506,7 +506,7 @@ cardinal run -d --restart always \
   -image nginx:alpine
 ```
 
-> **Networking:** if the application needs internet access (DNS), add `--network host`. Without it, bridge containers cannot resolve external hostnames.
+> **Networking:** bridge containers get internet access and DNS out of the box (default `8.8.8.8`/`8.8.4.4`, override with `--dns`). `--network host` is only needed when the app must bind host interfaces directly.
 
 ## 18. Maintenance and boot recovery
 

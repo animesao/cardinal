@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.0.29`
-**Project release:** `v2.0.29`
+**Documentation version:** `2.0.30`
+**Project release:** `v2.0.30`
 <!-- cardinal-version:end -->
 
 <p align="center">
@@ -9,7 +9,7 @@
 
 <p align="center">
   <!-- cardinal-version-badge:start -->
-  <img src="https://img.shields.io/badge/version-v2.0.29-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-v2.0.30-blue?style=flat-square">
   <!-- cardinal-version-badge:end -->
   <img src="https://img.shields.io/badge/go-1.26%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square">
@@ -176,7 +176,7 @@ cardinal run -d --restart always \
   -image nginx:alpine
 ```
 
-> **Сетевой доступ:** если приложению нужен интернет (DNS), добавьте `-network host`. Без этого bridge-контейнеры не резолвят внешние хосты.
+> **Сетевой доступ:** bridge-контейнеры получают интернет и DNS из коробки (по умолчанию `8.8.8.8`/`8.8.4.4`, свой сервер — через `--dns`). `-network host` нужен только если приложение должно слушать хостовые интерфейсы напрямую.
 
 ---
 
@@ -616,7 +616,7 @@ cardinal run -d --restart always \
   java -Xmx3500M -jar paper-1.21.11-116.jar nogui
 ```
 
-> **DNS в контейнере:** если скрипт или приложение need доступ в интернет, добавьте `-network host` — тогда контейнер использует сеть хоста включая DNS. Без этого bridge-контейнеры могут не резолвить внешние хосты.
+> **DNS в контейнере:** bridge-контейнеры резолвят внешние хосты из коробки (дефолт `8.8.8.8`/`8.8.4.4`, переопределить — флагом `--dns`). `-network host` нужен только для прямого доступа к сети хоста, не для DNS.
 
 More Minecraft examples (modded servers, custom JARs, backups) → [docs/en/websites.md](docs/en/websites.md#minecraft-server)
 
@@ -942,7 +942,7 @@ cardinal run -d
 ## Changelog
 
 <!-- cardinal-release:start -->
-**v2.0.29** — Documentation, installation, AppImage, update, and release automation are synchronized from the root `VERSION` file.
+**v2.0.30** — Documentation, installation, AppImage, update, and release automation are synchronized from the root `VERSION` file.
 <!-- cardinal-release:end -->
 
 **v1.24.0** — Major security hardening: seccomp profile (blocks 30+ dangerous syscalls), AppArmor profile, device restrictions (/dev/shm, /dev/mqueue, /proc/sys, /sys read-only), network segmentation (`--isolated`), backup encryption (AES-256-GCM with `--encrypt`), audit logging for container lifecycle events, new CLI flags (`--seccomp-profile`, `--apparmor-profile`, `--isolated`, `--encrypted-backup`, `--audit-log`).

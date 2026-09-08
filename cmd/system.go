@@ -17,21 +17,21 @@ func System(args []string) {
 		fmt.Println("Commands:")
 		fmt.Println("  df       Show disk usage by images, containers, and volumes")
 		fmt.Println("  prune    Remove unused containers and images")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	switch args[0] {
 	case "prune":
 		if err := container.SystemPrune(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 	case "df":
 		systemDF()
 	default:
 		fmt.Printf("unknown system command: %s\n", args[0])
 		fmt.Println("Usage: cardinal system [df|prune]")
-		os.Exit(1)
+		exitFunc(1)
 	}
 }
 

@@ -11,21 +11,18 @@ import (
 )
 
 func Push(args []string) {
-	fs := flag.NewFlagSet("push", flag.ExitOnError)
+	fs := flag.NewFlagSet("push", flag.ContinueOnError)
 	username := fs.String("u", "", "Registry username")
 	password := fs.String("p", "", "Registry password")
 
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing push options: %v\n", err)
-		os.Exit(1)
-	}
+	mustParse(fs, args, "push")
 
 	freeArgs := fs.Args()
 	if len(freeArgs) < 1 {
 		fmt.Println("Usage: cardinal push [-u username] [-p password] <image>[:<tag>]")
 		fmt.Println("  -u username  Registry username (or DOCKER_USERNAME env)")
 		fmt.Println("  -p password  Registry password (or DOCKER_PASSWORD env)")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	ref := freeArgs[0]
@@ -46,6 +43,6 @@ func Push(args []string) {
 
 	if err := image.Push(ref, user, pass); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 }

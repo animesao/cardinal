@@ -211,8 +211,11 @@ func ContainerProcessAlive(c *Container) bool {
 func generateID() string {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
-		log.Error("crypto/rand.Read failed: %v", err)
-		os.Exit(1)
+		// crypto/rand failing means the OS entropy source is broken;
+		// nothing can proceed safely. Panic (instead of os.Exit) so the
+		// failure surfaces with a stack trace and stays recoverable in
+		// tests and library-style callers.
+		panic(fmt.Sprintf("crypto/rand.Read failed: %v", err))
 	}
 	return hex.EncodeToString(b)
 }

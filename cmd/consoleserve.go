@@ -20,7 +20,7 @@ const (
 
 func ConsoleServe(args []string) {
 	if len(args) < 1 {
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	id := args[0]
@@ -28,14 +28,14 @@ func ConsoleServe(args []string) {
 
 	logFile, err := container.OpenFreshLogFile(logPath, 0644)
 	if err != nil {
-		os.Exit(1)
+		exitFunc(1)
 	}
 	defer func() { _ = logFile.Close() }()
 
 	stdinW := os.NewFile(3, "stdinW")
 	stdoutR := os.NewFile(4, "stdoutR")
 	if stdinW == nil || stdoutR == nil {
-		os.Exit(1)
+		exitFunc(1)
 	}
 	defer func() { _ = stdinW.Close() }()
 	defer func() { _ = stdoutR.Close() }()
@@ -45,7 +45,7 @@ func ConsoleServe(args []string) {
 
 	listener, err := net.Listen("unix", sockPath)
 	if err != nil {
-		os.Exit(1)
+		exitFunc(1)
 	}
 	defer os.Remove(sockPath)
 	defer listener.Close()

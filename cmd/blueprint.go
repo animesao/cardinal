@@ -58,7 +58,7 @@ type templateJSON struct {
 func Blueprint(args []string) {
 	if len(args) < 1 {
 		printBlueprintUsage()
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	sub := args[0]
@@ -74,7 +74,7 @@ func Blueprint(args []string) {
 	case "repo", "repos":
 		if len(subArgs) < 1 {
 			blueprintRepoUsage()
-			os.Exit(1)
+			exitFunc(1)
 		}
 		switch subArgs[0] {
 		case "list", "ls":
@@ -88,21 +88,21 @@ func Blueprint(args []string) {
 		default:
 			fmt.Printf("unknown repo subcommand: %s\n", subArgs[0])
 			blueprintRepoUsage()
-			os.Exit(1)
+			exitFunc(1)
 		}
 	case "--help", "-h", "help":
 		printBlueprintUsage()
 	default:
 		fmt.Printf("unknown blueprint subcommand: %s\n", sub)
 		printBlueprintUsage()
-		os.Exit(1)
+		exitFunc(1)
 	}
 }
 
 func blueprintInfo(args []string) {
 	if len(args) < 1 || args[0] == "" {
 		fmt.Println("Usage: cardinal blueprint info <name>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	bpName := args[0]
@@ -110,7 +110,7 @@ func blueprintInfo(args []string) {
 	reg, err := fetchBlueprintRegistry()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching blueprint registry: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	bp, ok := reg.Blueprints[bpName]
@@ -128,7 +128,7 @@ func blueprintInfo(args []string) {
 	if !ok {
 		fmt.Fprintf(os.Stderr, "Blueprint %q not found\n", bpName)
 		fmt.Println("Use 'cardinal blueprint list' to see available blueprints.")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	repoBase := bp.RepoURL
@@ -141,13 +141,13 @@ func blueprintInfo(args []string) {
 	tplData, err := fetchURL(tplURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching blueprint %q: %v\n", bpName, err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	var tpl templateJSON
 	if err := json.Unmarshal([]byte(tplData), &tpl); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing blueprint %q: %v\n", bpName, err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Printf("  %s\n\n", strings.ToUpper(bpName))
@@ -305,7 +305,7 @@ func blueprintList() {
 	reg, err := fetchBlueprintRegistry()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching blueprint registry: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if len(reg.Blueprints) == 0 {
@@ -355,7 +355,7 @@ func blueprintList() {
 func blueprintInstall(args []string) {
 	if len(args) < 1 || args[0] == "" {
 		fmt.Println("Usage: cardinal blueprint install <name> [--name <container-name>]")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	bpName := args[0]
@@ -399,14 +399,14 @@ func blueprintInstall(args []string) {
 	reg, err := fetchBlueprintRegistry()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching blueprint registry: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	bp, ok := reg.Blueprints[bpName]
 	if !ok {
 		fmt.Fprintf(os.Stderr, "Blueprint %q not found in registry\n", bpName)
 		fmt.Println("Use 'cardinal blueprint list' to see available blueprints.")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	// Fetch the template JSON from the blueprint's source repository
@@ -420,13 +420,13 @@ func blueprintInstall(args []string) {
 	tplData, err := fetchURL(tplURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching blueprint %q: %v\n", bpName, err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	var tpl templateJSON
 	if err := json.Unmarshal([]byte(tplData), &tpl); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing blueprint %q: %v\n", bpName, err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Printf("Installing blueprint: %s\n", bpName)
@@ -438,14 +438,14 @@ func blueprintInstall(args []string) {
 	img, err := image.Pull(imageRef)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error pulling image %s: %v\n", imageRef, err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	fmt.Printf("  Image pulled: %s\n", imageRef)
 
 	// Check if container name already exists
 	if existing := container.FindByName(containerName); existing != nil {
 		fmt.Fprintf(os.Stderr, "Error: container with name %q already exists (%s)\n", containerName, shortID(existing.ID))
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	// Parse command
@@ -561,7 +561,7 @@ func blueprintInstall(args []string) {
 			mount, parseErr := container.VolumeMountFromSpec(v)
 			if parseErr != nil {
 				fmt.Fprintf(os.Stderr, "Error: invalid blueprint volume %q: %v\\n", v, parseErr)
-				os.Exit(1)
+				exitFunc(1)
 			}
 			volumes = append(volumes, mount)
 		}
@@ -688,7 +688,7 @@ func blueprintInstall(args []string) {
 		enableIPForward()
 		if err := enableUFWForward(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error configuring firewall forwarding: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 	}
 
@@ -709,12 +709,12 @@ func blueprintInstall(args []string) {
 	c := container.New(img, opts)
 	if err := c.Save(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving container: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if err := c.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting container: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Printf("  Container created: %s (%s)\n", c.Name, shortID(c.ID))

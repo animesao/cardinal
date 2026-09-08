@@ -27,7 +27,7 @@ func Bootstrap(args []string) {
 	if remove {
 		if err := removeSystemdService(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error removing systemd service: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		return
 	}
@@ -35,7 +35,7 @@ func Bootstrap(args []string) {
 	if install {
 		if err := installSystemdService(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error installing systemd service: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 	}
 
@@ -44,7 +44,7 @@ func Bootstrap(args []string) {
 	all, err := container.List(true)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error listing containers: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	count := 0

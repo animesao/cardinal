@@ -39,7 +39,7 @@ WantedBy=multi-user.target
 `
 
 func Serve(args []string) {
-	fs := flag.NewFlagSet("serve", flag.ExitOnError)
+	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	port := fs.Int("p", 2375, "API port")
 	host := fs.String("H", "127.0.0.1", "API host (external addresses require --token or CARDINAL_TOKEN)")
 	daemon := fs.Bool("d", false, "Run as daemon (background)")
@@ -47,10 +47,7 @@ func Serve(args []string) {
 	certFile := fs.String("tls-cert", "", "TLS certificate file (requires --tls-key)")
 	keyFile := fs.String("tls-key", "", "TLS private key file (requires --tls-cert)")
 
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing serve options: %v\n", err)
-		os.Exit(1)
-	}
+	mustParse(fs, args, "serve")
 
 	// Handle subcommands: on / off
 	if len(fs.Args()) > 0 {
@@ -100,10 +97,10 @@ func Serve(args []string) {
 		cmd.Stderr = os.Stderr
 		if err := cmd.Start(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error starting daemon: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		fmt.Printf("Daemon started with PID %d\n", cmd.Process.Pid)
-		os.Exit(0)
+		exitFunc(0)
 	}
 
 	// Graceful shutdown: wait for SIGINT/SIGTERM, then cleanup
@@ -126,12 +123,12 @@ func Serve(args []string) {
 		}
 		container.CloseEvents()
 		log.Info("Shutdown complete")
-		os.Exit(0)
+		exitFunc(0)
 	}()
 
 	if err := api.StartServerWithTLS(*port, *host, *certFile, *keyFile); err != nil {
 		log.Error("Server error: %v", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 }
 
@@ -140,13 +137,13 @@ const serveSystemdUnit = "/etc/systemd/system/cardinal-serve.service"
 func serveOn(port int, host, token, certFile, keyFile string) {
 	if os.Geteuid() != 0 {
 		fmt.Fprintf(os.Stderr, "Error: must run as root (sudo cardinal serve on)\n")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	path, err := os.Executable()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting cardinal path: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	tlsArgs := ""
@@ -175,18 +172,18 @@ func serveOn(port int, host, token, certFile, keyFile string) {
 	f, err := os.Create(serveSystemdUnit)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating %s: %v\n", serveSystemdUnit, err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if _, err := f.WriteString(unit); err != nil {
 		_ = f.Close()
 		_ = restoreUnit()
 		fmt.Fprintf(os.Stderr, "Error writing %s: %v\n", serveSystemdUnit, err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if err := f.Close(); err != nil {
 		_ = restoreUnit()
 		fmt.Fprintf(os.Stderr, "Error closing %s: %v\n", serveSystemdUnit, err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	run := func(args ...string) bool {
@@ -202,13 +199,13 @@ func serveOn(port int, host, token, certFile, keyFile string) {
 	}
 
 	if !run("systemctl", "daemon-reload") {
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if !run("systemctl", "enable", "cardinal-serve") {
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if !run("systemctl", "start", "cardinal-serve") {
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Println("cardinal-serve service installed and started.")
@@ -223,7 +220,7 @@ func serveOn(port int, host, token, certFile, keyFile string) {
 func serveOff() {
 	if os.Geteuid() != 0 {
 		fmt.Fprintf(os.Stderr, "Error: must run as root (sudo cardinal serve off)\n")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if _, err := os.Stat(serveSystemdUnit); os.IsNotExist(err) {

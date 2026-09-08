@@ -17,7 +17,7 @@ func Ps(args []string) {
 	containers, err := container.List(psShowAll)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	if len(containers) == 0 {

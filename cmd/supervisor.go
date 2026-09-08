@@ -30,7 +30,7 @@ var (
 func Supervisor(args []string) {
 	if len(args) > 0 {
 		fmt.Fprintln(os.Stderr, "Usage: cardinal supervisor")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

@@ -40,7 +40,7 @@ func Update(args []string) {
 	latest, err := fetchLatestVersion()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error checking for updates: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	fmt.Printf("Latest version:  %s\n", latest)
@@ -80,26 +80,26 @@ func Update(args []string) {
 	body, err := fetchURLBytes(archiveURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to download archive: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	expectedChecksum, err := fetchChecksumForFile(checksumURL, archiveName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to fetch update checksum: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	actualHex := fmt.Sprintf("%x", sha256.Sum256(body))
 	if !strings.EqualFold(actualHex, expectedChecksum) {
 		fmt.Fprintf(os.Stderr, "Checksum mismatch! Expected %s, got %s. Aborting update.\n", expectedChecksum, actualHex)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	fmt.Println("Checksum verified.")
 
 	binaryData, err := extractBinaryFromTarGz(body, "cardinal")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to extract binary from archive: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	// Optional: hard-fail unless the release is signed by cosign.
@@ -112,7 +112,7 @@ func Update(args []string) {
 		bundleURL := sigURL + ".bundle"
 		if err := verifyCosignSignature(releaseTag, archiveName, actualHex, sigURL, bundleURL); err != nil {
 			fmt.Fprintf(os.Stderr, "Signature verification failed: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		fmt.Println("Signature verified.")
 	}
@@ -121,14 +121,14 @@ func Update(args []string) {
 	selfPath, err := os.Executable()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get current binary path: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	// Write new binary to temp file
 	tmpFile, err := os.CreateTemp("", "cardinal-update-*")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create temp file: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	tmpPath := tmpFile.Name()
 	if _, err := tmpFile.Write(binaryData); err != nil {
@@ -142,7 +142,7 @@ func Update(args []string) {
 			fmt.Fprintf(os.Stderr, "; cleanup failed: %v", removeErr)
 		}
 		fmt.Fprintln(os.Stderr)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if err := tmpFile.Close(); err != nil {
 		removeErr := os.Remove(tmpPath)
@@ -151,7 +151,7 @@ func Update(args []string) {
 			fmt.Fprintf(os.Stderr, "; cleanup failed: %v", removeErr)
 		}
 		fmt.Fprintln(os.Stderr)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if err := os.Chmod(tmpPath, 0755); err != nil {
 		removeErr := os.Remove(tmpPath)
@@ -160,7 +160,7 @@ func Update(args []string) {
 			fmt.Fprintf(os.Stderr, "; cleanup failed: %v", removeErr)
 		}
 		fmt.Fprintln(os.Stderr)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	targetPath, allowSudo := updateInstallTarget(selfPath)
@@ -174,7 +174,7 @@ func Update(args []string) {
 			fmt.Fprintf(os.Stderr, "; cleanup failed: %v", removeErr)
 		}
 		fmt.Fprintln(os.Stderr)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if err := os.Remove(tmpPath); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: could not remove temporary update file: %v\n", err)

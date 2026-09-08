@@ -16,7 +16,7 @@ import (
 func Commit(args []string) {
 	if len(args) < 2 {
 		fmt.Println("Usage: cardinal commit <container> <image>[:<tag>]")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	ref := args[1]
@@ -33,7 +33,7 @@ func Commit(args []string) {
 	c, err := container.Load(args[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	var rootfsDir string
@@ -54,7 +54,7 @@ func Commit(args []string) {
 	img, err := image.CommitContainer(rootfsDir, name, tag, "", "")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	shortName := filepath.Base(img.Name)

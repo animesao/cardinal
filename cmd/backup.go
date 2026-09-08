@@ -25,7 +25,7 @@ import (
 func Backup(args []string) {
 	if len(args) < 1 {
 		printBackupUsage()
-		os.Exit(1)
+		exitFunc(1)
 	}
 	switch args[0] {
 	case "create":
@@ -49,7 +49,7 @@ func Backup(args []string) {
 	default:
 		fmt.Printf("unknown backup command: %s\n", args[0])
 		printBackupUsage()
-		os.Exit(1)
+		exitFunc(1)
 	}
 }
 
@@ -99,28 +99,25 @@ func containerBackupDir(c *container.Container) string {
 func backupEnable(args []string) {
 	if len(args) < 1 {
 		fmt.Println("Usage: cardinal backup enable <container> [--interval 24h] [--retention 7] [--dir /data/backups]")
-		os.Exit(1)
+		exitFunc(1)
 	}
 	fs := flag.NewFlagSet("backup enable", flag.ContinueOnError)
-	fs.SetOutput(os.Stderr)
 	interval := fs.Duration("interval", defaultBackupInterval, "Backup interval")
 	retention := fs.Int("retention", defaultBackupRetention, "Number of backups to keep")
 	dir := fs.String("dir", "", "Backup directory")
-	if err := fs.Parse(args[1:]); err != nil {
-		os.Exit(2)
-	}
+	mustParse(fs, args[1:], "backup enable")
 	if *interval <= 0 {
 		fmt.Fprintln(os.Stderr, "Error: backup interval must be greater than zero")
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if *retention < 1 || *retention > 1000 {
 		fmt.Fprintln(os.Stderr, "Error: backup retention must be between 1 and 1000")
-		os.Exit(1)
+		exitFunc(1)
 	}
 	c, err := container.Load(args[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	backupPath := *dir
 	if backupPath == "" {
@@ -129,11 +126,11 @@ func backupEnable(args []string) {
 	backupPath, err = validateBackupDirectory(backupPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: invalid backup directory: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if err := os.MkdirAll(backupPath, 0700); err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating backup directory: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	c.AutoBackup = true
 	c.BackupInterval = interval.String()
@@ -143,7 +140,7 @@ func backupEnable(args []string) {
 	c.BackupNextAttemptAt = time.Time{}
 	if err := c.Save(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving backup settings: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	fmt.Printf("Automatic backups enabled for %s: every %s, keeping %d copies\n", c.Name, c.BackupInterval, c.BackupRetention)
 	ensureBootstrap()
@@ -152,17 +149,17 @@ func backupEnable(args []string) {
 func backupDisable(args []string) {
 	if len(args) < 1 {
 		fmt.Println("Usage: cardinal backup disable <container>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 	c, err := container.Load(args[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	c.AutoBackup = false
 	if err := c.Save(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving backup settings: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	fmt.Printf("Automatic backups disabled for %s\n", c.Name)
 }
@@ -170,12 +167,12 @@ func backupDisable(args []string) {
 func backupStatus(args []string) {
 	if len(args) < 1 {
 		fmt.Println("Usage: cardinal backup status <container>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 	c, err := container.Load(args[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	fmt.Printf("Container: %s\n", c.Name)
 	fmt.Printf("  Enabled: %t\n", c.AutoBackup)
@@ -198,7 +195,7 @@ func backupStatus(args []string) {
 func backupCreate(args []string) {
 	if len(args) < 1 {
 		fmt.Println("Usage: cardinal backup create <container> [-o file.tar.gz] [-e]")
-		os.Exit(1)
+		exitFunc(1)
 	}
 	name := args[0]
 	output := ""
@@ -214,16 +211,16 @@ func backupCreate(args []string) {
 	c, err := container.Load(name)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if c.Status == container.Running {
 		fmt.Fprintln(os.Stderr, "Error: stop the container before creating a consistent backup")
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if output == "" {
 		if err := os.MkdirAll(backupDir(), 0700); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating backup directory: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		ext := ".tar.gz"
 		if encrypt {
@@ -234,22 +231,22 @@ func backupCreate(args []string) {
 	parent, err := validateBackupDirectory(filepath.Dir(output))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: invalid backup output directory: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	output = filepath.Join(parent, filepath.Base(output))
 	if err := os.MkdirAll(parent, 0700); err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating backup parent: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if err := createContainerBackup(c, output); err != nil {
 		_ = os.Remove(output)
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if err := writeBackupChecksum(output); err != nil {
 		_ = os.Remove(output)
 		fmt.Fprintf(os.Stderr, "Error writing checksum: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	// Encrypt backup if requested
 	if encrypt {
@@ -258,13 +255,13 @@ func backupCreate(args []string) {
 			_ = os.Remove(output)
 			_ = os.Remove(backupChecksumPath(output))
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		if err := enc.EncryptFile(output); err != nil {
 			_ = os.Remove(output)
 			_ = os.Remove(backupChecksumPath(output))
 			fmt.Fprintf(os.Stderr, "Error encrypting backup: %v\n", err)
-			os.Exit(1)
+			exitFunc(1)
 		}
 		// Recalculate checksum for encrypted file
 		_ = os.Remove(backupChecksumPath(output))
@@ -281,7 +278,7 @@ func backupGenerateKey(args []string) {
 	key, err := container.GenerateEncryptionKey()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error generating key: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	hexKey := hex.EncodeToString(key)
 	fmt.Printf("Generated encryption key:\n%s\n\n", hexKey)
@@ -638,7 +635,7 @@ func backupList(args []string) {
 		return
 	} else if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	count := 0
 	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
@@ -662,7 +659,7 @@ func backupList(args []string) {
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if count == 0 {
 		fmt.Println("No backups found")
@@ -672,7 +669,7 @@ func backupList(args []string) {
 func backupVerify(args []string) {
 	if len(args) < 1 {
 		fmt.Println("Usage: cardinal backup verify <file.tar.gz>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if _, err := os.Stat(backupChecksumPath(args[0])); os.IsNotExist(err) {
 		fmt.Printf("Backup is valid but unverified (no checksum sidecar): %s\n", args[0])
@@ -680,7 +677,7 @@ func backupVerify(args []string) {
 	}
 	if err := verifyBackupChecksum(args[0]); err != nil {
 		fmt.Fprintf(os.Stderr, "Backup verification failed: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	fmt.Printf("Backup verified: %s\n", args[0])
 }
@@ -688,12 +685,12 @@ func backupVerify(args []string) {
 func backupRemove(args []string) {
 	if len(args) < 1 {
 		fmt.Println("Usage: cardinal backup remove <file.tar.gz>")
-		os.Exit(1)
+		exitFunc(1)
 	}
 	archivePath, err := validateBackupArchivePath(args[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: invalid backup archive: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if err := os.Remove(archivePath); err != nil {
 		if os.IsNotExist(err) {
@@ -701,11 +698,11 @@ func backupRemove(args []string) {
 		} else {
 			fmt.Fprintf(os.Stderr, "Error removing backup: %v\n", err)
 		}
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if err := os.Remove(backupChecksumPath(archivePath)); err != nil && !os.IsNotExist(err) {
 		fmt.Fprintf(os.Stderr, "Error removing backup checksum: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	fmt.Printf("Removed backup: %s\n", archivePath)
 }
@@ -739,7 +736,7 @@ func validateBackupArchivePath(path string) (string, error) {
 func backupRestore(args []string) {
 	if len(args) < 2 {
 		fmt.Println("Usage: cardinal backup restore <container> <file.tar.gz> [--rebind]")
-		os.Exit(1)
+		exitFunc(1)
 	}
 	rebind := false
 	for _, arg := range args[2:] {
@@ -750,15 +747,15 @@ func backupRestore(args []string) {
 	c, err := container.Load(args[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if c.Status == container.Running {
 		fmt.Fprintln(os.Stderr, "Error: stop the container before restoring a backup")
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if err := restoreContainerBackupWithOptions(c, args[1], rebind); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 	if rebind {
 		fmt.Printf("Rebound backup data into %s\n", c.Name)
