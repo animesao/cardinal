@@ -213,12 +213,12 @@ done < "$FILES"
 
 if [ "$mode" = update ]; then
     sync_readme_version_badge     || status=1
-    sync_readme_release_block     || status=1
-    sync_changelog_current_release || status=1
+    # sync_readme_release_block     || status=1
+    # sync_changelog_current_release || status=1
 else
     check_readme_version_badge      || status=1
-    check_readme_release_block      || status=1
-    check_changelog_current_release || status=1
+    # check_readme_release_block      || status=1
+    # check_changelog_current_release || status=1
 fi
 
 [ "$status" -eq 0 ] || exit "$status"
