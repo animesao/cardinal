@@ -756,8 +756,8 @@ Packages install into the overlay and persist across restarts.
 [cardinal-wings](https://github.com/animesao/cardinal-wings) is a REST API daemon for managing containers remotely. It runs as a systemd service and allows frontends (like cardinal-panel) to control containers over HTTP.
 
 ```bash
-# Install (site mirror — no GitHub needed; prints URL + API token for the panel)
-curl -fsSL https://cardinal.spcfy.eu/downloads/install-wings.sh -o /tmp/install-wings.sh
+# Install (GitHub Releases; prints URL + API token for the panel)
+curl -fsSL https://github.com/animesao/cardinal-wings/releases/latest/download/install.sh -o /tmp/install-wings.sh
 sudo bash /tmp/install-wings.sh
 
 # Start
