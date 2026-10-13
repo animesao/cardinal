@@ -1,7 +1,21 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.2.0`
-**Project release:** `v2.2.0`
+**Documentation version:** `2.3.4`
+**Project release:** `v2.3.4`
 <!-- cardinal-version:end -->
+
+## Unreleased
+
+### Assets only (no runtime changes)
+
+- `img/cardinal.png` replaced (1 376 604 -> 1 670 161 bytes, 2026-10-13); the file is referenced by the `README.md` header logo. No code or docs changes.
+
+## 2.3.4 (2026-10-09)
+
+### CI only (no runtime changes)
+
+- `.github/workflows/build.yml`: `actions/setup-go` bumped from Go `1.26.6` to `1.26.9` in three jobs (lint/test, per-package tests, reproducible cross-compile). No Go code changes in this tag (`go.mod` still targets `go 1.26.0`).
+- Known drift (not changed by this tag): `e2e.yml`, `scheduled.yml`, `install.ps1` (`$GoVersion`), and `snap/snapcraft.yaml` (`GO_VERSION`) still pin Go `1.26.6`; `docs/build.md` still documents `1.26.6`.
+- Release-process note: tag `v2.3.4` was cut on the merge of this CI change without a `VERSION` bump (`VERSION` is still `2.3.1`), so the `cardinal-current-release` marker below still reports `v2.3.1` until `VERSION` is bumped via `scripts/sync-docs-version.sh`.
 
 ## 2.3.1 (2026-10-04)
 
