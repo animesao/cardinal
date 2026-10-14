@@ -525,14 +525,14 @@ cardinal exec -i -t NAME /bin/sh
 cardinal console NAME
 cardinal top NAME
 cardinal port NAME
-cardinal stats NAME --no-stream
+cardinal stats --no-stream NAME
 cardinal fs ls NAME /path
 cardinal fs cat NAME /path/file
 cardinal cp ./local-file NAME:/path/
 cardinal cp NAME:/path/file ./local-file
 ```
 
-`attach` connects to the existing main process; `exec` starts a new process. Use `console` or `exec -i -t` for a shell.
+`attach` connects to the existing main process; `exec` starts a new process. Use `console` or `exec -i -t` for a shell. Note the flag order: `--no-stream` must precede the container name (trailing flags are ignored). `stats` refreshes in place every second; `disk_usage_bytes` covers the overlay writable layer plus attached named volumes (cached 60s), while the `--disk` quota applies to the overlay only.
 
 ## 13. Resource limits and security
 
@@ -548,7 +548,7 @@ Add only the capabilities that the application requires:
 --cap-add NET_ADMIN
 ```
 
-Use `--network none` for a workload that does not need networking, or `--network host` only when sharing the host network is intentional. Containers with `--network none` or `--network host` start without any interface wait; bridge-mode containers wait at most five seconds for the veth interface to come up.
+Use `--network none` for a workload that does not need networking, or `--network host` only when sharing the host network is intentional. Containers with `--network none` or `--network host` start without any interface wait; bridge-mode containers wait at most five seconds for the veth interface to come up. The `--disk` quota covers the overlay writable layer only — named volumes under `volumes/` are not throttled.
 
 ## 14. Update application code
 
@@ -797,7 +797,7 @@ For a one-time/manual server, remove `--restart always`. Use `--restart-delay 1m
 ```bash
 cardinal ps -a
 cardinal logs --tail 100 minecraft
-cardinal stats minecraft --no-stream
+cardinal stats --no-stream minecraft
 cardinal stop minecraft
 cardinal start minecraft
 cardinal restart minecraft
@@ -913,7 +913,7 @@ For root, the default cardinal data directory is `/root/.cardinal`. The exact lo
 ├── containers/   container state JSON
 ├── overlay/      writable container layers
 ├── logs/         cardinal stdout/stderr logs
-├── volumes/      named volumes
+├── volumes/      named volumes (`volumes/<name>/` + `volume.json`)
 ├── cache/        cached image layers
 ├── consoles/     attach sockets
 └── backups/      scheduled container archives

@@ -438,12 +438,16 @@ cardinal bootstrap --install
 
 ### `cardinal stats [container]`
 
-Show live resource usage stats: CPU, memory, I/O, and PIDs. Uses cgroups v2.
+Show live resource usage stats: CPU, memory, disk, I/O, and PIDs. Uses cgroups v2.
 
 ```bash
 cardinal stats               # all running containers
 cardinal stats web           # specific container
 ```
+
+The table refreshes in place every second (ANSI cursor-up redraw, no scrolling); piped output and `TERM=dumb` scroll instead. `--no-stream` prints one snapshot and exits — note CPU% is delta-based, so a one-shot sample always reads `0.0%`.
+
+`disk_usage_bytes` sums the overlay writable layer (`overlay/<id>/upper`, or `data/upper` when a `--disk` image is mounted) **plus every attached named volume** (`<data-dir>/volumes/<name>`); bind mounts, tmpfs and NFS are excluded. Full tree walks are cached per container with a 60s TTL, so disk figures can lag bulk writes by up to a minute. The `--disk` quota itself covers only the overlay — named volumes are not throttled.
 
 ### `cardinal info`
 
@@ -539,7 +543,7 @@ cardinal run -d --dns 1.1.1.1 --dns 8.8.8.8 nginx
 
 ### Named volumes
 
-cardinal can manage named volumes stored under `~/.cardinal/volumes/`.
+cardinal manages named volumes at `<data-dir>/volumes/<name>/` (plus a `volume.json` metadata file inside), where `<data-dir>` is `/root/.cardinal` for root or `$CARDINAL_DATA_DIR` (default `~/.cardinal` for regular users). A bare `-v mydata:/path` source (no slash) resolves there too.
 
 ```bash
 # Create a volume
@@ -643,7 +647,7 @@ cardinal run -d --disk 1G nginx        # 1 GB disk limit
 cardinal run -d --disk 10G nginx       # 10 GB disk limit
 ```
 
-Creates a sparse ext4 image mounted as the overlay's writable layer. Requires `mkfs.ext4`.
+Creates a sparse ext4 image mounted as the overlay's writable layer. Requires `mkfs.ext4`. The quota covers the overlay only — named volumes (`<data-dir>/volumes/<name>`) live outside the image and are not throttled.
 
 ---
 
