@@ -1,9 +1,14 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.3.5`
-**Project release:** `v2.3.5`
+**Documentation version:** `2.3.6`
+**Project release:** `v2.3.6`
 <!-- cardinal-version:end -->
 
 ## Unreleased
+
+### Stats: live in-place refresh
+
+- `cardinal stats` (local and remote) now redraws the table in place instead of scrolling a new header plus rows every second: cursor-up plus clear plus repaint per tick, with per-tick line counting so skipped rows on errors cannot desync the picture.
+- `--no-stream` still prints a single snapshot with no escape codes; piped output and `TERM=dumb` keep scrolling.
 
 ### Stats: disk usage includes named volumes
 
@@ -297,7 +302,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.3.5**. Detailed release notes below are maintained manually.
+> Current release: **v2.3.6**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

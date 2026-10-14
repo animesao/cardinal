@@ -65,8 +65,15 @@ func Stats(args []string) {
 
 func showStatsLoop(containers []*container.Container, noStream bool) {
 	prevSnapshots := make(map[string]*container.StatsSnapshot)
+	redraw := !noStream && statsLiveRedraw()
+	prevLines := 0
+	first := true
 
 	for {
+		if !first && redraw {
+			fmt.Printf("\x1b[%dA\x1b[J", prevLines)
+		}
+		lines := 0
 		showHeader := true
 		for _, c := range containers {
 			s, err := container.ReadContainerStats(c)
@@ -78,18 +85,33 @@ func showStatsLoop(containers []*container.Container, noStream bool) {
 			}
 			prev := prevSnapshots[c.ID]
 			container.PrintContainerStats(s, prev, showHeader)
+			if showHeader {
+				lines += 2
+			} else {
+				lines++
+			}
 			prevSnapshots[c.ID] = &container.StatsSnapshot{
 				CPUUsage:  s.CPUUsage,
 				Timestamp: s.Timestamp,
 			}
 			showHeader = false
 		}
+		prevLines = lines
+		first = false
 
 		if noStream {
 			break
 		}
 		time.Sleep(1 * time.Second)
 	}
+}
+
+func statsLiveRedraw() bool {
+	if os.Getenv("TERM") == "dumb" {
+		return false
+	}
+	fi, err := os.Stdout.Stat()
+	return err == nil && fi.Mode()&os.ModeCharDevice != 0
 }
 
 // statsRemote polls the one-shot stats endpoint through `cardinal serve`
@@ -127,8 +149,14 @@ func statsRemote(host string, names []string, noStream bool) {
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 
 	prevSnapshots := make(map[string]*container.StatsSnapshot)
+	redraw := !noStream && statsLiveRedraw()
+	prevLines := 0
 	first := true
 	for {
+		if !first && redraw {
+			fmt.Printf("\x1b[%dA\x1b[J", prevLines)
+		}
+		lines := 0
 		showHeader := true
 		for _, name := range names {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -156,12 +184,18 @@ func statsRemote(host string, names []string, noStream bool) {
 			}
 			prev := prevSnapshots[s.ContainerID]
 			container.PrintContainerStats(s, prev, showHeader)
+			if showHeader {
+				lines += 2
+			} else {
+				lines++
+			}
 			prevSnapshots[s.ContainerID] = &container.StatsSnapshot{
 				CPUUsage:  s.CPUUsage,
 				Timestamp: s.Timestamp,
 			}
 			showHeader = false
 		}
+		prevLines = lines
 
 		first = false
 		if noStream {
