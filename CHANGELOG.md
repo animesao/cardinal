@@ -1,9 +1,16 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.3.4`
-**Project release:** `v2.3.4`
+**Documentation version:** `2.3.5`
+**Project release:** `v2.3.5`
 <!-- cardinal-version:end -->
 
 ## Unreleased
+
+### Stats: disk usage includes named volumes
+
+- `DiskUsage` (`disk_usage_bytes`) now sums the overlay upper dir **and** the container's named volumes. Panel servers keep all data in `volumes/srv-<uuid>`, so the old upper-only walk reported kilobytes on gigabyte servers.
+- Full tree walks are cached per container with a 60s TTL and opportunistic eviction of stale entries — stats are polled every second and uncached walks of gigabyte trees would trash disk I/O.
+- Bind/tmpfs/NFS sources are still excluded (host admin territory, same as Docker).
+- Regression tests: `internal/container/stats_disk_test.go` (`dirTreeSize`, `isNamedVolume`, cache TTL expiry).
 
 ### Assets only (no runtime changes)
 
@@ -290,7 +297,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.3.1**. Detailed release notes below are maintained manually.
+> Current release: **v2.3.5**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
