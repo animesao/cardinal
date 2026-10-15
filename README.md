@@ -9,7 +9,7 @@
 
 <p align="center">
   <!-- cardinal-version-badge:start -->
-  <img src="https://img.shields.io/badge/version-v2.3.11-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-v2.3.12-blue?style=flat-square">
   <!-- cardinal-version-badge:end -->
   <img src="https://img.shields.io/badge/go-1.26%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-Apache--2.0-green?style=flat-square">
@@ -984,6 +984,8 @@ Limits:
 ## Changelog
 
 <!-- cardinal-release:start -->
+**v2.3.12** — `cardinal attach`: ввод консоли пишется в лог (фикс errcheck в CI).
+
 **v2.3.11** — `cardinal attach`: ввод консоли пишется в лог с префиксом `> ` — реконнекты возвращают команды рядом с ответами, а не одни ответы.
 
 **v2.3.10** — `cardinal attach`: реплей хвоста лога начинается с границы строки (без обрубков, дедуп на панели срабатывает, команды рядом с ответами).

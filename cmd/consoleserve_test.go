@@ -21,7 +21,7 @@ func TestConsoleInputLogger(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer logFile.Close()
+	defer func() { _ = logFile.Close() }()
 
 	var mu sync.Mutex
 	var forwarded bytes.Buffer
