@@ -21,6 +21,12 @@
 
 - `img/cardinal.png` replaced (1 376 604 -> 1 670 161 bytes, 2026-10-13); the file is referenced by the `README.md` header logo. No code or docs changes.
 
+## 2.3.10 (2026-10-15)
+
+### Console
+
+- `cardinal attach`: console tail replay starts at a line boundary (the byte-sliced first fragment could neither dedupe nor sit next to its command).
+
 ## 2.3.9 (2026-10-15)
 
 ### Console
@@ -323,7 +329,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.3.9**. Detailed release notes below are maintained manually.
+> Current release: **v2.3.10**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
