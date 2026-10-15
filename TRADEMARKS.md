@@ -1,8 +1,8 @@
 # Cardinal — Trademark Policy
 
 <!-- cardinal-version:start -->
-**Documentation version:** `2.3.8`
-**Project release:** `v2.3.8`
+**Documentation version:** `2.3.9`
+**Project release:** `v2.3.9`
 <!-- cardinal-version:end -->
 
 Cardinal is an open-source project. Its source code is licensed under

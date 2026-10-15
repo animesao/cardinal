@@ -88,7 +88,11 @@ func forwardStdin(conn io.Writer, stdin *os.File) {
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Fprintln(os.Stdout, line)
-		fmt.Fprintln(conn, line)
+		if _, err := fmt.Fprintln(os.Stdout, line); err != nil {
+			return
+		}
+		if _, err := fmt.Fprintln(conn, line); err != nil {
+			return
+		}
 	}
 }
