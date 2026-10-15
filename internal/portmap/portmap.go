@@ -33,11 +33,16 @@ type portRange struct {
 func Parse(s string) ([]Mapping, error) {
 	proto := "tcp"
 	if parts := strings.SplitN(s, "/", 2); len(parts) == 2 {
-		proto = parts[1]
+		proto = strings.ToLower(strings.TrimSpace(parts[1]))
 		s = parts[0]
 	}
 	if proto == "" {
 		proto = "tcp"
+	}
+	// The protocol reaches `iptables -p <proto>`: only real IP protocols
+	// pass, so garbage can neither break the rule nor smuggle flags.
+	if proto != "tcp" && proto != "udp" && proto != "sctp" && proto != "icmp" {
+		return nil, fmt.Errorf("invalid protocol %q (want tcp, udp, sctp or icmp)", proto)
 	}
 
 	parts := strings.Split(s, ":")

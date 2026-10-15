@@ -164,7 +164,12 @@ func serveOn(port int, host, token, certFile, keyFile string) {
 
 	restoreUnit := func() error {
 		if hadPrevious {
-			return os.WriteFile(serveSystemdUnit, previous, 0644)
+			// Preserve restrictive permissions: the unit carries the API
+			// token (root-equivalent) in Environment=.
+			if err := os.WriteFile(serveSystemdUnit, previous, 0600); err != nil {
+				return err
+			}
+			return nil
 		}
 		return os.Remove(serveSystemdUnit)
 	}
@@ -172,6 +177,14 @@ func serveOn(port int, host, token, certFile, keyFile string) {
 	f, err := os.Create(serveSystemdUnit)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating %s: %v\n", serveSystemdUnit, err)
+		exitFunc(1)
+	}
+	// 0600: os.Create honors umask (usually 022 → 0644 world-readable),
+	// but this file embeds CARDINAL_TOKEN — lock it down explicitly.
+	if err := f.Chmod(0600); err != nil {
+		_ = f.Close()
+		_ = restoreUnit()
+		fmt.Fprintf(os.Stderr, "Error chmodding %s: %v\n", serveSystemdUnit, err)
 		exitFunc(1)
 	}
 	if _, err := f.WriteString(unit); err != nil {
