@@ -21,6 +21,12 @@
 
 - `img/cardinal.png` replaced (1 376 604 -> 1 670 161 bytes, 2026-10-13); the file is referenced by the `README.md` header logo. No code or docs changes.
 
+## 2.3.11 (2026-10-15)
+
+### Console
+
+- `cardinal attach`: client stdin is teed into the container log as `> cmd` lines — reconnect replays restore commands next to their answers instead of answers alone. Single funnel for every client (CLI, wings); bytes to the container unchanged.
+
 ## 2.3.10 (2026-10-15)
 
 ### Console
@@ -329,7 +335,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.3.10**. Detailed release notes below are maintained manually.
+> Current release: **v2.3.11**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

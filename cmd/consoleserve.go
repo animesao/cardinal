@@ -4,9 +4,12 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
+	"fmt"
 	"io"
 	"net"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -56,12 +59,19 @@ func ConsoleServe(args []string) {
 	var mu sync.Mutex
 	clients := make(map[net.Conn]struct{})
 
+	// logMu serializes log file writes: the stdout pump and every stdin
+	// tee below share this fd (opened without O_APPEND), so unlocked
+	// concurrent writes would interleave at the shared offset.
+	var logMu sync.Mutex
+
 	go func() {
 		buf := make([]byte, consoleBufSize)
 		for {
 			n, err := stdoutR.Read(buf)
 			if n > 0 {
+				logMu.Lock()
 				_, _ = logFile.Write(buf[:n])
+				logMu.Unlock()
 
 				mu.Lock()
 				for c := range clients {
@@ -131,7 +141,7 @@ func ConsoleServe(args []string) {
 		mu.Unlock()
 
 		go func(c net.Conn) {
-			_, _ = io.Copy(stdinW, c)
+			_, _ = io.Copy(&consoleInputLogger{w: stdinW, mu: &logMu, log: logFile}, c)
 			_ = c.Close()
 
 			mu.Lock()
@@ -139,4 +149,47 @@ func ConsoleServe(args []string) {
 			mu.Unlock()
 		}(conn)
 	}
+}
+
+// consoleInputLogger tees one attach client's stdin into the container log,
+// prefixing complete lines with "> ". The game log only carries output, so
+// without this every reconnect replay restores answers without the commands
+// that produced them. Bytes reach the container unchanged and immediately;
+// only a copy is buffered for line assembly. Unbounded lines (binary paste
+// without newlines) are dropped past 1 MiB rather than buffered forever.
+type consoleInputLogger struct {
+	w   io.Writer
+	mu  *sync.Mutex
+	log *os.File
+	buf []byte
+}
+
+func (e *consoleInputLogger) Write(p []byte) (int, error) {
+	n, err := e.w.Write(p)
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.buf = append(e.buf, p[:n]...)
+	for {
+		i := bytes.IndexByte(e.buf, '\n')
+		if i < 0 {
+			break
+		}
+		e.logInputLine(e.buf[:i])
+		e.buf = e.buf[i+1:]
+	}
+	if len(e.buf) > 1<<20 {
+		e.buf = nil
+	}
+	return n, err
+}
+
+func (e *consoleInputLogger) logInputLine(raw []byte) {
+	line := strings.TrimRight(string(raw), "\r")
+	if strings.TrimSpace(line) == "" {
+		return
+	}
+	if len(line) > 4096 {
+		line = line[:4096]
+	}
+	_, _ = fmt.Fprintln(e.log, "> "+line)
 }
