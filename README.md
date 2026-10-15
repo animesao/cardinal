@@ -9,7 +9,7 @@
 
 <p align="center">
   <!-- cardinal-version-badge:start -->
-  <img src="https://img.shields.io/badge/version-v2.3.6-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-v2.3.7-blue?style=flat-square">
   <!-- cardinal-version-badge:end -->
   <img src="https://img.shields.io/badge/go-1.26%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-Apache--2.0-green?style=flat-square">
@@ -984,6 +984,8 @@ Limits:
 ## Changelog
 
 <!-- cardinal-release:start -->
+**v2.3.7** — Security hardening: serve unit with the API token is written `0600` (was world-readable), DNS/hostnames are validated before landing in `resolv.conf` and neighbours' `/etc/hosts`, port protocols are allowlisted before reaching `iptables`.
+
 **v2.3.6** — `cardinal stats` redraws the table in place instead of scrolling (both local and remote modes).
 
 **v2.3.5** — Stats fix: `disk_usage_bytes` now includes named volumes (servers kept in `volumes/` showed kilobytes on gigabyte data); full tree walks cached per container (60s TTL).

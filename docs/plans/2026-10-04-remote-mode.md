@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.3.6`
-**Project release:** `v2.3.6`
+**Documentation version:** `2.3.7`
+**Project release:** `v2.3.7`
 <!-- cardinal-version:end -->
 
 # Remote Mode Expansion Implementation Plan

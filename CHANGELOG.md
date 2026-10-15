@@ -21,6 +21,15 @@
 
 - `img/cardinal.png` replaced (1 376 604 -> 1 670 161 bytes, 2026-10-13); the file is referenced by the `README.md` header logo. No code or docs changes.
 
+## 2.3.7 (2026-10-15)
+
+### Security hardening
+
+- `cardinal serve on`: the systemd unit embedding `CARDINAL_TOKEN` is now written `0600` (was world-readable `0644` via umask).
+- DNS/hosts: servers in `HostConfig.Dns` must be IPs before landing in `resolv.conf`; `/etc/hosts` entries are validated (no whitespace/control characters), so crafted names cannot inject lines into neighbours' hosts files.
+- Port protocol allowlist (`tcp/udp/sctp/icmp`, normalized lowercase): the raw suffix no longer reaches `iptables -p`.
+- Regression tests: `internal/portmap` protocol cases.
+
 ## 2.3.4 (2026-10-09)
 
 ### CI only (no runtime changes)
@@ -302,7 +311,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.3.6**. Detailed release notes below are maintained manually.
+> Current release: **v2.3.7**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
