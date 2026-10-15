@@ -21,6 +21,12 @@
 
 - `img/cardinal.png` replaced (1 376 604 -> 1 670 161 bytes, 2026-10-13); the file is referenced by the `README.md` header logo. No code or docs changes.
 
+## 2.3.8 (2026-10-15)
+
+### Console
+
+- `cardinal attach`: echo piped stdin lines locally (container stdin is a pipe with no echo back; terminal input already echoes via the kernel, unchanged there). Socket bytes unchanged.
+
 ## 2.3.7 (2026-10-15)
 
 ### Security hardening
@@ -311,7 +317,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.3.7**. Detailed release notes below are maintained manually.
+> Current release: **v2.3.8**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
