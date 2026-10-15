@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"bufio"
 	"io"
 	"net"
 	"os"
@@ -90,7 +91,11 @@ func ConsoleServe(args []string) {
 			break
 		}
 
-		// Send log tail before adding to broadcast list (no lock needed)
+		// Send log tail before adding to broadcast list (no lock needed).
+		// When seeking into the middle of the file, skip to the next line
+		// boundary first: otherwise the new client starts with half a line,
+		// which the panel cannot dedupe against its replay guard and which
+		// breaks command/answer adjacency in the view.
 		if fi, err := os.Stat(logPath); err == nil {
 			f, err := os.Open(logPath)
 			if err == nil {
@@ -98,14 +103,26 @@ func ConsoleServe(args []string) {
 				if offset < 0 {
 					offset = 0
 				}
+				seeked := false
 				if offset > 0 {
 					if _, err := f.Seek(offset, io.SeekStart); err != nil {
 						_ = f.Close()
 						_ = conn.Close()
 						continue
 					}
+					seeked = true
 				}
-				_, _ = io.Copy(conn, f)
+				if seeked {
+					br := bufio.NewReader(f)
+					if _, err := br.ReadBytes('\n'); err != nil {
+						_ = f.Close()
+						_ = conn.Close()
+						continue
+					}
+					_, _ = io.Copy(conn, br)
+				} else {
+					_, _ = io.Copy(conn, f)
+				}
 				_ = f.Close()
 			}
 		}
