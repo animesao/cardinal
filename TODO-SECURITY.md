@@ -63,6 +63,22 @@
   0600 + осознанный комментарий в коде, альтернатива (LoadCredential) —
   отдельным этапом. Проверка: `go vet` OK.
 
+## Этап 4 — docs и архитектура (всё по реальности кода)
+
+- [x] **Гейты в runtime-слой**: `internal/container/security_policy.go`
+  (`ValidateRuntimePolicy`, `DangerousCapsRequested` с `ALL`, `IsRootUser`);
+  `cmd/security.go` делегирует; API create энфорсит + новые поля
+  `AllowDangerousCaps`/`AllowRoot`, `Privileged: true` → 403.
+  Тесты `security_policy_test.go`. Проверка: `go vet` OK.
+- [x] **seccomp/apparmor fail-closed**: `start.go` отказывает при заданных
+  профилях вместо тихого игнора. Проверка: `go vet` OK.
+- [x] **SECURITY.md переписан под правду**: MKNOD вне дефолта, гейты CLI+API,
+  seccomp/AppArmor «planned, not enforced», минимальный /dev, токен обязателен,
+  allowlist enforced, честный `verify`, чеклист обновлён.
+- [x] **docs en/ru usage + commands + AUDIT + README**: убраны заявления про
+  seccomp/AppArmor «по умолчанию», MKNOD из дефолтных списков.
+  Проверка: сверены глазами (доки не влияют на сборку).
+
 ## Принятые риски (без кода)
 
 - CapAdd `ALL`/host-net через API — by design при однотокенной модели.

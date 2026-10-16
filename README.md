@@ -392,8 +392,8 @@ Use `-v` (bind mount) for live file sharing — changes on host are instantly vi
 | `--healthcheck-interval` | Health check interval (seconds) |
 | `--healthcheck-retries` | Health check retries |
 | `--healthcheck-timeout` | Health check timeout (seconds) |
-| `--seccomp-profile` | Path to seccomp profile JSON (default: built-in profile) |
-| `--apparmor-profile` | AppArmor profile name |
+| `--seccomp-profile` | Accepted but not yet enforced (fails closed); planned |
+| `--apparmor-profile` | Accepted but not yet enforced (fails closed); planned |
 | `--isolated` | Isolate container from other containers (network segmentation) |
 | `--encrypted-backup` | Encrypt backup archives with AES-256-GCM |
 | `--audit-log` | Enable audit logging for container events |

@@ -203,8 +203,8 @@ cardinal logout registry.example.com
 | `--healthcheck-interval SECONDS` | Интервал healthcheck |
 | `--healthcheck-retries N` | Число последовательных ошибок до перезапуска |
 | `--healthcheck-timeout SECONDS` | Таймаут healthcheck |
-| `--seccomp-profile FILE` | Путь к JSON-профилю seccomp (по умолчанию: встроенный профиль) |
-| `--apparmor-profile NAME` | Имя профиля AppArmor |
+| `--seccomp-profile FILE` | Принимается, но пока не применяется (fail closed); запланировано |
+| `--apparmor-profile NAME` | Принимается, но пока не применяется (fail closed); запланировано |
 | `--isolated` | Изолировать контейнер от других (сетевая сегментация) |
 | `--encrypted-backup` | Шифровать архивы бэкапов AES-256-GCM |
 | `--audit-log` | Включить аудит-логирование для событий контейнера |

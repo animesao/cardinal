@@ -240,6 +240,12 @@ type CreateHostConfig struct {
 	DNS            []string                 `json:"Dns,omitempty"`
 	CapAdd         []string                 `json:"CapAdd,omitempty"`
 	CapDrop        []string                 `json:"CapDrop,omitempty"`
+	// Cardinal extensions (ignored by upstream Docker clients): explicit
+	// acknowledgement for the runtime hardening policy. Without them the
+	// API refuses dangerous capabilities and explicit root users, exactly
+	// like the CLI does without --allow-dangerous-caps / --allow-root.
+	AllowDangerousCaps bool `json:"AllowDangerousCaps,omitempty"`
+	AllowRoot          bool `json:"AllowRoot,omitempty"`
 	Memory         int64                    `json:"Memory,omitempty"`
 	NanoCPUs       int64                    `json:"NanoCpus,omitempty"`
 	DiskLimit      int64                    `json:"DiskLimit,omitempty"`

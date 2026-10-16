@@ -51,6 +51,16 @@ func (c *Container) startInternal() error {
 	staleIP := c.IP
 	c.Status = Created
 	c.dataMu.Unlock()
+	// Seccomp/AppArmor profiles are accepted as configuration but the
+	// filters are not applied yet (no BPF compiler / no profile loader in
+	// the start path). Fail closed instead of running unconfined while the
+	// operator believes a profile is enforced.
+	if c.SeccompProfile != "" {
+		return fmt.Errorf("seccomp profiles are not enforced yet (profile %q would be silently ignored)", c.SeccompProfile)
+	}
+	if c.AppArmorProfile != "" {
+		return fmt.Errorf("AppArmor profiles are not enforced yet (profile %q would be silently ignored)", c.AppArmorProfile)
+	}
 	if staleIP != "" {
 		// A hard host crash can leave persisted allocation state behind even
 		// though the process is no longer alive. Release it before allocating a

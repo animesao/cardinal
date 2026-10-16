@@ -693,7 +693,7 @@ cardinal run -d --user 1000:1000 nginx   # UID:GID
 
 ### Capabilities
 
-По умолчанию cardinal сохраняет безопасный Docker-совместимый набор capabilities, необходимый обычным образам (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `FSETID`, `KILL`, `SETGID`, `SETUID`, `SETPCAP`, `NET_BIND_SERVICE`, `NET_RAW`, `SYS_CHROOT`, `MKNOD`, `AUDIT_WRITE` и `SETFCAP`). Опасные capabilities, такие как `SYS_ADMIN` и `SYS_MODULE`, по-прежнему отключены. Поэтому стандартные образы вроде `nginx:alpine` могут нормально подготовить файловую систему.
+По умолчанию cardinal сохраняет безопасный Docker-совместимый набор capabilities, необходимый обычным образам (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `FSETID`, `KILL`, `SETGID`, `SETUID`, `SETPCAP`, `NET_BIND_SERVICE`, `NET_RAW`, `SYS_CHROOT`, `AUDIT_WRITE` и `SETFCAP`). В отличие от Docker, `MKNOD` **не** входит в дефолт (вернуть через `--cap-add MKNOD`, если ворклоад создаёт девайс-ноды). Опасные capabilities, такие как `SYS_ADMIN` и `SYS_MODULE`, отключены без `--allow-dangerous-caps`. Поэтому стандартные образы вроде `nginx:alpine` могут нормально подготовить файловую систему.
 
 ```bash
 # Добавить capability
@@ -731,27 +731,19 @@ cardinal run -d --sysctl net.ipv4.ip_forward=1 nginx
 
 ### Профиль Seccomp
 
-cardinal применяет профиль seccomp по умолчанию, который блокирует 30+ опасных syscalls, включая `mount`, `ptrace`, `reboot`, `kexec_load`, `bpf` и `init_module`.
-
-```bash
-# Использовать профиль seccomp по умолчанию (автоматически)
-cardinal run -d nginx
-
-# Использовать кастомный профиль seccomp
-cardinal run -d --seccomp-profile /путь/к/профилю.json nginx
-```
+> **Статус: запланировано, не применяется.** Профиль по умолчанию есть в
+> дереве и `--seccomp-profile` принимается, но фильтр не применяется
+> (BPF-компилятор не реализован). Передача профиля сейчас завершается
+> явной ошибкой вместо тихого запуска без изоляции. Текущее ограничение
+> сисколлов: всегда включённый `no_new_privs` + дроп capabilities +
+> read-only `/proc/sys` и `/sys`.
 
 ### Профиль AppArmor
 
-cardinal применяет профиль AppArmor по умолчанию (`cardinal-container`), который ограничивает доступ к чувствительным путям хоста и ограничивает возможности контейнера.
-
-```bash
-# Использовать профиль AppArmor по умолчанию (автоматически)
-cardinal run -d nginx
-
-# Использовать кастомный профиль AppArmor
-cardinal run -d --apparmor-profile мой-профиль nginx
-```
+> **Статус: запланировано, не применяется.** Шаблон профиля
+> (`cardinal-container`) есть в дереве и `--apparmor-profile` принимается,
+> но профиль не загружается и не применяется. Передача профиля сейчас
+> завершается явной ошибкой вместо тихого запуска без изоляции.
 
 ### Сетевая изоляция
 

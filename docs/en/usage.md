@@ -664,7 +664,7 @@ cardinal run -d --user 1000:1000 nginx   # UID:GID
 
 ### Capabilities
 
-By default, cardinal keeps the Docker-compatible safe capability set needed by common images (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `FSETID`, `KILL`, `SETGID`, `SETUID`, `SETPCAP`, `NET_BIND_SERVICE`, `NET_RAW`, `SYS_CHROOT`, `MKNOD`, `AUDIT_WRITE`, and `SETFCAP`). Dangerous capabilities such as `SYS_ADMIN` and `SYS_MODULE` remain dropped. This lets standard images such as `nginx:alpine` initialize their filesystems normally.
+By default, cardinal keeps a Docker-compatible safe capability set needed by common images (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `FSETID`, `KILL`, `SETGID`, `SETUID`, `SETPCAP`, `NET_BIND_SERVICE`, `NET_RAW`, `SYS_CHROOT`, `AUDIT_WRITE`, and `SETFCAP`). Unlike Docker, `MKNOD` is **not** in the default set (grant it explicitly with `--cap-add MKNOD` when the workload must create device nodes). Dangerous capabilities such as `SYS_ADMIN` and `SYS_MODULE` remain dropped unless acknowledged with `--allow-dangerous-caps`. This lets standard images such as `nginx:alpine` initialize their filesystems normally.
 
 ```bash
 # Add capabilities
@@ -702,27 +702,19 @@ cardinal run -d --sysctl net.ipv4.ip_forward=1 nginx
 
 ### Seccomp Profile
 
-cardinal applies a default seccomp profile that blocks 30+ dangerous syscalls including `mount`, `ptrace`, `reboot`, `kexec_load`, `bpf`, and `init_module`.
-
-```bash
-# Use default seccomp profile (automatic)
-cardinal run -d nginx
-
-# Use custom seccomp profile
-cardinal run -d --seccomp-profile /path/to/profile.json nginx
-```
+> **Status: planned, not enforced.** A default profile ships in-tree and
+> `--seccomp-profile` is accepted, but the filter is not applied yet (the
+> BPF compiler is unimplemented). Passing `--seccomp-profile` currently
+> fails closed with an explicit error instead of running unconfined.
+> Current syscall confinement is `no_new_privs` (always on) + capability
+> drops + read-only `/proc/sys` and `/sys`.
 
 ### AppArmor Profile
 
-cardinal applies a default AppArmor profile (`cardinal-container`) that restricts access to sensitive host paths and limits container capabilities.
-
-```bash
-# Use default AppArmor profile (automatic)
-cardinal run -d nginx
-
-# Use custom AppArmor profile
-cardinal run -d --apparmor-profile my-profile nginx
-```
+> **Status: planned, not enforced.** A profile template (`cardinal-container`)
+> ships in-tree and `--apparmor-profile` is accepted, but it is not loaded
+> or applied yet. Passing a profile currently fails closed with an explicit
+> error instead of running unconfined.
 
 ### Network Isolation
 
