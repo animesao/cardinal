@@ -92,9 +92,10 @@ func loadBlueprintRepos() *blueprintRepoConfig {
 			cfg.Repos[i].URL = newURL
 			migrated = true
 		}
-		// Normalize URL format
+		// Normalize URL format (never blank a stored entry: an http:// URL
+		// rejected by normalizeRepoURL stays as-is and warns at fetch time).
 		normalized := normalizeRepoURL(cfg.Repos[i].URL)
-		if normalized != cfg.Repos[i].URL {
+		if normalized != "" && normalized != cfg.Repos[i].URL {
 			cfg.Repos[i].URL = normalized
 			migrated = true
 		}
@@ -132,7 +133,13 @@ func normalizeRepoURL(input string) string {
 	if strings.HasPrefix(input, "https://raw.githubusercontent.com/") {
 		return strings.TrimSuffix(input, "/")
 	}
-	if strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://") {
+	if strings.HasPrefix(input, "http://") {
+		// Plain HTTP registries would serve blueprints (arbitrary container
+		// specs: images, commands, capabilities) to a MITM. Refuse; the
+		// shorthand and https:// forms above cover legitimate uses.
+		return ""
+	}
+	if strings.HasPrefix(input, "https://") {
 		input = strings.TrimSuffix(input, "/")
 		if strings.Contains(input, "github.com/") {
 			return strings.Replace(input, "github.com", "raw.githubusercontent.com", 1)

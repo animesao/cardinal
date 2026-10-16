@@ -140,6 +140,9 @@ func startLocalReplica(ctx context.Context, serviceName string, svc *Service) er
 }
 
 func startRemoteReplica(ctx context.Context, serviceName string, svc *Service, node *Node) error {
+	if err := requireClusterToken("schedule"); err != nil {
+		return err
+	}
 	replicaID := generateID()
 
 	reqBody, _ := json.Marshal(map[string]interface{}{

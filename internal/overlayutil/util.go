@@ -13,6 +13,15 @@ import (
 	"strings"
 )
 
+// Decompression-bomb caps for layer extraction, mirroring the Import caps
+// in internal/image/export.go. A sha256-valid blob may still expand to
+// gigabytes; without caps one malicious layer fills the host disk.
+const (
+	maxLayerEntries    = 100000
+	maxLayerEntryBytes = int64(4 << 30)
+	maxLayerTotalBytes = int64(16 << 30)
+)
+
 func MountOverlay(lower, upper, work, merged string) error {
 	if runtime.GOOS != "linux" {
 		return nil
@@ -76,6 +85,8 @@ func ExtractLayer(cachePath, rootfsDir string) error {
 	}
 
 	tr := tar.NewReader(gzr)
+	var entries int64
+	var totalBytes int64
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -83,6 +94,19 @@ func ExtractLayer(cachePath, rootfsDir string) error {
 		}
 		if err != nil {
 			return err
+		}
+		entries++
+		if entries > maxLayerEntries {
+			return fmt.Errorf("layer contains too many entries (limit %d)", maxLayerEntries)
+		}
+		if hdr.Size < 0 || hdr.Size > maxLayerEntryBytes {
+			return fmt.Errorf("layer entry %q is too large", hdr.Name)
+		}
+		if hdr.Typeflag == tar.TypeReg {
+			if hdr.Size > maxLayerTotalBytes-totalBytes {
+				return fmt.Errorf("layer exceeds total size limit")
+			}
+			totalBytes += hdr.Size
 		}
 
 		path, err := safeTarPath(root, hdr.Name)

@@ -62,6 +62,17 @@ func registryChallengeToken(ctx context.Context, host, repo string) (string, err
 	if realm == "" {
 		return "", fmt.Errorf("registry %s did not return a WWW-Authenticate challenge", host)
 	}
+	// Pin the token realm: a malicious registry (or MITM) must not redirect
+	// our stored credentials to an attacker host via realm=. The realm host
+	// must be the registry itself, except for registries that legitimately
+	// split auth onto a dedicated host (Docker Hub: auth.docker.io).
+	realmURL, err := url.Parse(realm)
+	if err != nil || (realmURL.Scheme != "https" && realmURL.Scheme != "http") {
+		return "", fmt.Errorf("registry %s returned an invalid token realm %q", host, realm)
+	}
+	if !allowedTokenHost(host, realmURL.Hostname()) {
+		return "", fmt.Errorf("registry %s redirected auth to foreign realm host %q", host, realmURL.Hostname())
+	}
 	u := realm + "?service=" + url.QueryEscape(service) + "&scope=" + url.QueryEscape(pullScope(scope, repo))
 	req2, err := http.NewRequestWithContext(ctx, "GET", u, nil)
 	if err != nil {
@@ -101,6 +112,28 @@ func pullScope(challengeScope, repo string) string {
 		return want
 	}
 	return challengeScope
+}
+
+// allowedTokenHosts lists registries whose token endpoint legitimately
+// lives on a different host than the registry API itself.
+var allowedTokenHosts = map[string][]string{
+	"registry-1.docker.io": {"auth.docker.io", "registry-1.docker.io", "registry.docker.io"},
+	"registry.docker.io":   {"auth.docker.io", "registry-1.docker.io", "registry.docker.io"},
+	"docker.io":            {"auth.docker.io", "registry-1.docker.io", "registry.docker.io"},
+}
+
+// allowedTokenHost reports whether realmHost may receive credentials meant
+// for registryHost. Default: same host only.
+func allowedTokenHost(registryHost, realmHost string) bool {
+	if strings.EqualFold(realmHost, registryHost) {
+		return true
+	}
+	for _, h := range allowedTokenHosts[strings.ToLower(registryHost)] {
+		if strings.EqualFold(realmHost, h) {
+			return true
+		}
+	}
+	return false
 }
 
 // parseBearerChallenge extracts realm, service and scope from a
@@ -156,6 +189,13 @@ func PullWithPlatformContext(ctx context.Context, ref, platformOS, platformArch 
 	if img := LoadFromStore(name, tag); img != nil {
 		fmt.Printf("Image %s:%s already exists\n", name, tag)
 		return img, nil
+	}
+
+	// Registry allowlist gate: with CARDINAL_REGISTRY_STRICT=1 pulls from
+	// hosts outside the allowlist are refused before any network contact.
+	// Without STRICT the helper is a no-op returning nil.
+	if err := CheckRegistryAllowed(name); err != nil {
+		return nil, err
 	}
 
 	fmt.Printf("Pulling %s:%s...\n", name, tag)

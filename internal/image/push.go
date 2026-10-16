@@ -24,6 +24,11 @@ func configDigest(name, tag string) string {
 func Push(ref, username, password string) error {
 	name, tag := parseRef(ref)
 
+	// Same allowlist gate as pulls (see PullWithPlatformContext).
+	if err := CheckRegistryAllowed(name); err != nil {
+		return err
+	}
+
 	img := LoadFromStore(name, tag)
 	if img == nil {
 		return fmt.Errorf("image %s:%s not found locally", name, tag)

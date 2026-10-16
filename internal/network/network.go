@@ -18,9 +18,16 @@ func EnsureSysctl() {
 	if err := exec.Command("sysctl", "-w", "net.ipv4.ip_forward=1").Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: sysctl ip_forward: %v\n", err)
 	}
-	if err := exec.Command("sysctl", "-w", "net.ipv4.conf.all.route_localnet=1").Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: sysctl route_localnet: %v\n", err)
+	// route_localnet lets forwarded packets target 127/8 — i.e. containers
+	// could reach host-loopback services (including a tokenless API).
+	// Off by default; opt in only with CARDINAL_ROUTE_LOCALNET=1.
+	routeLocalnet := os.Getenv("CARDINAL_ROUTE_LOCALNET") == "1"
+	if routeLocalnet {
+		if err := exec.Command("sysctl", "-w", "net.ipv4.conf.all.route_localnet=1").Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: sysctl route_localnet: %v\n", err)
+		}
 	}
+
 
 	_ = os.MkdirAll("/etc/sysctl.d", 0755)
 	confPath := "/etc/sysctl.d/99-cardinal.conf"
@@ -30,8 +37,10 @@ func EnsureSysctl() {
 		entries = strings.Split(string(data), "\n")
 	}
 	need := map[string]string{
-		"net.ipv4.ip_forward":              "1",
-		"net.ipv4.conf.all.route_localnet": "1",
+		"net.ipv4.ip_forward": "1",
+	}
+	if os.Getenv("CARDINAL_ROUTE_LOCALNET") == "1" {
+		need["net.ipv4.conf.all.route_localnet"] = "1"
 	}
 	write := false
 	for k, v := range need {
@@ -221,6 +230,20 @@ func EnsureBridge() error {
 	if err := exec.Command("iptables", "-C", "FORWARD", "-o", BridgeName, "-j", "ACCEPT").Run(); err != nil {
 		if err := exec.Command("iptables", "-A", "FORWARD", "-o", BridgeName, "-j", "ACCEPT").Run(); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: iptables FORWARD -o: %v\n", err)
+		}
+	}
+
+	// Egress guard: containers must not reach host-loopback services or
+	// cloud metadata endpoints through the gateway. Dropped before the
+	// blanket ACCEPTs above (insert at head, idempotent via -C check).
+	// The bridge subnet itself (gateway/DNS) stays reachable.
+	for _, dst := range []string{"127.0.0.0/8", "169.254.0.0/16"} {
+		if err := exec.Command("iptables", "-C", "FORWARD",
+			"-i", BridgeName, "-d", dst, "-j", "DROP").Run(); err != nil {
+			if err := exec.Command("iptables", "-I", "FORWARD", "1",
+				"-i", BridgeName, "-d", dst, "-j", "DROP").Run(); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: iptables FORWARD egress guard %s: %v\n", dst, err)
+			}
 		}
 	}
 	return nil

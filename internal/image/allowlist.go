@@ -170,6 +170,18 @@ func AllowlistSnapshot() []string {
 	return out
 }
 
+// CheckRegistryAllowed enforces the pull/push gate for a full image name
+// (registryHostAndRepo extracts the host). With CARDINAL_REGISTRY_STRICT=1
+// hosts outside the allowlist are refused before any network contact;
+// otherwise it is a no-op returning nil.
+func CheckRegistryAllowed(name string) error {
+	host, _ := registryHostAndRepo(name)
+	if !IsRegistryAllowed(host) {
+		return fmt.Errorf("registry %q is not in the allowlist (CARDINAL_REGISTRY_STRICT=1)", host)
+	}
+	return nil
+}
+
 // IsRegistryAllowed reports whether `host` is in the current allowlist.
 // When CARDINAL_REGISTRY_STRICT=1 is unset, the function returns true for any
 // host (the allowlist then serves purely as documentation).

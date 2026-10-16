@@ -54,6 +54,17 @@ func TestStartServerWithTLSRequiresBothFiles(t *testing.T) {
 	}
 }
 
+func TestStartServerRefusesTokenlessBind(t *testing.T) {
+	oldToken := authToken
+	t.Cleanup(func() { authToken = oldToken })
+	SetAuthToken("")
+	// Even loopback must not serve the privileged API without a token:
+	// any local process (or container via route_localnet) could drive it.
+	if err := StartServerWithTLS(2375, "127.0.0.1", "", ""); err == nil {
+		t.Fatal("StartServerWithTLS unexpectedly served loopback without a token")
+	}
+}
+
 func TestAuthMiddlewareRequiresBearerHeader(t *testing.T) {
 	oldToken := authToken
 	t.Cleanup(func() { authToken = oldToken })

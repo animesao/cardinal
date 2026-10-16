@@ -758,6 +758,10 @@ func fetchBlueprintRegistry() (*blueprintRegistry, error) {
 		if !repo.Enabled {
 			continue
 		}
+		if !strings.HasPrefix(repo.URL, "https://") {
+			errs = append(errs, fmt.Sprintf("%s: refusing plain-HTTP blueprint repository %q (re-add it via https://)", repo.Name, repo.URL))
+			continue
+		}
 		registryURL := fmt.Sprintf("%s/%s/registry.json", repo.URL, repo.Branch)
 		data, err := fetchURL(registryURL)
 		if err != nil {

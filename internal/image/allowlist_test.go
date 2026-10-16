@@ -47,6 +47,24 @@ func TestAllowlist_PermissiveModeLetsEverything(t *testing.T) {
 	}
 }
 
+func TestCheckRegistryAllowedGate(t *testing.T) {
+	t.Setenv("CARDINAL_DATA_DIR", t.TempDir())
+	t.Setenv("CARDINAL_REGISTRY_STRICT", "1")
+	if err := InitRegistryAllowlist(); err != nil {
+		t.Fatalf("InitRegistryAllowlist: %v", err)
+	}
+	if err := CheckRegistryAllowed("attacker.example.com/evil:latest"); err == nil {
+		t.Error("strict gate must refuse off-allowlist pulls before any network contact")
+	}
+	if err := CheckRegistryAllowed("nginx:alpine"); err != nil {
+		t.Errorf("strict gate must allow default Hub images: %v", err)
+	}
+	t.Setenv("CARDINAL_REGISTRY_STRICT", "0")
+	if err := CheckRegistryAllowed("attacker.example.com/evil:latest"); err != nil {
+		t.Errorf("permissive gate must allow everything: %v", err)
+	}
+}
+
 func TestAllowlist_AddRemove(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("CARDINAL_DATA_DIR", dir)

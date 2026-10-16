@@ -5,6 +5,28 @@ import (
 	"testing"
 )
 
+func TestAllowedTokenHost(t *testing.T) {
+	cases := []struct {
+		registry, realm string
+		want            bool
+	}{
+		{"ghcr.io", "ghcr.io", true},
+		{"registry-1.docker.io", "auth.docker.io", true},
+		{"registry-1.docker.io", "registry-1.docker.io", true},
+		{"docker.io", "auth.docker.io", true},
+		{"ghcr.io", "evil.example.com", false},
+		{"registry-1.docker.io", "evil.example.com", false},
+		{"registry-1.docker.io", "auth.docker.io.evil.example.com", false},
+		{"my-reg.local", "my-reg.local", true},
+		{"my-reg.local", "other.local", false},
+	}
+	for _, tc := range cases {
+		if got := allowedTokenHost(tc.registry, tc.realm); got != tc.want {
+			t.Errorf("allowedTokenHost(%q, %q) = %v, want %v", tc.registry, tc.realm, got, tc.want)
+		}
+	}
+}
+
 func TestParseBearerChallenge(t *testing.T) {
 	realm, service, scope := parseBearerChallenge(
 		`Bearer realm="https://ghcr.io/token",service="ghcr.io",scope="repository:user/image:pull"`)
