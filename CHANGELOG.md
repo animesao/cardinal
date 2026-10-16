@@ -1,9 +1,20 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.3.6`
-**Project release:** `v2.3.6`
+**Documentation version:** `2.3.13`
+**Project release:** `v2.3.13`
 <!-- cardinal-version:end -->
 
 ## Unreleased
+
+## 2.3.13 (2026-10-16)
+
+### Security
+
+- Minimal container `/dev` (pruned to pseudo-devices; `MKNOD` removed from the default capability set, grant via `--cap-add MKNOD`).
+- API server refuses to start without a token on any bind, loopback included; `route_localnet` is opt-in (`CARDINAL_ROUTE_LOCALNET=1`).
+- Registry token-realm pinning (Docker Hub split-host allowlisted); registry allowlist enforced on pull and push under `CARDINAL_REGISTRY_STRICT=1`.
+- Layer extraction caps (100k entries / 4G per entry / 16G total, mirroring `Import`).
+- Egress DROP for `127.0.0.0/8` and `169.254.0.0/16` from the bridge.
+- Backup restore warns loudly without a checksum sidecar; blueprint repos must be https; cluster join/schedule RPCs fail closed without `CARDINAL_TOKEN`; `login` reads the password without echo.
 
 ### Stats: live in-place refresh
 
@@ -341,7 +352,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.3.12**. Detailed release notes below are maintained manually.
+> Current release: **v2.3.13**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

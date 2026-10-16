@@ -9,7 +9,7 @@
 
 <p align="center">
   <!-- cardinal-version-badge:start -->
-  <img src="https://img.shields.io/badge/version-v2.3.12-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-v2.3.13-blue?style=flat-square">
   <!-- cardinal-version-badge:end -->
   <img src="https://img.shields.io/badge/go-1.26%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-Apache--2.0-green?style=flat-square">
@@ -984,6 +984,8 @@ Limits:
 ## Changelog
 
 <!-- cardinal-release:start -->
+**v2.3.13** — Security hardening: minimal container `/dev` (pruned to pseudo-devices, `MKNOD` out of the default capabilities), API refuses to serve without a token (loopback included), registry token-realm pinning, decompression-bomb caps on layer extraction, registry allowlist enforced on pull/push, egress DROP for `127/8` + `169.254/16`, backup-restore warning without checksum sidecar, blueprint repos https-only, cluster RPCs fail closed without token, no-echo password prompt in `login`.
+
 **v2.3.12** — `cardinal attach`: ввод консоли пишется в лог (фикс errcheck в CI).
 
 **v2.3.11** — `cardinal attach`: ввод консоли пишется в лог с префиксом `> ` — реконнекты возвращают команды рядом с ответами, а не одни ответы.

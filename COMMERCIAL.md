@@ -1,8 +1,8 @@
 # Cardinal — Commercial Model
 
 <!-- cardinal-version:start -->
-**Documentation version:** `2.3.12`
-**Project release:** `v2.3.12`
+**Documentation version:** `2.3.13`
+**Project release:** `v2.3.13`
 <!-- cardinal-version:end -->
 
 ## Cardinal Community
