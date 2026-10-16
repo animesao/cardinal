@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.3.13`
-**Project release:** `v2.3.13`
+**Documentation version:** `2.3.14`
+**Project release:** `v2.3.14`
 <!-- cardinal-version:end -->
 
 # Installing cardinal on Gentoo / Funtoo / Calculate

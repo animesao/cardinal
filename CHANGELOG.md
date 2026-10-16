@@ -5,6 +5,16 @@
 
 ## Unreleased
 
+## 2.3.14 (2026-10-16)
+
+### Fix
+
+- `cardinal serve --token` снова доходит до сервера: cobra-обёртка больше не
+  выдёргивает `--host`/`-H`/`--token` из аргументов `serve` в remote-переменные
+  (флаг приходил пустым, и serve с обязательным токеном отказывался
+  стартовать — ломал автоспавн из wings и e2e). Wings дополнительно дублирует
+  токен через `CARDINAL_TOKEN` в окружении дочернего процесса.
+
 ## 2.3.13 (2026-10-16)
 
 ### Security
@@ -352,7 +362,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.3.13**. Detailed release notes below are maintained manually.
+> Current release: **v2.3.14**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
