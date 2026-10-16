@@ -23,11 +23,6 @@ const (
 	ExitCodePermission  = 77 // EX_NOPERM
 )
 
-// dangerousCaps mirrors container.DangerousCaps for CLI messages; the
-// enforcement itself lives in internal/container (ValidateRuntimePolicy)
-// so the API enforces the same policy.
-var dangerousCaps = container.DangerousCaps
-
 // validateDangerousRuntimeOptions enforces the runtime hardening policy.
 //
 // Two distinct policies:
