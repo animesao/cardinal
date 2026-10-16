@@ -1,3 +1,8 @@
+<!-- cardinal-version:start -->
+**Documentation version:** `2.3.12`
+**Project release:** `v2.3.12`
+<!-- cardinal-version:end -->
+
 # TODO — устранение находок аудита безопасности cardinal (16.10.2026)
 
 Источник: аудит container-escape поверхности (Docker-класс).
