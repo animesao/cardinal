@@ -940,8 +940,8 @@ cardinal run -d
 | Compose depends_on | ✅ | ✅ |
 | Cluster orchestration | ✅ | ✅ (Swarm) |
 | Rolling updates | ✅ | ✅ |
-| Seccomp profile | ✅ (default + custom) | ✅ |
-| AppArmor profile | ✅ (default + custom) | ✅ |
+| Seccomp profile | ❌ (planned, fail-closed) | ✅ |
+| AppArmor profile | ❌ (planned, fail-closed) | ✅ |
 | Network segmentation | ✅ (--isolated) | ✅ (network policies) |
 | Backup encryption | ✅ (AES-256-GCM) | ❌ |
 | Audit logging | ✅ | ❌ (auditd integration) |
@@ -978,6 +978,58 @@ Limits:
 - Remote `events --since` filters client-side from subscribe time.
 - `logs --previous`/`--all` stay local-only.
 - Remote `logs -f` survives log rotation (offset reset on fresh `start`) but ends if the container is removed.
+
+---
+
+## API authentication (cardinal serve)
+
+`cardinal serve` exposes a Docker-compatible REST API: whoever can call it
+can `exec` into and `create` arbitrary containers — that is root on the host.
+So the API is gated by a Bearer token, **required on any bind since v2.3.13**
+(loopback included; previously `127.0.0.1` worked without one, which meant
+any local process — or any container, via the gateway — could drive it).
+
+Generate a token once:
+
+```bash
+openssl rand -hex 32
+```
+
+Run with it (flag or env — flag wins if both are set):
+
+```bash
+cardinal serve -H 127.0.0.1 -p 2375 --token <токен>
+CARDINAL_TOKEN=<токен> cardinal serve -H 127.0.0.1 -p 2375
+```
+
+Call the API with the token:
+
+```bash
+curl -s -H "Authorization: Bearer <токен>" http://127.0.0.1:2375/version
+curl -s -H "Authorization: Bearer <токен>" http://127.0.0.1:2375/containers/json
+```
+
+Systemd unit (the token is root-equivalent — keep the file `0600`):
+
+```ini
+[Service]
+ExecStart=/usr/local/bin/cardinal serve -H 127.0.0.1 -p 2375
+Environment=CARDINAL_TOKEN=<токен>
+```
+
+```bash
+sudo chmod 600 /etc/systemd/system/cardinal-serve.service
+sudo systemctl daemon-reload && sudo systemctl restart cardinal-serve
+```
+
+Notes:
+
+- External binds (`-H 0.0.0.0`) additionally want `--tls-cert`/`--tls-key`,
+  otherwise the Bearer token travels in cleartext.
+- `cardinal-wings` passes a random token itself when it spawns
+  `cardinal serve` — nothing to configure there.
+- Portainer / remote CLI: same `Authorization: Bearer <токен>` header
+  (`cardinal --host http://IP:2375 --token <токен> ...`).
 
 ---
 
