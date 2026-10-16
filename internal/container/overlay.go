@@ -110,12 +110,18 @@ func SetupDiskLimit(overlayBase, id string, limitBytes int64) error {
 
 	// Mount disk image to data dir
 	if !isMounted(mnt) {
-		os.MkdirAll(mnt, 0755)
+		if err := os.MkdirAll(mnt, 0755); err != nil {
+			return fmt.Errorf("create mount point %s: %w (check disk space/inodes)", mnt, err)
+		}
 		if out, err := exec.Command("mount", "-o", "loop", imgPath, mnt).CombinedOutput(); err != nil {
 			return fmt.Errorf("mount disk: %s: %w", strings.TrimSpace(string(out)), err)
 		}
-		os.MkdirAll(filepath.Join(mnt, "upper"), 0755)
-		os.MkdirAll(filepath.Join(mnt, "work"), 0755)
+		if err := os.MkdirAll(filepath.Join(mnt, "upper"), 0755); err != nil {
+			return fmt.Errorf("create %s/upper: %w", mnt, err)
+		}
+		if err := os.MkdirAll(filepath.Join(mnt, "work"), 0755); err != nil {
+			return fmt.Errorf("create %s/work: %w", mnt, err)
+		}
 	}
 	return nil
 }
