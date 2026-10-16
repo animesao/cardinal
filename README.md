@@ -9,7 +9,7 @@
 
 <p align="center">
   <!-- cardinal-version-badge:start -->
-  <img src="https://img.shields.io/badge/version-v2.3.14-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-v2.4.1-blue?style=flat-square">
   <!-- cardinal-version-badge:end -->
   <img src="https://img.shields.io/badge/go-1.26%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-Apache--2.0-green?style=flat-square">
@@ -1036,6 +1036,8 @@ Notes:
 ## Changelog
 
 <!-- cardinal-release:start -->
+**v2.4.1** — Fix rollup: cobra wrapper keeps `serve` bind/auth flags (tokenless spawns refused since v2.3.13 are fixed); disk-limit setup surfaces mkdir errors instead of a cryptic mount failure.
+
 **v2.3.14** — Fix: cobra wrapper больше не выдёргивает `--token`/`-H` из `cardinal serve` (флаг доходил пустым, serve с обязательным токеном отказывался стартовать — ломал спавн из wings и e2e).
 
 **v2.3.13** — Security hardening: minimal container `/dev` (pruned to pseudo-devices, `MKNOD` out of the default capabilities), API refuses to serve without a token (loopback included), registry token-realm pinning, decompression-bomb caps on layer extraction, registry allowlist enforced on pull/push, egress DROP for `127/8` + `169.254/16`, backup-restore warning without checksum sidecar, blueprint repos https-only, cluster RPCs fail closed without token, no-echo password prompt in `login`.

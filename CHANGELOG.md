@@ -5,6 +5,17 @@
 
 ## Unreleased
 
+## 2.4.1 (2026-10-17)
+
+### Fix
+
+- Cobra wrapper больше не выдёргивает `--host`/`-H`/`--token` из аргументов
+  `serve` (флаг токена терялся, serve с обязательным токеном отказывался
+  стартовать — ломал автоспавн из wings).
+- Disk-limit: ошибки создания каталогов больше не глотаются — вместо
+  загадочного `mount failed: No such file or directory` видно реальную
+  причину (нет места, иноды, права).
+
 ## 2.3.14 (2026-10-16)
 
 ### Fix
@@ -362,7 +373,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.3.14**. Detailed release notes below are maintained manually.
+> Current release: **v2.4.1**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

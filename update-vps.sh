@@ -3,7 +3,7 @@ set -e
 
 # Pinned release tag: never track a moving branch (a compromised or broken
 # main would otherwise flow straight into root on every VPS running this).
-CARDINAL_VERSION="${CARDINAL_VERSION:-v2.3.14}"
+CARDINAL_VERSION="${CARDINAL_VERSION:-v2.4.1}"
 
 echo "=== Updating cardinal CLI ($CARDINAL_VERSION) ==="
 cd /tmp
