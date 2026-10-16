@@ -59,6 +59,9 @@ func TestCheckRegistryAllowedGate(t *testing.T) {
 	if err := CheckRegistryAllowed("nginx:alpine"); err != nil {
 		t.Errorf("strict gate must allow default Hub images: %v", err)
 	}
+	if err := CheckRegistryAllowed("myreg.local:5000/img:v1"); err == nil {
+		t.Error("strict gate must refuse off-allowlist registry with port")
+	}
 	t.Setenv("CARDINAL_REGISTRY_STRICT", "0")
 	if err := CheckRegistryAllowed("attacker.example.com/evil:latest"); err != nil {
 		t.Errorf("permissive gate must allow everything: %v", err)

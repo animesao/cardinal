@@ -28,7 +28,6 @@ func EnsureSysctl() {
 		}
 	}
 
-
 	_ = os.MkdirAll("/etc/sysctl.d", 0755)
 	confPath := "/etc/sysctl.d/99-cardinal.conf"
 	var entries []string
