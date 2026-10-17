@@ -3,7 +3,14 @@
 package container
 
 import (
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
 	"testing"
+
+	"golang.org/x/sys/unix"
 )
 
 // decode returns the instruction slice of a compiled program.
@@ -199,4 +206,87 @@ func TestDenyListIsResolvableOnNativeArch(t *testing.T) {
 	if len(syscallNumbers) == 0 {
 		t.Fatal("syscallNumbers is empty")
 	}
+}
+
+// seccompChildEnv marks the re-executed child. Applying a seccomp filter is
+// irreversible, so it can only be exercised in a dedicated process.
+const seccompChildEnv = "CARDINAL_SECCOMP_TEST_CHILD"
+
+// TestAppliedSeccompFilterDeniesAndAllows installs the real filter in a child
+// process and checks the kernel's verdict, rather than trusting our own
+// compiler. Needs no root: PR_SET_NO_NEW_PRIVS makes PR_SET_SECCOMP
+// unprivileged.
+func TestAppliedSeccompFilterDeniesAndAllows(t *testing.T) {
+	if os.Getenv(seccompChildEnv) == "1" {
+		seccompChild()
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=^TestAppliedSeccompFilterDeniesAndAllows$", "-test.v")
+	cmd.Env = append(os.Environ(), seccompChildEnv+"=1")
+	out, err := cmd.CombinedOutput()
+	t.Logf("child output:\n%s", out)
+	if err != nil {
+		t.Fatalf("child failed: %v", err)
+	}
+	text := string(out)
+	for _, want := range []string{"denied=mount", "denied=pivot_root", "allowed=stat", "allowed=open"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("child did not report %q", want)
+		}
+	}
+	if strings.Contains(text, "CHILD-FAIL") {
+		t.Fatal("child reported a failed assertion")
+	}
+}
+
+func seccompChild() {
+	if err := ApplyDefaultSeccompProfile(); err != nil {
+		fmt.Printf("CHILD-FAIL apply seccomp: %v\n", err)
+		os.Exit(1)
+	}
+	if !IsSeccompFilterActive() {
+		fmt.Println("CHILD-FAIL filter not active after apply")
+		os.Exit(1)
+	}
+
+	// Denied: mount is the escape primitive the deny-list exists for.
+	if err := unix.Mount("tmpfs", "/tmp", "tmpfs", 0, ""); err == nil {
+		fmt.Println("CHILD-FAIL mount succeeded, filter is not enforcing")
+		os.Exit(1)
+	} else if !errors.Is(err, unix.EPERM) {
+		fmt.Printf("CHILD-FAIL mount denied with %v, want EPERM\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("denied=mount")
+
+	// Denied: pivot_root would let the container swap its root out.
+	if err := unix.PivotRoot(".", "."); err == nil {
+		fmt.Println("CHILD-FAIL pivot_root succeeded")
+		os.Exit(1)
+	} else if !errors.Is(err, unix.EPERM) && !errors.Is(err, unix.EINVAL) {
+		fmt.Printf("CHILD-FAIL pivot_root denied with %v, want EPERM\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("denied=pivot_root")
+
+	// Allowed: an over-broad filter would have killed one of these already.
+	var st unix.Stat_t
+	if err := unix.Stat("/", &st); err != nil {
+		fmt.Printf("CHILD-FAIL stat denied: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("allowed=stat")
+
+	f, err := os.Open("/dev/null")
+	if err != nil {
+		fmt.Printf("CHILD-FAIL open denied: %v\n", err)
+		os.Exit(1)
+	}
+	_ = f.Close()
+	fmt.Println("allowed=open")
+
+	// os.Exit instead of returning: the test harness does a lot of work after
+	// the test body that we do not want running under the filter.
+	os.Exit(0)
 }
