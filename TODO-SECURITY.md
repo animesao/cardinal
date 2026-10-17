@@ -15,12 +15,26 @@
   `MKNOD` убран из дефолта (`init.go`) с докой про `--cap-add MKNOD`.
   Тесты `dev_prune_test.go` (3 шт). Проверка: `GOOS=linux go vet` + компиляция
   тестов OK (рантайм-тесты — CI на linux).
-- [ ] **2. Seccomp default wired — ЗАБЛОКИРОВАНО корневой причиной.**
-  Расследование: `buildSeccompFilter` (`seccomp.go:355-376`) — заглушка,
-  возвращает пустую BPF-программу. Включение `ApplyDefaultSeccompProfile`
-  в init либо убьёт все сисколлы, либо ничего не даст. Нужна настоящая
-  компиляция BPF (отдельный большой этап). AppArmor同样: apply есть,
-  вызова нет. Зафиксировано как известный разрыв, не чинить полумерой.
+- [ ] **2. Seccomp default wired — компилятор BPF сделан, до init не доведён.**
+  Сделано: настоящая компиляция cBPF (`buildSeccompProgram`) с проверкой
+  `AUDIT_ARCH_*`, отбивкой диапазона x32 на amd64 и terminator'ом;
+  номера syscall'ов берутся из `unix.SYS_*` через per-arch таблицы
+  (`seccomp_arch_amd64.go` / `seccomp_arch_arm64.go`) — компилятор сам ловит
+  опечатки и расхождения арх (так были найдены `SYS_UMOUNT`/`SYS_STIME`,
+  которых нет в ABI x86_64). Модель перевёрнута на allow-by-default с
+  `SCMP_ACT_ERRNO` по deny-list — прежний KILL-by-default с неполным
+  allow-list (не хватало `futex`, `epoll_*`, `statx`, `rseq`) убил бы любой
+  контейнер на первом же ожидании. Противоречия списков устранены (9 syscall'ов
+  были и в block, и в allow). Тесты: `seccomp_test.go`, 8 шт, linux-гейт.
+  Проверено: сборка и `go vet` на amd64/arm64; семантика BPF проверена
+  интерпретатором на 41 кейсе (все 34 правила, чужая архитектура, граница
+  x32, терминатор). НЕ проверено: реальный вызов `prctl(PR_SET_SECCOMP)` —
+  возможен только на Linux.
+  Осталось: (1) прогнать тесты в CI на ubuntu, (2) вызвать
+  `ApplyDefaultSeccompProfile` из init после capabilities и до exec,
+  (3) e2e-проверка, что контейнеры стартуют и mount/pivot_root дают EPERM.
+  Пока не сделано — `start.go:60` честно отказывает на `--seccomp-profile`.
+  AppArmor: apply есть, вызова нет.
 
 ## Этап 2 — High (API/сеть/supply chain)
 
