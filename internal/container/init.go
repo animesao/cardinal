@@ -722,6 +722,22 @@ echo "  CARDINAL_PORT_UDP_*     - Port mappings (UDP)"
 		}
 	}
 
+	// Seccomp goes on last, immediately before exec, and fail-closed: a
+	// container that cannot be confined must not start. It cannot go next to
+	// the capability drop because the readonly-rootfs remount above is itself
+	// a mount(2) call, and mount is on the deny-list by design.
+	//
+	// CARDINAL_SECCOMP=0 is the documented escape hatch for hosts whose kernel
+	// refuses the filter. It is logged loudly rather than skipped in silence -
+	// the opposite of the old --seccomp-profile behaviour.
+	if os.Getenv("CARDINAL_SECCOMP") != "0" {
+		if err := ApplyDefaultSeccompProfile(); err != nil {
+			return fmt.Errorf("apply seccomp profile: %w", err)
+		}
+	} else {
+		log.Warn("seccomp disabled via CARDINAL_SECCOMP=0 - this container runs without syscall confinement")
+	}
+
 	// If a startup script is provided it IS the container command (panel-style
 	// startup command / Pterodactyl semantics): exec it as PID 1 and never fall
 	// through to the image entrypoint/CMD. This is what lets the panel's
