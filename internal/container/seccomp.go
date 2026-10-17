@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 	"syscall"
 	"unsafe"
 
@@ -321,20 +322,33 @@ func ApplyDefaultSeccompProfile() error {
 }
 
 // SeccompSupported returns true if seccomp filtering is supported.
+// seccompModeFromStatus parses the "Seccomp:" field out of a
+// /proc/self/status dump. The kernel writes it as "Seccomp:<TAB><mode>",
+// where mode is 0 = disabled, 1 = strict, 2 = filter.
+//
+// This used to compare line[:9] against the 8-byte literal "Seccomp:", which
+// can never be equal, so both callers silently missed the field every time.
+func seccompModeFromStatus(status string) (int, bool) {
+	for _, line := range splitLines(status) {
+		if !strings.HasPrefix(line, "Seccomp:") {
+			continue
+		}
+		var mode int
+		if _, err := fmt.Sscanf(strings.TrimSpace(strings.TrimPrefix(line, "Seccomp:")), "%d", &mode); err != nil {
+			return 0, false
+		}
+		return mode, true
+	}
+	return 0, false
+}
+
 func SeccompSupported() bool {
-	// Check if seccomp is available by reading /proc/self/status
 	data, err := os.ReadFile("/proc/self/status")
 	if err != nil {
 		return false
 	}
-
-	// Look for Seccomp field
-	for _, line := range splitLines(string(data)) {
-		if len(line) > 9 && line[:9] == "Seccomp:" {
-			// Seccomp mode: 0 = disabled, 1 = strict, 2 = filter
-			// We can use mode 2 (filter)
-			return true
-		}
+	if _, found := seccompModeFromStatus(string(data)); found {
+		return true
 	}
 
 	return true // Assume supported on modern kernels
@@ -352,15 +366,6 @@ func IsSeccompFilterActive() bool {
 	if err != nil {
 		return false
 	}
-
-	for _, line := range splitLines(string(data)) {
-		if len(line) > 9 && line[:9] == "Seccomp:" {
-			var mode int
-			if _, err := fmt.Sscanf(line[9:], "%d", &mode); err == nil {
-				return mode == 2 // SECCOMP_MODE_FILTER
-			}
-		}
-	}
-
-	return false
+	mode, found := seccompModeFromStatus(string(data))
+	return found && mode == 2 // SECCOMP_MODE_FILTER
 }

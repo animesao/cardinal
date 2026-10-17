@@ -195,6 +195,47 @@ func TestNilProfileIsRejected(t *testing.T) {
 	}
 }
 
+// Regression: the old check compared line[:9] against the 8-character literal
+// "Seccomp:", which can never be equal, so IsSeccompFilterActive() always
+// reported false and the applied filter looked like it had not been installed.
+func TestSeccompModeFromStatus(t *testing.T) {
+	// Field layout as the kernel writes it: name, TAB, value.
+	const statusTemplate = "Name:\tcardinal\n" +
+		"Uid:\t0\t0\t0\t0\n" +
+		"Seccomp:\t%d\n" +
+		"Seccomp_filters:\t%d\n"
+
+	cases := []struct {
+		name  string
+		mode  int
+		found bool
+	}{
+		{"disabled", 0, true},
+		{"strict", 1, true},
+		{"filter active", 2, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			status := fmt.Sprintf(statusTemplate, tc.mode, tc.mode)
+			mode, found := seccompModeFromStatus(status)
+			if found != tc.found || mode != tc.mode {
+				t.Fatalf("mode=%d found=%v, want mode=%d found=true", mode, found, tc.mode)
+			}
+		})
+	}
+
+	// "Seccomp_filters:" must not be mistaken for the "Seccomp:" field.
+	status := "Seccomp_filters:\t2\n"
+	if mode, found := seccompModeFromStatus(status); found {
+		t.Fatalf("matched Seccomp_filters as the mode: %d", mode)
+	}
+
+	// Absent field.
+	if _, found := seccompModeFromStatus("Name:\tcardinal\n"); found {
+		t.Fatal("reported a mode when the field is absent")
+	}
+}
+
 // Compile-time check that the deny-list and the arch tables stay in sync: a
 // name in deniedSyscalls that no arch can resolve is dead weight or a typo.
 func TestDenyListIsResolvableOnNativeArch(t *testing.T) {
