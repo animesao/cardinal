@@ -52,7 +52,9 @@ func SetupDiskLimit(overlayBase, id string, limitBytes int64) error {
 	}
 	imgPath := filepath.Join(overlayBase, id, "disk.img")
 	mnt := filepath.Join(overlayBase, id, "data")
-	_ = os.MkdirAll(filepath.Dir(imgPath), 0755)
+	if err := os.MkdirAll(filepath.Dir(imgPath), 0755); err != nil {
+		return fmt.Errorf("create image dir: %w (check disk space/inodes)", err)
+	}
 
 	// Create disk image if it doesn't exist
 	if st, err := os.Stat(imgPath); os.IsNotExist(err) {
@@ -114,7 +116,7 @@ func SetupDiskLimit(overlayBase, id string, limitBytes int64) error {
 			return fmt.Errorf("create mount point %s: %w (check disk space/inodes)", mnt, err)
 		}
 		if out, err := exec.Command("mount", "-o", "loop", imgPath, mnt).CombinedOutput(); err != nil {
-			return fmt.Errorf("mount disk: %s: %w", strings.TrimSpace(string(out)), err)
+			return fmt.Errorf("mount disk: %s: %w", diagnoseDiskMount(imgPath, mnt, string(out)), err)
 		}
 		if err := os.MkdirAll(filepath.Join(mnt, "upper"), 0755); err != nil {
 			return fmt.Errorf("create %s/upper: %w", mnt, err)
@@ -124,6 +126,32 @@ func SetupDiskLimit(overlayBase, id string, limitBytes int64) error {
 		}
 	}
 	return nil
+}
+
+// diagnoseDiskMount enriches failed `mount -o loop` output with the
+// probable cause: missing image, missing mount point or loop devices
+// being unavailable (typical on container-type VDS without loop).
+func diagnoseDiskMount(img, mnt, out string) string {
+	msg := strings.TrimSpace(out)
+	if msg == "" {
+		msg = "no output from mount"
+	}
+	if _, err := os.Stat(img); os.IsNotExist(err) {
+		msg += "; hint: disk image is missing"
+	}
+	if _, err := os.Stat(mnt); os.IsNotExist(err) {
+		msg += "; hint: mount point is missing"
+	}
+	if _, err := os.Stat("/dev/loop-control"); os.IsNotExist(err) {
+		msg += "; hint: /dev/loop-control missing, loop devices unavailable on this host (modprobe loop / mknod required)"
+	} else if lo, lerr := exec.Command("losetup", "-f").CombinedOutput(); lerr != nil {
+		if s := strings.TrimSpace(string(lo)); s != "" {
+			msg += "; losetup -f: " + s
+		} else {
+			msg += "; losetup -f: " + lerr.Error()
+		}
+	}
+	return msg
 }
 
 func TeardownDiskLimit(overlayBase, id string) {
