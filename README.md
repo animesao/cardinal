@@ -9,7 +9,7 @@
 
 <p align="center">
   <!-- cardinal-version-badge:start -->
-  <img src="https://img.shields.io/badge/version-v2.4.2-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-v2.4.3-blue?style=flat-square">
   <!-- cardinal-version-badge:end -->
   <img src="https://img.shields.io/badge/go-1.26%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-Apache--2.0-green?style=flat-square">
@@ -1036,6 +1036,8 @@ Notes:
 ## Changelog
 
 <!-- cardinal-release:start -->
+**v2.4.3** — Disk limits no longer block container starts on hosts without loop devices (LXC/OpenVZ-style VDS): cardinal warns and runs without a quota; `CARDINAL_STRICT_DISK_LIMIT=1` keeps it fail-closed. `cardinal doctor` reports the capability.
+
 **v2.4.2** — Diagnostics: disk-limit mount failures name the missing piece (image, mount point, loop devices) instead of a bare ENOENT.
 
 **v2.4.1** — Fix rollup: cobra wrapper keeps `serve` bind/auth flags (tokenless spawns refused since v2.3.13 are fixed); disk-limit setup surfaces mkdir errors instead of a cryptic mount failure.

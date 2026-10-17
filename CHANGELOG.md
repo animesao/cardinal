@@ -1,9 +1,22 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.3.13`
-**Project release:** `v2.3.13`
+**Documentation version:** `2.4.3`
+**Project release:** `v2.4.3`
 <!-- cardinal-version:end -->
 
 ## Unreleased
+
+## 2.4.3 (2026-10-17)
+
+### Fix
+
+- Disk-limit больше не блокирует запуск контейнеров на хостах без
+  loop-устройств (LXC/OpenVZ-стиль VDS): если `mount -o loop` падает именно
+  из-за отсутствия `/dev/loop*`, cardinal пишет предупреждение и стартует
+  контейнер без квоты вместо ошибки 500. Остальные причины падения
+  (битый образ, нет места, ошибка `mkfs`) по-прежнему фатальны.
+  `CARDINAL_STRICT_DISK_LIMIT=1` возвращает прежнее fail-closed поведение.
+- `cardinal doctor` показывает `disk limits`: OK при наличии loop-устройств,
+  WARN с объяснением на хостах, где квота не может быть применена.
 
 ## 2.4.2 (2026-10-17)
 
@@ -383,7 +396,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.4.2**. Detailed release notes below are maintained manually.
+> Current release: **v2.4.3**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
