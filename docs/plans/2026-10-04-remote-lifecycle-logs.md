@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.4`
-**Project release:** `v2.4.4`
+**Documentation version:** `2.4.5`
+**Project release:** `v2.4.5`
 <!-- cardinal-version:end -->
 
 # Remote Lifecycle + Logs Follow Implementation Plan
