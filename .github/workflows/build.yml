@@ -51,6 +51,38 @@ permissions:
   contents: write   # release: write tag + assets
 
 jobs:
+  tag-consistency:
+    name: tag matches VERSION
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: a pushed tag must match VERSION
+        # v2.3.4 and v2.4.4 were both cut without bumping VERSION, which left
+        # the notes for what actually shipped stranded under "## Unreleased".
+        # sync-docs-version.sh --check validates the docs against VERSION but
+        # nothing validated the tag itself. No-op on branch and PR pushes.
+        #
+        # Runs unconditionally (never `skipped`) so it can sit in the needs of
+        # build without skipping every non-tag build.
+        run: |
+          set -eu
+          ver=$(tr -d '[:space:]' < VERSION)
+          case "$GITHUB_REF_NAME" in
+            v*) tag="$GITHUB_REF_NAME" ;;
+            *)
+              echo "not a tag push ($GITHUB_REF_NAME) - nothing to compare"
+              exit 0
+              ;;
+          esac
+          if [ "$tag" != "v$ver" ]; then
+            echo "::error file=VERSION::tag $tag does not match VERSION v$ver."
+            echo "Bump VERSION and run scripts/sync-docs-version.sh before tagging."
+            exit 1
+          fi
+          echo "tag $tag matches VERSION"
+
   lint:
     name: lint / vet / govulncheck / shellcheck / docs
     runs-on: ubuntu-latest
@@ -178,7 +210,7 @@ jobs:
 
   build:
     name: build linux/${{ matrix.goarch }}
-    needs: [lint, test]
+    needs: [lint, test, tag-consistency]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -228,7 +260,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    # `skipped` must be excluded too: build is skipped whenever lint or test
+    # fails, and without this the release job would still run and hand
+    # goreleaser an empty dist/, publishing a release with no binaries.
+    if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped')
 
     steps:
       - uses: actions/checkout@v4
@@ -517,7 +552,7 @@ jobs:
           echo "artefact suffix: $safe"
 
       - name: Upload full release artefacts (npm/deb/rpm/apk/pkg.tar.zst)
-        if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+        if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped')
         uses: actions/upload-artifact@v4
         with:
           name: cardinal-release-${{ env.SAFE_REF_NAME }}
