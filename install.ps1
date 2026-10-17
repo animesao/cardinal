@@ -1,6 +1,6 @@
 param(
     [string]$InstallDir = "$env:USERPROFILE\.cardinal\bin",
-    [string]$GoVersion = "1.26.6",
+    [string]$GoVersion = "1.26.9",
     [string]$Version = "v2.3.1",
     [switch]$NoPath
 )
