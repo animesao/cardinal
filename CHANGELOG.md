@@ -1,31 +1,52 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.3`
-**Project release:** `v2.4.3`
+**Documentation version:** `2.4.6`
+**Project release:** `v2.4.6`
 <!-- cardinal-version:end -->
 
 ## Unreleased
 
+## 2.4.6 (2026-10-17)
+
+### Security
+
+- **Ломающее изменение поведения.** Теперь к каждому контейнеру по умолчанию
+  применяется seccomp-фильтр. Раньше фильтр компилировался (v2.4.5), но не
+  вызывался — контейнеры работали вообще без ограничения syscall'ов.
+  - **Что теперь отбивается с EPERM:** `mount`, `umount2`, `pivot_root`,
+    `chroot`, `bpf`, `perf_event_open`, `userfaultfd`, `ptrace`,
+    `process_vm_readv/writev`, `keyctl`, `add_key`, `request_key`,
+    `sethostname`, `setdomainname`, `clock_settime`, `settimeofday`,
+    `adjtimex`, `swapon`, `swapoff`, `syslog`, `init_module`,
+    `delete_module`, `finit_module`, `reboot`, `kexec_load`,
+    `kexec_file_load`, `open_by_handle_at`, `name_to_handle_at`.
+  - **Если контейнеру нужен `mount`/`chroot` внутри:** `CARDINAL_SECCOMP=0`
+    отключает фильтр для этого контейнера с явной записью в лог. `--cap-add`
+    тут не поможет: фильтр срабатывает независимо от capabilities.
+  - Модель allow-by-default: запрещено только перечисленное, остальное
+    работает как раньше.
+  - Fail-closed: если фильтр применить не удалось, контейнер не стартует,
+    а не стартует без защиты.
+
+### Fix
+
+- `IsSeccompFilterActive()` всегда возвращал `false`: сравнение
+  `line[:9]` с восьмисимвольным литералом `"Seccomp:"` не может быть
+  истинным. `SeccompSupported()` выглядел рабочим только потому, что промахивался
+  мимо поля и уходил в `return true`.
+
 ### Internal
 
-- CI: тег `v*` теперь сверяется с `VERSION` до сборки. `v2.3.4` и `v2.4.4` оба
-  были резаны без бампа `VERSION` и без заголовка версии в CHANGELOG, из-за
-  чего описание реально вышедшего релиза осталось лежать в `## Unreleased`.
-  `sync-docs-version.sh --check` проверяет документацию против `VERSION`, но
-  сам тег не проверял никто. Новая джоба `tag-consistency` работает
-  безусловно и на пушах в ветки молча проходит.
-- CI: джоба `release` больше не запускается при `skipped` зависимости. Условие
-  исключало только `failure` и `cancelled`, поэтому упавший `lint` делал
-  `build` пропущенным, а `release` всё равно стартовал и отдавал goreleaser
-  пустой `dist/` — то есть мог опубликовать релиз без бинарей.
-- Seccomp: профиль по умолчанию теперь применяется в контейнере.
-  `ApplyDefaultSeccompProfile()` вызывается в `InitContainer` последним
+- Seccomp: профиль по умолчанию применяется в `InitContainer` последним
   шагом перед `execve` — после снятия capabilities и после remount `/` в
   read-only, поскольку этот remount сам является вызовом `mount(2)`.
-  Поведение fail-closed: если фильтр применить не удалось, контейнер не
-  стартует. `CARDINAL_SECCOMP=0` отключает его с явной записью в лог.
-  Внутри контейнера `mount`, `pivot_root`, `chroot`, `bpf`, `ptrace`,
-  `keyctl` и прочие из deny-list отбиваются с EPERM; `CARDINAL_SECCOMP=0`
-  нужен только для хостов, чьё ядро фильтр не принимает.
+  Компилятор cBPF с проверкой `AUDIT_ARCH_*` и отбивкой диапазона x32
+  добавлен в v2.4.5.
+- Тесты: `TestAppliedSeccompFilterDeniesAndAllows` перезапускает тест-бинарник
+  как дочерний процесс, ставит настоящий фильтр и проверяет вердикт ядра
+  (`mount` и `pivot_root` дают EPERM, `stat` и `open` проходят). Root не
+  требуется — `PR_SET_NO_NEW_PRIVS` делает `PR_SET_SECCOMP`
+  непривилегированным.
+
 
 ## 2.4.5 (2026-10-17)
 
@@ -480,7 +501,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.4.5**. Detailed release notes below are maintained manually.
+> Current release: **v2.4.6**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
