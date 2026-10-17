@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.3.1`
-**Project release:** `v2.3.1`
+**Documentation version:** `2.4.3`
+**Project release:** `v2.4.3`
 <!-- cardinal-version:end -->
 
 # cardinal — Continuous audit
@@ -71,7 +71,9 @@ The full output is reproduced in the CI workflow logs; abbreviated:
   PASS  rate limiter present
   PASS  /metrics is gated by auth/loopback policy
 == 5. Runtime hardening ==
-  PASS  default seccomp profile wired
+  PASS  default seccomp profile wired -> CHANGED: profiles accepted but fail
+  closed until the BPF compiler lands (see SECURITY.md); check the refusal,
+  not the wiring
   PASS  no_new_privs handling present
   PASS  dangerous capabilities being dropped
   PASS  bind-mount host-path protection present

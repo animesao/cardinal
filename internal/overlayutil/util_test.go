@@ -269,3 +269,35 @@ func TestShortDigestEdgeCases(t *testing.T) {
 		t.Errorf("ShortDigest(long) length = %d, want 19", len(ShortDigest(long)))
 	}
 }
+
+func TestExtractLayerRejectsOversizedEntry(t *testing.T) {
+	// A lying header declares gigabytes without carrying them: the cap must
+	// trigger on the declared size before any disk is filled. The archive
+	// is truncated right after the header on purpose.
+	dir := t.TempDir()
+	path := filepath.Join(dir, "bomb.tar.gz")
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gw := gzip.NewWriter(f)
+	tw := tar.NewWriter(gw)
+	if err := tw.WriteHeader(&tar.Header{Name: "bomb", Typeflag: tar.TypeReg, Size: maxLayerEntryBytes + 1, Mode: 0644}); err != nil {
+		t.Fatal(err)
+	}
+	_ = tw.Close()
+	_ = gw.Close()
+	_ = f.Close()
+	root := t.TempDir()
+	if err := ExtractLayer(path, root); err == nil {
+		t.Fatal("expected oversized layer entry to be rejected")
+	}
+}
+
+func TestExtractLayerAcceptsNormalLayer(t *testing.T) {
+	root := t.TempDir()
+	tarFile := makeTarGz(t, map[string]string{"app/server": "binary"})
+	if err := ExtractLayer(tarFile, root); err != nil {
+		t.Fatalf("normal layer rejected: %v", err)
+	}
+}

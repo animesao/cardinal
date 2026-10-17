@@ -7,7 +7,6 @@ title = "cardinal gitleaks"
     '''(?i)docs/.*\.md$''',
     '''(?i)compose\.example\.yaml$''',
     '''(?i)\.env\.example$''',
-    '''SECURITY\.md$''',
     '''CHANGELOG\.md$''',
   ]
   regexes = [
@@ -15,6 +14,21 @@ title = "cardinal gitleaks"
     '''(?i)change[_ ]?me[^A-Za-z0-9_-]''',
     '''(?i)botpass[^A-Za-z0-9_-]''',
     '''(?i)(password|secret|token)\s*[:=]\s*["{''<]?(REPLACE|CHANGE|EXAMPLE)\b''',
+  ]
+  # 9030fd8 hardcoded a shared template JWT secret and admin password into
+  # the systemd unit heredoc in update-vps.sh. Both were removed in b2c7eff
+  # (the script now reuses the unit's existing values or calls
+  # `openssl rand`), and 86d1915 - the commit that first added the file -
+  # never contained them, so this SHA is the only commit that ever
+  # introduced them.
+  #
+  # This is an allowlist, not a fix: the values stay in the public history,
+  # which is why they are documented as compromised in SECURITY.md and why
+  # operators must rotate on any host that ran a pre-2.3.13 update-vps.sh.
+  # Scoped to the single commit so a leak introduced anywhere else still
+  # fails the scan.
+  commits = [
+    '''9030fd8b06c1aceb7dca977d51cf6b1708ef20e7''',
   ]
 
 [extend]

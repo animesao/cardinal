@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.3.1`
-**Project release:** `v2.3.1`
+**Documentation version:** `2.4.3`
+**Project release:** `v2.4.3`
 <!-- cardinal-version:end -->
 
 # Полный справочник CLI cardinal
@@ -153,6 +153,10 @@ echo "$REGISTRY_PASSWORD" | cardinal login registry.example.com -u "$REGISTRY_US
 cardinal logout registry.example.com
 ```
 
+### `cardinal registry COMMAND`
+
+Управление registries и allowlist (`add`, `rm`, `allowlist`, `login`, `logout`). Вызов без аргументов показывает allowlist; enforced он только при `CARDINAL_REGISTRY_STRICT=1`.
+
 ## 3. Жизненный цикл контейнера
 
 ### `cardinal run [OPTIONS] IMAGE [COMMAND ...]`
@@ -179,7 +183,7 @@ cardinal logout registry.example.com
 | `--volume`, `--vol` | Алиасы `-v` |
 | `--memory`, `--ram LIMIT` | Лимит памяти, например `512m`, `1g` |
 | `--cpus`, `--cpu N` | Лимит CPU, например `0.5`, `2` |
-| `--disk LIMIT` | Лимит диска, например `1G`, `2T` |
+| `--disk LIMIT` | Лимит диска, например `1G`, `2T` (только writable-слой overlay — именованные тома не троттлятся) |
 | `--workdir DIR` | Рабочий каталог в контейнере |
 | `--image IMAGE` | Образ вместо позиционного аргумента |
 | `--cmd`, `--command COMMAND` | Команда вместо позиционных аргументов |
@@ -199,8 +203,8 @@ cardinal logout registry.example.com
 | `--healthcheck-interval SECONDS` | Интервал healthcheck |
 | `--healthcheck-retries N` | Число последовательных ошибок до перезапуска |
 | `--healthcheck-timeout SECONDS` | Таймаут healthcheck |
-| `--seccomp-profile FILE` | Путь к JSON-профилю seccomp (по умолчанию: встроенный профиль) |
-| `--apparmor-profile NAME` | Имя профиля AppArmor |
+| `--seccomp-profile FILE` | Принимается, но пока не применяется (fail closed); запланировано |
+| `--apparmor-profile NAME` | Принимается, но пока не применяется (fail closed); запланировано |
 | `--isolated` | Изолировать контейнер от других (сетевая сегментация) |
 | `--encrypted-backup` | Шифровать архивы бэкапов AES-256-GCM |
 | `--audit-log` | Включить аудит-логирование для событий контейнера |
@@ -272,7 +276,7 @@ cardinal inspect --sensitive web
 |---|---|
 | `--memory`, `--ram LIMIT` | Лимит памяти |
 | `--cpus`, `--cpu N` | Лимит CPU |
-| `--disk LIMIT` | Лимит диска |
+| `--disk LIMIT` | Лимит диска (только writable-слой overlay) |
 | `--restart POLICY` | Политика перезапуска |
 | `--restart-delay DURATION` | Задержка восстановления |
 | `--restart-max-attempts N` | Бюджет перезапусков crash-loop |
@@ -380,7 +384,9 @@ cardinal fs find [--name PATTERN] [--grep TEXT] [--type f|d] [--max-depth N]
 
 ### `cardinal stats [CONTAINER] [--no-stream]`
 
-Показать статистику cgroups v2: CPU, память, I/O и процессы. `--no-stream` выводит один снимок и завершает работу.
+Показать статистику cgroups v2: CPU, память, диск, I/O и процессы, с обновлением на месте каждую секунду (перерисовка ANSI; при выводе в пайп и `TERM=dumb` — прокрутка). `--no-stream` выводит один снимок и завершает работу (флаг должен идти до имени контейнера). CPU% считается по дельте, поэтому разовый снимок всегда показывает `0.0%` — для реального значения смотри поток или два снимка.
+
+`disk_usage_bytes` покрывает writable-слой overlay плюс все подключённые именованные тома (bind/tmpfs/NFS исключаются); полные обходы дерева кэшируются на контейнер с TTL 60с и могут отставать от массовых записей до минуты. Квота `--disk` действует только на overlay.
 
 ### `cardinal top CONTAINER`
 
@@ -428,7 +434,7 @@ cardinal volume create -l env=prod app-data
 
 ### `cardinal volume inspect NAME [NAME ...]`
 
-Показать драйвер, mountpoint, дату создания и labels.
+Показать драйвер, mountpoint, дату создания и labels. Mountpoint — это `<data-dir>/volumes/<name>/` (`/root/.cardinal` для root, `$CARDINAL_DATA_DIR` в остальных случаях).
 
 ### `cardinal volume rm|remove NAME [NAME ...]`
 
@@ -444,11 +450,13 @@ cardinal volume create -l env=prod app-data
 |---|---|---|
 | `create` | `cardinal backup create CONTAINER [-o FILE.tar.gz]` | Разовый backup; контейнер должен быть остановлен |
 | `list` / `ls` | `cardinal backup list` | Список архивов в каталоге cardinal backup |
-| `restore` | `cardinal backup restore CONTAINER FILE.tar.gz` | Восстановление в остановленный подходящий контейнер |
+| `restore` | `cardinal backup restore CONTAINER FILE.tar.gz [--rebind]` | Восстановление в остановленный подходящий контейнер (`--rebind`: в новый созданный контейнер) |
 | `enable` | `cardinal backup enable CONTAINER [OPTIONS]` | Включить расписание |
 | `disable` | `cardinal backup disable CONTAINER` | Выключить расписание |
 | `status` | `cardinal backup status CONTAINER` | Показать расписание и результат |
 | `verify` | `cardinal backup verify FILE.tar.gz` | Проверить архив бэкапа по контрольной сумме |
+| `remove` / `rm` / `delete` | `cardinal backup remove FILE.tar.gz` | Удалить архив и его checksum-файл |
+| `generate-key` | `cardinal backup generate-key` | Сгенерировать ключ шифрования бэкапов |
 
 Флаги `backup enable`:
 
@@ -569,6 +577,10 @@ Defaults `fn deploy`: port `8080`, handler `/handler`, timeout `30` секунд
 
 Удалить неиспользуемые контейнеры и образы по правилам runtime.
 
+### `cardinal system df`
+
+Показать использование диска по Images, Containers, Overlay, Volumes, Logs, Backups и Cache, плюс итог и каталог данных. Тома чистит `cardinal volume prune` — `system prune` их не трогает.
+
 ### `cardinal update [--check]`
 
 Проверить новую версию. Без `--check` (или `-c`) cardinal спросит подтверждение и скачает/заменит бинарник. При наличии checksum обновление проверяется. На скачивание даётся до пяти минут; при ошибке каждый метод загрузки сообщает собственную причину. Если автоматическое скачивание не удалось, установите релиз вручную (см. [Руководство по запуску](running.md), раздел 2).
@@ -597,7 +609,7 @@ cardinal bootstrap --remove
 
 ### Внутренние команды
 
-`cardinal init <container-id> <merged-path>` подготавливает namespace контейнера и вызывается runtime. `cardinal console-serve` обслуживает attach-подключения. Обычно пользователю их запускать не нужно.
+`cardinal init <container-id> <merged-path>` подготавливает namespace контейнера и вызывается runtime. `cardinal console-serve` обслуживает attach-подключения. Обычно пользователю их запускать не нужно. (`init` также отзывается на `init-container`; `helper-mount` скрыт полностью.)
 
 ## 10. Данные и переменные окружения
 

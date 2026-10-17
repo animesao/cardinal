@@ -120,6 +120,40 @@ func ApplyDeviceRestrictions(merged string) error {
 	return nil
 }
 
+// allowedDevNodes is the default-allow device list for container /dev,
+// Docker parity (only pseudo-devices; host disks, kvm, fuse stay out).
+// Anything else must be created explicitly by the workload itself, which
+// requires the MKNOD capability (no longer in the default set).
+var allowedDevNodes = map[string]bool{
+	"null": true, "zero": true, "full": true,
+	"random": true, "urandom": true,
+	"tty": true, "console": true, "ptmx": true,
+	"pts": true, "shm": true,
+	"fd": true, "stdin": true, "stdout": true, "stderr": true,
+	"core": true,
+}
+
+// PruneDevtmpfs removes every entry of a devtmpfs mount except the
+// allowlist above. The container gets a fresh devtmpfs with the full host
+// device set, so without pruning any container-root process (the default
+// user) could open host disks directly — uid 0 here is uid 0 on the host
+// (no user namespace), and device cgroups are not applied.
+func PruneDevtmpfs(devDir string) error {
+	entries, err := os.ReadDir(devDir)
+	if err != nil {
+		return fmt.Errorf("read /dev: %w", err)
+	}
+	for _, e := range entries {
+		if allowedDevNodes[e.Name()] {
+			continue
+		}
+		if err := os.RemoveAll(devDir + "/" + e.Name()); err != nil {
+			return fmt.Errorf("prune /dev/%s: %w", e.Name(), err)
+		}
+	}
+	return nil
+}
+
 // RestrictSensitiveDevices restricts access to sensitive device files.
 func RestrictSensitiveDevices(merged string) error {
 	// Create a minimal /dev with only safe devices

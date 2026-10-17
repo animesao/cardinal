@@ -94,6 +94,21 @@ func TestParse(t *testing.T) {
 			spec:    "70000:80",
 			wantErr: true,
 		},
+		{
+			name: "uppercase protocol normalized",
+			spec: "8080:80/UDP",
+			want: []Mapping{{HostPort: 8080, ContainerPort: 80, Protocol: "udp"}},
+		},
+		{
+			name:    "garbage protocol rejected (iptables -p injection)",
+			spec:    "8080:80/tcp;reboot",
+			wantErr: true,
+		},
+		{
+			name: "trailing slash defaults to tcp",
+			spec: "8080:80/",
+			want: []Mapping{{HostPort: 8080, ContainerPort: 80, Protocol: "tcp"}},
+		},
 	}
 
 	for _, tt := range tests {

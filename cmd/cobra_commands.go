@@ -97,10 +97,15 @@ func register(spec commandSpec) *cobra.Command {
 			// (--json/--quiet/--log-level) in args. Strip them so legacy
 			// flag parsing does not see unknown flag errors. Remote flags
 			// (--host/-H/--token) are extracted into package vars on the
-			// way through so remote-capable commands can see them.
+			// way through so remote-capable commands can see them — except
+			// for `serve` itself, where --host/-H/--token are the SERVER's
+			// own bind/auth options and must reach its stdlib FlagSet
+			// verbatim (stripping them silently dropped the serve token).
 			if c.DisableFlagParsing {
 				args = stripGlobalFlags(args)
-				args = extractRemoteFlags(args)
+				if spec.use != "serve" {
+					args = extractRemoteFlags(args)
+				}
 			}
 			spec.run(args)
 		},

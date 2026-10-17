@@ -1,7 +1,163 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.2.0`
-**Project release:** `v2.2.0`
+**Documentation version:** `2.4.3`
+**Project release:** `v2.4.3`
 <!-- cardinal-version:end -->
+
+## Unreleased
+
+### Security
+
+- Scheduled security scan снова зелёный — устранены обе причины падения.
+  - **gitleaks**: коммит `9030fd8` содержал захардкоженные `JWT_SECRET`
+    и `ADMIN_PASSWORD` в heredoc systemd-юнита в `update-vps.sh`. Скан
+    проверяет всю историю, поэтому находка возвращалась на каждом прогоне,
+    хотя сам скрипт починили ещё в v2.3.13. Добавлен allowlist, отвязанный
+    строго от этого SHA: утечка в любом другом коммите по-прежнему валит
+    сборку.
+  - **govulncheck**: 9 CVE в стандартной библиотеке (`net/http`,
+    `net/textproto`, `crypto/tls`), фиксятся в Go 1.26.9. `scheduled.yml`
+    и `e2e.yml` были закреплены на 1.26.6 — подняты до 1.26.9;
+    `install.ps1` и `snapcraft.yaml` теперь тоже собирают пропатченный stdlib.
+  - **`go.mod`**: добавлена директива `toolchain go1.26.9`. При обычном
+    `GOTOOLCHAIN=auto` сборка на Go 1.26.0–1.26.8 подтягивает пропатченный
+    тулчейн, а не линкует уязвимый stdlib в релизный бинарник. Директива
+    `go 1.26.0` не тронута — версия языка не меняется, поднимается только
+    порог тулчейна.
+  - Значения из `9030fd8` задокументированы в `SECURITY.md` как
+    скомпрометированные, с командами ротации. Allowlist скрывает находку от
+    сканера, но не делает ключи снова секретными: хосты, где отработал
+    `update-vps.sh` до v2.3.13, обязаны перегенерировать оба значения.
+  - `SECURITY.md` убран из path-allowlist gitleaks. Значения там больше не
+    цитируются буквально, поэтому любой реальный секрет, добавленный в файл
+    позже, не будет молча проигнорирован.
+
+### Fix
+
+- `internal/image` снова собирается на не-Linux. `allowlist.go` был помечен
+  `//go:build linux`, хотя код платформенно-нейтрален, а `pull.go`/`push.go`
+  вызывают `CheckRegistryAllowed` безусловно — пакет не компилировался вне
+  Linux, и `go build`/`go vet`/`govulncheck ./...` падали на любой не-Linux
+  машине. Теги сняты с `allowlist.go` и `allowlist_test.go`, так что тесты
+  registry-allowlist теперь реально выполняются на всех платформах, а не
+  выпадают из сборки.
+
+## 2.4.3 (2026-10-17)
+
+### Fix
+
+- Disk-limit больше не блокирует запуск контейнеров на хостах без
+  loop-устройств (LXC/OpenVZ-стиль VDS): если `mount -o loop` падает именно
+  из-за отсутствия `/dev/loop*`, cardinal пишет предупреждение и стартует
+  контейнер без квоты вместо ошибки 500. Остальные причины падения
+  (битый образ, нет места, ошибка `mkfs`) по-прежнему фатальны.
+  `CARDINAL_STRICT_DISK_LIMIT=1` возвращает прежнее fail-closed поведение.
+- `cardinal doctor` показывает `disk limits`: OK при наличии loop-устройств,
+  WARN с объяснением на хостах, где квота не может быть применена.
+
+## 2.4.2 (2026-10-17)
+
+### Fix
+
+- Ошибки disk-limit монтирования теперь объясняют себя: при падении
+  `mount -o loop` cardinal добавляет, чего именно не хватает (образ,
+  точка маунта, `/dev/loop-control`, свободный loop-девайс) вместо
+  голого `No such file or directory`. Ошибка создания каталога образа
+  тоже больше не глотается.
+
+## 2.4.1 (2026-10-17)
+
+### Fix
+
+- Cobra wrapper больше не выдёргивает `--host`/`-H`/`--token` из аргументов
+  `serve` (флаг токена терялся, serve с обязательным токеном отказывался
+  стартовать — ломал автоспавн из wings).
+- Disk-limit: ошибки создания каталогов больше не глотаются — вместо
+  загадочного `mount failed: No such file or directory` видно реальную
+  причину (нет места, иноды, права).
+
+## 2.3.14 (2026-10-16)
+
+### Fix
+
+- `cardinal serve --token` снова доходит до сервера: cobra-обёртка больше не
+  выдёргивает `--host`/`-H`/`--token` из аргументов `serve` в remote-переменные
+  (флаг приходил пустым, и serve с обязательным токеном отказывался
+  стартовать — ломал автоспавн из wings и e2e). Wings дополнительно дублирует
+  токен через `CARDINAL_TOKEN` в окружении дочернего процесса.
+
+## 2.3.13 (2026-10-16)
+
+### Security
+
+- Minimal container `/dev` (pruned to pseudo-devices; `MKNOD` removed from the default capability set, grant via `--cap-add MKNOD`).
+- API server refuses to start without a token on any bind, loopback included; `route_localnet` is opt-in (`CARDINAL_ROUTE_LOCALNET=1`).
+- Registry token-realm pinning (Docker Hub split-host allowlisted); registry allowlist enforced on pull and push under `CARDINAL_REGISTRY_STRICT=1`.
+- Layer extraction caps (100k entries / 4G per entry / 16G total, mirroring `Import`).
+- Egress DROP for `127.0.0.0/8` and `169.254.0.0/16` from the bridge.
+- Backup restore warns loudly without a checksum sidecar; blueprint repos must be https; cluster join/schedule RPCs fail closed without `CARDINAL_TOKEN`; `login` reads the password without echo.
+
+### Stats: live in-place refresh
+
+- `cardinal stats` (local and remote) now redraws the table in place instead of scrolling a new header plus rows every second: cursor-up plus clear plus repaint per tick, with per-tick line counting so skipped rows on errors cannot desync the picture.
+- `--no-stream` still prints a single snapshot with no escape codes; piped output and `TERM=dumb` keep scrolling.
+
+### Stats: disk usage includes named volumes
+
+- `DiskUsage` (`disk_usage_bytes`) now sums the overlay upper dir **and** the container's named volumes. Panel servers keep all data in `volumes/srv-<uuid>`, so the old upper-only walk reported kilobytes on gigabyte servers.
+- Full tree walks are cached per container with a 60s TTL and opportunistic eviction of stale entries — stats are polled every second and uncached walks of gigabyte trees would trash disk I/O.
+- Bind/tmpfs/NFS sources are still excluded (host admin territory, same as Docker).
+- Regression tests: `internal/container/stats_disk_test.go` (`dirTreeSize`, `isNamedVolume`, cache TTL expiry).
+
+### Assets only (no runtime changes)
+
+- `img/cardinal.png` replaced (1 376 604 -> 1 670 161 bytes, 2026-10-13); the file is referenced by the `README.md` header logo. No code or docs changes.
+
+## 2.3.12 (2026-10-15)
+
+### Console
+
+- `cardinal attach`: same console-input logging as v2.3.11, errcheck-clean (`Close` checked via closure per codebase style).
+
+## 2.3.11 (2026-10-15)
+
+### Console
+
+- `cardinal attach`: client stdin is teed into the container log as `> cmd` lines — reconnect replays restore commands next to their answers instead of answers alone. Single funnel for every client (CLI, wings); bytes to the container unchanged.
+
+## 2.3.10 (2026-10-15)
+
+### Console
+
+- `cardinal attach`: console tail replay starts at a line boundary (the byte-sliced first fragment could neither dedupe nor sit next to its command).
+
+## 2.3.9 (2026-10-15)
+
+### Console
+
+- `cardinal attach`: same piped-stdin echo as v2.3.8, with checked `Fprintln` returns (errcheck-clean CI).
+
+## 2.3.8 (2026-10-15)
+
+### Console
+
+- `cardinal attach`: echo piped stdin lines locally (container stdin is a pipe with no echo back; terminal input already echoes via the kernel, unchanged there). Socket bytes unchanged.
+
+## 2.3.7 (2026-10-15)
+
+### Security hardening
+
+- `cardinal serve on`: the systemd unit embedding `CARDINAL_TOKEN` is now written `0600` (was world-readable `0644` via umask).
+- DNS/hosts: servers in `HostConfig.Dns` must be IPs before landing in `resolv.conf`; `/etc/hosts` entries are validated (no whitespace/control characters), so crafted names cannot inject lines into neighbours' hosts files.
+- Port protocol allowlist (`tcp/udp/sctp/icmp`, normalized lowercase): the raw suffix no longer reaches `iptables -p`.
+- Regression tests: `internal/portmap` protocol cases.
+
+## 2.3.4 (2026-10-09)
+
+### CI only (no runtime changes)
+
+- `.github/workflows/build.yml`: `actions/setup-go` bumped from Go `1.26.6` to `1.26.9` in three jobs (lint/test, per-package tests, reproducible cross-compile). No Go code changes in this tag (`go.mod` still targets `go 1.26.0`).
+- Known drift (not changed by this tag): `e2e.yml`, `scheduled.yml`, `install.ps1` (`$GoVersion`), and `snap/snapcraft.yaml` (`GO_VERSION`) still pin Go `1.26.6`; `docs/build.md` still documents `1.26.6`.
+- Release-process note: tag `v2.3.4` was cut on the merge of this CI change without a `VERSION` bump (`VERSION` is still `2.3.1`), so the `cardinal-current-release` marker below still reports `v2.3.1` until `VERSION` is bumped via `scripts/sync-docs-version.sh`.
 
 ## 2.3.1 (2026-10-04)
 
@@ -276,7 +432,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.3.1**. Detailed release notes below are maintained manually.
+> Current release: **v2.4.3**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

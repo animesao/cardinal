@@ -60,7 +60,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.6"
+          go-version: "1.26.9"
           cache: true
 
       - name: golangci-lint
@@ -108,14 +108,14 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.6"
+          go-version: "1.26.9"
           cache: true
 
       # We split `./...` into per-package invocations so a failing
       # package surfaces its name in the GH Actions UI rather than
       # being buried inside a single composite log block. CGO is
       # explicitly enabled because `-race` requires it; the default
-      # for actions/setup-go@v5 + go-version "1.26.6" is otherwise
+      # for actions/setup-go@v5 + go-version "1.26.9" is otherwise
       # CGO_ENABLED=1 on linux/amd64 runners, but we set it here to
       # defend against any future runner image change.
       - name: go test -race (per package, cgo enabled)
@@ -190,7 +190,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.6"
+          go-version: "1.26.9"
           cache: true
 
       - name: Reproducible cross-compile
@@ -266,7 +266,7 @@ jobs:
       # cosign signatures alongside, not just goreleaser's outputs).
       # Use the official `goreleaser-action`. It downloads a
       # precompiled goreleaser binary (~60 MiB) instead of going
-      # through `go install`, which on Go 1.26.6 fetches an
+      # through `go install`, which on Go 1.26.9 fetches an
       # enormous transitive dependency tree (AWS, Azure, GCP,
       # gitea, gitlab, sigstore, OCI/, snap/, brew/, etc. — the
       # latest log showed 250+ downloads before the step could
@@ -405,13 +405,49 @@ jobs:
           artifact-name: cardinal-sbom.spdx.json
         continue-on-error: true
 
+      - name: Build release notes
+        id: notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          CUR="${{ github.ref_name }}"
+          # Previous release tag by creation date (annotated tags carry the
+          # date; fall back to version sort when dates tie).
+          PREV=$(git tag --sort=-creatordate | grep -v "^${CUR}$" | head -1)
+          if [ -z "$PREV" ]; then
+            RANGE="$CUR"
+            TITLE="Initial release"
+          else
+            RANGE="$PREV..$CUR"
+            TITLE="Changes since $PREV"
+          fi
+          {
+            echo "## $TITLE"
+            echo ""
+            git log --pretty=format:'- %h %s' "$RANGE" | head -10
+            echo ""
+            echo ""
+            if [ -n "$PREV" ]; then
+              echo "Full Changelog: $PREV...$CUR"
+            fi
+          } > /tmp/release-notes.md
+          cat /tmp/release-notes.md
+          {
+            echo "body<<EOF"
+            cat /tmp/release-notes.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
-          generate_release_notes: true
+          # No generate_release_notes: GitHub only lists merged PRs there,
+          # and direct-to-main pushes render as an empty body (just the
+          # compare link). We build the notes from commits instead so every
+          # release shows the last 10 changes (see "Build release notes").
+          body: ${{ steps.notes.outputs.body }}
           # We deliberately use a permissive `files:` list with
           # explicit patterns per artefact class rather than a
           # single broad glob.

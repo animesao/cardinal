@@ -9,7 +9,7 @@
 
 <p align="center">
   <!-- cardinal-version-badge:start -->
-  <img src="https://img.shields.io/badge/version-v2.3.1-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-v2.4.3-blue?style=flat-square">
   <!-- cardinal-version-badge:end -->
   <img src="https://img.shields.io/badge/go-1.26%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-Apache--2.0-green?style=flat-square">
@@ -392,8 +392,8 @@ Use `-v` (bind mount) for live file sharing — changes on host are instantly vi
 | `--healthcheck-interval` | Health check interval (seconds) |
 | `--healthcheck-retries` | Health check retries |
 | `--healthcheck-timeout` | Health check timeout (seconds) |
-| `--seccomp-profile` | Path to seccomp profile JSON (default: built-in profile) |
-| `--apparmor-profile` | AppArmor profile name |
+| `--seccomp-profile` | Accepted but not yet enforced (fails closed); planned |
+| `--apparmor-profile` | Accepted but not yet enforced (fails closed); planned |
 | `--isolated` | Isolate container from other containers (network segmentation) |
 | `--encrypted-backup` | Encrypt backup archives with AES-256-GCM |
 | `--audit-log` | Enable audit logging for container events |
@@ -940,8 +940,8 @@ cardinal run -d
 | Compose depends_on | ✅ | ✅ |
 | Cluster orchestration | ✅ | ✅ (Swarm) |
 | Rolling updates | ✅ | ✅ |
-| Seccomp profile | ✅ (default + custom) | ✅ |
-| AppArmor profile | ✅ (default + custom) | ✅ |
+| Seccomp profile | ❌ (planned, fail-closed) | ✅ |
+| AppArmor profile | ❌ (planned, fail-closed) | ✅ |
 | Network segmentation | ✅ (--isolated) | ✅ (network policies) |
 | Backup encryption | ✅ (AES-256-GCM) | ❌ |
 | Audit logging | ✅ | ❌ (auditd integration) |
@@ -981,9 +981,87 @@ Limits:
 
 ---
 
+## API authentication (cardinal serve)
+
+`cardinal serve` exposes a Docker-compatible REST API: whoever can call it
+can `exec` into and `create` arbitrary containers — that is root on the host.
+So the API is gated by a Bearer token, **required on any bind since v2.3.13**
+(loopback included; previously `127.0.0.1` worked without one, which meant
+any local process — or any container, via the gateway — could drive it).
+
+Generate a token once:
+
+```bash
+openssl rand -hex 32
+```
+
+Run with it (flag or env — flag wins if both are set):
+
+```bash
+cardinal serve -H 127.0.0.1 -p 2375 --token <токен>
+CARDINAL_TOKEN=<токен> cardinal serve -H 127.0.0.1 -p 2375
+```
+
+Call the API with the token:
+
+```bash
+curl -s -H "Authorization: Bearer <токен>" http://127.0.0.1:2375/version
+curl -s -H "Authorization: Bearer <токен>" http://127.0.0.1:2375/containers/json
+```
+
+Systemd unit (the token is root-equivalent — keep the file `0600`):
+
+```ini
+[Service]
+ExecStart=/usr/local/bin/cardinal serve -H 127.0.0.1 -p 2375
+Environment=CARDINAL_TOKEN=<токен>
+```
+
+```bash
+sudo chmod 600 /etc/systemd/system/cardinal-serve.service
+sudo systemctl daemon-reload && sudo systemctl restart cardinal-serve
+```
+
+Notes:
+
+- External binds (`-H 0.0.0.0`) additionally want `--tls-cert`/`--tls-key`,
+  otherwise the Bearer token travels in cleartext.
+- `cardinal-wings` passes a random token itself when it spawns
+  `cardinal serve` — nothing to configure there.
+- Portainer / remote CLI: same `Authorization: Bearer <токен>` header
+  (`cardinal --host http://IP:2375 --token <токен> ...`).
+
+---
+
 ## Changelog
 
 <!-- cardinal-release:start -->
+**v2.4.3** — Disk limits no longer block container starts on hosts without loop devices (LXC/OpenVZ-style VDS): cardinal warns and runs without a quota; `CARDINAL_STRICT_DISK_LIMIT=1` keeps it fail-closed. `cardinal doctor` reports the capability.
+
+**v2.4.2** — Diagnostics: disk-limit mount failures name the missing piece (image, mount point, loop devices) instead of a bare ENOENT.
+
+**v2.4.1** — Fix rollup: cobra wrapper keeps `serve` bind/auth flags (tokenless spawns refused since v2.3.13 are fixed); disk-limit setup surfaces mkdir errors instead of a cryptic mount failure.
+
+**v2.3.14** — Fix: cobra wrapper больше не выдёргивает `--token`/`-H` из `cardinal serve` (флаг доходил пустым, serve с обязательным токеном отказывался стартовать — ломал спавн из wings и e2e).
+
+**v2.3.13** — Security hardening: minimal container `/dev` (pruned to pseudo-devices, `MKNOD` out of the default capabilities), API refuses to serve without a token (loopback included), registry token-realm pinning, decompression-bomb caps on layer extraction, registry allowlist enforced on pull/push, egress DROP for `127/8` + `169.254/16`, backup-restore warning without checksum sidecar, blueprint repos https-only, cluster RPCs fail closed without token, no-echo password prompt in `login`.
+
+**v2.3.12** — `cardinal attach`: ввод консоли пишется в лог (фикс errcheck в CI).
+
+**v2.3.11** — `cardinal attach`: ввод консоли пишется в лог с префиксом `> ` — реконнекты возвращают команды рядом с ответами, а не одни ответы.
+
+**v2.3.10** — `cardinal attach`: реплей хвоста лога начинается с границы строки (без обрубков, дедуп на панели срабатывает, команды рядом с ответами).
+
+**v2.3.9** — `cardinal attach`: локальное эхо piped-строк stdin (фикс errcheck в CI).
+
+**v2.3.8** — `cardinal attach` показывает набираемые строки при piped-вводе (stdin контейнера — pipe без эха; в терминале поведение не изменилось).
+
+**v2.3.7** — Security hardening: serve unit with the API token is written `0600` (was world-readable), DNS/hostnames are validated before landing in `resolv.conf` and neighbours' `/etc/hosts`, port protocols are allowlisted before reaching `iptables`.
+
+**v2.3.6** — `cardinal stats` redraws the table in place instead of scrolling (both local and remote modes).
+
+**v2.3.5** — Stats fix: `disk_usage_bytes` now includes named volumes (servers kept in `volumes/` showed kilobytes on gigabyte data); full tree walks cached per container (60s TTL).
+
 **v2.3.1** — Green build: test-harness fixes only (errcheck-clean stubs, race-free SSE/logs-follow tests). No runtime changes since v2.3.0.
 <!-- cardinal-release:end -->
 

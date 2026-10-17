@@ -55,6 +55,22 @@ func setClusterAuth(req *http.Request) {
 	}
 }
 
+// requireClusterToken fails closed when no peer token is configured.
+// Cluster RPCs carry images, env secrets and start commands — sending them
+// (or acting on them) without authentication must never happen silently.
+func requireClusterToken(op string) error {
+	tokenLock.RLock()
+	token := clusterToken
+	tokenLock.RUnlock()
+	if token == "" {
+		token = os.Getenv("CARDINAL_TOKEN")
+	}
+	if token == "" {
+		return fmt.Errorf("cluster %s requires CARDINAL_TOKEN (refusing unauthenticated peer RPC)", op)
+	}
+	return nil
+}
+
 func init() {
 	clusterConf = &ClusterConfig{
 		Nodes:    make(map[string]*Node),
@@ -121,6 +137,9 @@ func JoinCluster(peerAddr string, bindAddr string, bindPort int) error {
 	clusterLock.Lock()
 	defer clusterLock.Unlock()
 
+	if err := requireClusterToken("join"); err != nil {
+		return err
+	}
 	if err := loadClusterConfig(); err == nil && clusterConf.ClusterID != "" {
 		return fmt.Errorf("already part of cluster %s", clusterConf.ClusterID)
 	}

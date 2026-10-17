@@ -768,6 +768,9 @@ func restoreContainerBackupWithOptions(c *container.Container, archivePath strin
 	if err := verifyBackupChecksum(archivePath); err != nil {
 		return fmt.Errorf("verify backup checksum: %w", err)
 	}
+	if !backupChecksumPresent(archivePath) {
+		fmt.Fprintln(os.Stderr, "Warning: no .sha256 sidecar — restoring UNVERIFIED archive (use `cardinal backup verify` first, or pass files you trust)")
+	}
 	stage, err := os.MkdirTemp(state.DataDir(), ".cardinal-restore-")
 	if err != nil {
 		return fmt.Errorf("create restore staging directory: %w", err)
@@ -1121,6 +1124,15 @@ func writeBackupChecksum(archivePath string) error {
 	}
 	removeTemp = false
 	return nil
+}
+
+// backupChecksumPresent reports whether a checksum sidecar exists next to
+// the archive. Missing sidecar = fail-open legacy path (see
+// verifyBackupChecksum): callers must warn loudly instead of restoring
+// silently.
+func backupChecksumPresent(archivePath string) bool {
+	_, err := os.Stat(backupChecksumPath(archivePath))
+	return err == nil
 }
 
 func verifyBackupChecksum(archivePath string) error {

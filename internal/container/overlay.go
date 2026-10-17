@@ -3,6 +3,7 @@
 package container
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,6 +12,11 @@ import (
 
 	"cardinal/internal/log"
 )
+
+// ErrLoopUnavailable marks a disk-limit mount failure caused by the host not
+// providing loop devices (typical for LXC/OpenVZ-style VDS hosts), as opposed
+// to a broken image or a full disk.
+var ErrLoopUnavailable = errors.New("loop devices unavailable on this host")
 
 func mountOverlay(lower, upper, work, merged string) error {
 	_, err := MountOverlayWithFallback(lower, upper, work, merged)
@@ -52,7 +58,9 @@ func SetupDiskLimit(overlayBase, id string, limitBytes int64) error {
 	}
 	imgPath := filepath.Join(overlayBase, id, "disk.img")
 	mnt := filepath.Join(overlayBase, id, "data")
-	_ = os.MkdirAll(filepath.Dir(imgPath), 0755)
+	if err := os.MkdirAll(filepath.Dir(imgPath), 0755); err != nil {
+		return fmt.Errorf("create image dir: %w (check disk space/inodes)", err)
+	}
 
 	// Create disk image if it doesn't exist
 	if st, err := os.Stat(imgPath); os.IsNotExist(err) {
@@ -110,14 +118,68 @@ func SetupDiskLimit(overlayBase, id string, limitBytes int64) error {
 
 	// Mount disk image to data dir
 	if !isMounted(mnt) {
-		os.MkdirAll(mnt, 0755)
-		if out, err := exec.Command("mount", "-o", "loop", imgPath, mnt).CombinedOutput(); err != nil {
-			return fmt.Errorf("mount disk: %s: %w", strings.TrimSpace(string(out)), err)
+		if err := os.MkdirAll(mnt, 0755); err != nil {
+			return fmt.Errorf("create mount point %s: %w (check disk space/inodes)", mnt, err)
 		}
-		os.MkdirAll(filepath.Join(mnt, "upper"), 0755)
-		os.MkdirAll(filepath.Join(mnt, "work"), 0755)
+		if out, err := exec.Command("mount", "-o", "loop", imgPath, mnt).CombinedOutput(); err != nil {
+			mountErr := fmt.Errorf("mount disk: %s: %w", diagnoseDiskMount(imgPath, mnt, string(out)), err)
+			if !LoopDevicesAvailable() {
+				return errors.Join(ErrLoopUnavailable, mountErr)
+			}
+			return mountErr
+		}
+		if err := os.MkdirAll(filepath.Join(mnt, "upper"), 0755); err != nil {
+			return fmt.Errorf("create %s/upper: %w", mnt, err)
+		}
+		if err := os.MkdirAll(filepath.Join(mnt, "work"), 0755); err != nil {
+			return fmt.Errorf("create %s/work: %w", mnt, err)
+		}
 	}
 	return nil
+}
+
+// LoopDevicesAvailable reports whether the host can back a loop mount at all:
+// either the loop-control node or at least one pre-created /dev/loopN exists.
+func LoopDevicesAvailable() bool {
+	return loopDevicesAvailableIn("/dev")
+}
+
+func loopDevicesAvailableIn(devDir string) bool {
+	if _, err := os.Stat(filepath.Join(devDir, "loop-control")); err == nil {
+		return true
+	}
+	for i := 0; i < 8; i++ {
+		if _, err := os.Stat(filepath.Join(devDir, fmt.Sprintf("loop%d", i))); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// diagnoseDiskMount enriches failed `mount -o loop` output with the
+// probable cause: missing image, missing mount point or loop devices
+// being unavailable (typical on container-type VDS without loop).
+func diagnoseDiskMount(img, mnt, out string) string {
+	msg := strings.TrimSpace(out)
+	if msg == "" {
+		msg = "no output from mount"
+	}
+	if _, err := os.Stat(img); os.IsNotExist(err) {
+		msg += "; hint: disk image is missing"
+	}
+	if _, err := os.Stat(mnt); os.IsNotExist(err) {
+		msg += "; hint: mount point is missing"
+	}
+	if _, err := os.Stat("/dev/loop-control"); os.IsNotExist(err) {
+		msg += "; hint: /dev/loop-control missing, loop devices unavailable on this host (modprobe loop / mknod required)"
+	} else if lo, lerr := exec.Command("losetup", "-f").CombinedOutput(); lerr != nil {
+		if s := strings.TrimSpace(string(lo)); s != "" {
+			msg += "; losetup -f: " + s
+		} else {
+			msg += "; losetup -f: " + lerr.Error()
+		}
+	}
+	return msg
 }
 
 func TeardownDiskLimit(overlayBase, id string) {

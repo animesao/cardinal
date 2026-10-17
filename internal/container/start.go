@@ -5,6 +5,7 @@ package container
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -51,6 +52,16 @@ func (c *Container) startInternal() error {
 	staleIP := c.IP
 	c.Status = Created
 	c.dataMu.Unlock()
+	// Seccomp/AppArmor profiles are accepted as configuration but the
+	// filters are not applied yet (no BPF compiler / no profile loader in
+	// the start path). Fail closed instead of running unconfined while the
+	// operator believes a profile is enforced.
+	if c.SeccompProfile != "" {
+		return fmt.Errorf("seccomp profiles are not enforced yet (profile %q would be silently ignored)", c.SeccompProfile)
+	}
+	if c.AppArmorProfile != "" {
+		return fmt.Errorf("AppArmor profiles are not enforced yet (profile %q would be silently ignored)", c.AppArmorProfile)
+	}
 	if staleIP != "" {
 		// A hard host crash can leave persisted allocation state behind even
 		// though the process is no longer alive. Release it before allocating a
@@ -273,8 +284,8 @@ func (c *Container) setupFilesystem() (merged string, err error) {
 		return "", err
 	}
 
-	if err := SetupDiskLimit(state.OverlayDir(), c.ID, c.DiskLimit); err != nil {
-		return "", fmt.Errorf("disk limit: %w", err)
+	if err := c.setupDiskLimit(); err != nil {
+		return "", err
 	}
 
 	dataMnt := filepath.Join(state.OverlayDir(), c.ID, "data")
@@ -323,6 +334,33 @@ func (c *Container) setupFilesystem() (merged string, err error) {
 	}
 
 	return mergedDir, nil
+}
+
+// setupDiskLimit enforces the requested quota. On hosts without loop devices
+// (container-type VDS) a hard failure would make every container unstartable,
+// so the quota is skipped with a warning instead; CARDINAL_STRICT_DISK_LIMIT=1
+// restores fail-closed behaviour.
+func (c *Container) setupDiskLimit() error {
+	if c.DiskLimit <= 0 {
+		return nil
+	}
+	err := SetupDiskLimit(state.OverlayDir(), c.ID, c.DiskLimit)
+	if err == nil {
+		return nil
+	}
+	if diskLimitDegradable(err) {
+		log.Warn("container %s: disk limit of %d bytes requested, but this host has no loop devices; starting without a disk quota (set CARDINAL_STRICT_DISK_LIMIT=1 to fail instead)", c.ID, c.DiskLimit)
+		return nil
+	}
+	return fmt.Errorf("disk limit: %w", err)
+}
+
+func diskLimitDegradable(err error) bool {
+	if !errors.Is(err, ErrLoopUnavailable) {
+		return false
+	}
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("CARDINAL_STRICT_DISK_LIMIT")))
+	return v != "1" && v != "true" && v != "yes"
 }
 
 func (c *Container) buildUnshareCmd(merged string) (*exec.Cmd, error) {

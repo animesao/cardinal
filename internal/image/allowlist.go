@@ -1,5 +1,3 @@
-//go:build linux
-
 package image
 
 import (
@@ -168,6 +166,26 @@ func AllowlistSnapshot() []string {
 	out := make([]string, len(allowlist))
 	copy(out, allowlist)
 	return out
+}
+
+// CheckRegistryAllowed enforces the pull/push gate for an image reference
+// (full `name[:tag]` or bare name; the tag is stripped before extracting
+// the registry host). With CARDINAL_REGISTRY_STRICT=1 hosts outside the
+// allowlist are refused before any network contact; otherwise it is
+// a no-op returning nil.
+func CheckRegistryAllowed(ref string) error {
+	name := ref
+	// Strip :tag (but never a :port, and never touch digest refs).
+	if !strings.Contains(name, "@") {
+		if i := strings.LastIndex(name, ":"); i > 0 && !strings.Contains(name[i:], "/") {
+			name = name[:i]
+		}
+	}
+	host, _ := registryHostAndRepo(name)
+	if !IsRegistryAllowed(host) {
+		return fmt.Errorf("registry %q is not in the allowlist (CARDINAL_REGISTRY_STRICT=1)", host)
+	}
+	return nil
 }
 
 // IsRegistryAllowed reports whether `host` is in the current allowlist.

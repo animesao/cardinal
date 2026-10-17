@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.3.1`
-**Project release:** `v2.3.1`
+**Documentation version:** `2.4.3`
+**Project release:** `v2.4.3`
 <!-- cardinal-version:end -->
 
 # Запуск контейнеров в cardinal
@@ -528,14 +528,14 @@ cardinal exec -i -t ИМЯ /bin/sh
 cardinal console ИМЯ
 cardinal top ИМЯ
 cardinal port ИМЯ
-cardinal stats ИМЯ --no-stream
+cardinal stats --no-stream ИМЯ
 cardinal fs ls ИМЯ /путь
 cardinal fs cat ИМЯ /путь/файла
 cardinal cp ./локальный-файл ИМЯ:/путь/
 cardinal cp ИМЯ:/путь/файла ./локальный-файл
 ```
 
-`attach` подключается к существующему главному процессу; `exec` запускает новый процесс. Для shell используйте `console` или `exec -i -t`.
+`attach` подключается к существующему главному процессу; `exec` запускает новый процесс. Для shell используйте `console` или `exec -i -t`. Обратите внимание на порядок флагов: `--no-stream` должен идти до имени контейнера (флаги в конце игнорируются). `stats` обновляется на месте каждую секунду; `disk_usage_bytes` — это overlay плюс подключённые именованные тома (кэш 60с), а квота `--disk` действует только на overlay.
 
 ## 13. Лимиты ресурсов и безопасность
 
@@ -551,7 +551,7 @@ cardinal run -d --readonly ОБРАЗ[:ТЕГ] КОМАНДА
 --cap-add NET_ADMIN
 ```
 
-Используйте `--network none`, если приложению не нужна сеть, и `--network host` только осознанно — этот режим делит сетевое пространство хоста. Контейнеры с `--network none` и `--network host` запускаются без ожидания интерфейса; в bridge-режиме ожидание появления veth-интерфейса ограничено пятью секундами.
+Используйте `--network none`, если приложению не нужна сеть, и `--network host` только осознанно — этот режим делит сетевое пространство хоста. Контейнеры с `--network none` и `--network host` запускаются без ожидания интерфейса; в bridge-режиме ожидание появления veth-интерфейса ограничено пятью секундами. Квота `--disk` действует только на записываемый слой overlay — именованные тома в `volumes/` не троттлятся.
 
 ## 14. Обновление кода приложения
 
@@ -800,7 +800,7 @@ cardinal run -d \
 ```bash
 cardinal ps -a
 cardinal logs --tail 100 minecraft
-cardinal stats minecraft --no-stream
+cardinal stats --no-stream minecraft
 cardinal stop minecraft
 cardinal start minecraft
 cardinal restart minecraft
@@ -916,7 +916,7 @@ cardinal inspect ИМЯ | grep -E '"status"|"pid"'
 ├── containers/   JSON-состояние контейнеров
 ├── overlay/      записываемые слои контейнеров
 ├── logs/         stdout/stderr cardinal
-├── volumes/      именованные тома
+├── volumes/      именованные тома (`volumes/<имя>/` + `volume.json`)
 ├── cache/        кэш слоёв образов
 ├── consoles/     socket-файлы для attach
 └── backups/      архивы автоматических бэкапов

@@ -7,8 +7,34 @@ import (
 	"fmt"
 	"os"
 
+	"golang.org/x/sys/unix"
+
 	"cardinal/internal/image"
 )
+
+// readPasswordNoEcho reads one line from the terminal without echoing it
+// (no new dependency: golang.org/x/sys is already vendored).
+func readPasswordNoEcho(prompt string) (string, error) {
+	fmt.Print(prompt)
+	fd := int(os.Stdin.Fd())
+	oldState, err := unix.IoctlGetTermios(fd, unix.TCGETS)
+	if err != nil {
+		return "", err
+	}
+	newState := *oldState
+	newState.Lflag &^= unix.ECHO
+	if err := unix.IoctlSetTermios(fd, unix.TCSETS, &newState); err != nil {
+		return "", err
+	}
+	defer func() { _ = unix.IoctlSetTermios(fd, unix.TCSETS, oldState) }()
+	var pass string
+	if _, err := fmt.Scanln(&pass); err != nil {
+		fmt.Println()
+		return "", err
+	}
+	fmt.Println()
+	return pass, nil
+}
 
 func Login(args []string) {
 	fs := flag.NewFlagSet("login", flag.ContinueOnError)
@@ -26,6 +52,9 @@ func Login(args []string) {
 	registry := freeArgs[0]
 	user := *username
 	pass := *password
+	if pass != "" {
+		fmt.Fprintln(os.Stderr, "Warning: -p exposes the password in shell history and `ps` output; prefer --password-stdin or interactive input")
+	}
 
 	if user == "" {
 		fmt.Print("Username: ")
@@ -35,8 +64,8 @@ func Login(args []string) {
 		}
 	}
 	if pass == "" && !*passwordStdin {
-		fmt.Print("Password: ")
-		if _, err := fmt.Scanln(&pass); err != nil {
+		var err error
+		if pass, err = readPasswordNoEcho("Password: "); err != nil {
 			fmt.Fprintf(os.Stderr, "Error reading password: %v\n", err)
 			exitFunc(1)
 		}

@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.3.1`
-**Project release:** `v2.3.1`
+**Documentation version:** `2.4.3`
+**Project release:** `v2.4.3`
 <!-- cardinal-version:end -->
 
 # cardinal CLI Command Reference
@@ -153,6 +153,10 @@ Remove saved credentials.
 cardinal logout registry.example.com
 ```
 
+### `cardinal registry COMMAND`
+
+Manage registries and the pull allowlist (`add`, `rm`, `allowlist`, `login`, `logout`). Bare invocation lists the allowlist; the allowlist is enforced only with `CARDINAL_REGISTRY_STRICT=1`.
+
 ## 3. Container lifecycle
 
 ### `cardinal run [OPTIONS] IMAGE [COMMAND ...]`
@@ -179,7 +183,7 @@ Create and start a container. The image may instead be supplied with `--image`, 
 | `--volume`, `--vol` | Aliases for `-v` |
 | `--memory`, `--ram LIMIT` | Memory limit, e.g. `512m`, `1g` |
 | `--cpus`, `--cpu N` | CPU limit, e.g. `0.5`, `2` |
-| `--disk LIMIT` | Disk limit, e.g. `1G`, `2T` |
+| `--disk LIMIT` | Disk limit, e.g. `1G`, `2T` (overlay writable layer only — named volumes are not throttled) |
 | `--workdir DIR` | Working directory in the container |
 | `--image IMAGE` | Image instead of the positional image |
 | `--cmd`, `--command COMMAND` | Command instead of positional command arguments |
@@ -199,8 +203,8 @@ Create and start a container. The image may instead be supplied with `--image`, 
 | `--healthcheck-interval SECONDS` | Healthcheck interval |
 | `--healthcheck-retries N` | Consecutive failures before restart |
 | `--healthcheck-timeout SECONDS` | Healthcheck timeout |
-| `--seccomp-profile FILE` | Path to custom seccomp profile JSON (default: built-in profile) |
-| `--apparmor-profile NAME` | AppArmor profile name |
+| `--seccomp-profile FILE` | Accepted but not yet enforced (fails closed); planned |
+| `--apparmor-profile NAME` | Accepted but not yet enforced (fails closed); planned |
 | `--isolated` | Isolate container from other containers (network segmentation) |
 | `--encrypted-backup` | Encrypt backup archives with AES-256-GCM |
 | `--audit-log` | Enable audit logging for container events |
@@ -272,7 +276,7 @@ Change configuration without removing the container. If it was running, cardinal
 |---|---|
 | `--memory`, `--ram LIMIT` | Memory limit |
 | `--cpus`, `--cpu N` | CPU limit |
-| `--disk LIMIT` | Disk limit |
+| `--disk LIMIT` | Disk limit (overlay writable layer only) |
 | `--restart POLICY` | Restart policy |
 | `--restart-delay DURATION` | Recovery delay |
 | `--restart-max-attempts N` | Crash-loop restart budget |
@@ -380,7 +384,9 @@ The last form searches every container. `--name` is a substring filter, `--grep`
 
 ### `cardinal stats [CONTAINER] [--no-stream]`
 
-Show cgroups v2 CPU, memory, I/O, and process statistics. `--no-stream` prints one sample and exits.
+Show cgroups v2 CPU, memory, disk, I/O, and process statistics, refreshed in place every second (ANSI cursor-up redraw; piped output and `TERM=dumb` scroll instead). `--no-stream` prints one sample and exits (the flag must precede the container name). CPU% is delta-based, so a one-shot sample always reads `0.0%` — stream or take two samples for a real reading.
+
+`disk_usage_bytes` covers the overlay writable layer plus all attached named volumes (bind/tmpfs/NFS excluded); full tree walks are cached per container with a 60s TTL and can lag bulk writes by up to a minute. The `--disk` quota applies to the overlay only.
 
 ### `cardinal top CONTAINER`
 
@@ -428,7 +434,7 @@ List named volumes.
 
 ### `cardinal volume inspect NAME [NAME ...]`
 
-Show driver, mountpoint, creation time, and labels.
+Show driver, mountpoint, creation time, and labels. The mountpoint is `<data-dir>/volumes/<name>/` (`/root/.cardinal` for root, `$CARDINAL_DATA_DIR` otherwise).
 
 ### `cardinal volume rm|remove NAME [NAME ...]`
 
@@ -444,11 +450,13 @@ Remove local volumes not referenced by any container.
 |---|---|---|
 | `create` | `cardinal backup create CONTAINER [-o FILE.tar.gz]` | One-shot backup; container must be stopped |
 | `list` / `ls` | `cardinal backup list` | List archives under the cardinal backup directory |
-| `restore` | `cardinal backup restore CONTAINER FILE.tar.gz` | Restore into a stopped matching container |
+| `restore` | `cardinal backup restore CONTAINER FILE.tar.gz [--rebind]` | Restore into a stopped matching container (`--rebind`: into a newly created container) |
 | `enable` | `cardinal backup enable CONTAINER [OPTIONS]` | Enable scheduled backups |
 | `disable` | `cardinal backup disable CONTAINER` | Disable scheduled backups |
 | `status` | `cardinal backup status CONTAINER` | Show schedule and last result |
 | `verify` | `cardinal backup verify FILE.tar.gz` | Verify a backup archive against its checksum sidecar |
+| `remove` / `rm` / `delete` | `cardinal backup remove FILE.tar.gz` | Remove an archive and its checksum sidecar |
+| `generate-key` | `cardinal backup generate-key` | Generate an encryption key for encrypted backups |
 
 `backup enable` options:
 
@@ -569,6 +577,10 @@ Blueprint `info` accepts a full name or a matching prefix. `-y` skips installati
 
 Remove unused containers and images according to the runtime's cleanup rules.
 
+### `cardinal system df`
+
+Show disk usage across Images, Containers, Overlay, Volumes, Logs, Backups and Cache, plus the total and the data directory. Volumes need `cardinal volume prune` — `system prune` never touches them.
+
 ### `cardinal update [--check]`
 
 Check for a newer release. Without `--check` (or `-c`), cardinal prompts before downloading and replacing the current binary. The update verifies a checksum when one is available. The download allows up to five minutes; on failure, each download method reports its own error. If the automatic download fails, install the release manually (see [Running cardinal](running.md), Section 2).
@@ -597,7 +609,7 @@ Print the built-in command overview. Individual commands also print usage when r
 
 ### Internal commands
 
-`cardinal init <container-id> <merged-path>` initializes a container namespace and is invoked by the runtime. `cardinal console-serve` serves attach connections. These are implementation commands and are not intended as normal application entry points.
+`cardinal init <container-id> <merged-path>` initializes a container namespace and is invoked by the runtime. `cardinal console-serve` serves attach connections. These are implementation commands and are not intended as normal application entry points. (`init` also answers to `init-container`; `helper-mount` is hidden entirely.)
 
 ## 10. Data and environment
 

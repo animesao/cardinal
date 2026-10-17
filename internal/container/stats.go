@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -135,26 +136,84 @@ func readCPUStats(s *ContainerStats, cgPath string) {
 func readDiskStats(s *ContainerStats, c *Container) {
 	s.DiskLimit = uint64(maxInt64(c.DiskLimit))
 	upper, _, _ := c.OverlayDirs()
-	// When the disk-limit data mount is active, Start re-points the overlay's
-	// upper dir at <overlay>/<id>/data/upper — the plain <id>/upper path is an
-	// empty leftover, which made DiskUsage report 0 for every container with
-	// a disk limit. Prefer the mounted data layer when it exists.
 	dataUpper := filepath.Join(filepath.Dir(upper), "data", "upper")
 	if fi, err := os.Stat(dataUpper); err == nil && fi.IsDir() {
 		upper = dataUpper
 	}
+	roots := []string{upper}
+	seen := map[string]bool{upper: true}
+	for _, vol := range c.Volumes {
+		if !isNamedVolume(vol) {
+			continue
+		}
+		dir := VolumeDir(vol.Source)
+		if seen[dir] {
+			continue
+		}
+		seen[dir] = true
+		roots = append(roots, dir)
+	}
+	s.DiskUsage = cachedDirSize(c.ID, roots)
+}
+
+func isNamedVolume(vol VolumeMount) bool {
+	if vol.Type == VolumeTypeVolume {
+		return vol.Source != ""
+	}
+	if vol.Type == "" || vol.Type == VolumeTypeBind {
+		return vol.Source != "" && !strings.ContainsAny(vol.Source, "/\\")
+	}
+	return false
+}
+
+var duCache = struct {
+	sync.Mutex
+	entries map[string]duEntry
+}{entries: map[string]duEntry{}}
+
+type duEntry struct {
+	total uint64
+	at    time.Time
+}
+
+const duCacheTTL = 60 * time.Second
+
+func cachedDirSize(id string, roots []string) uint64 {
+	now := time.Now()
+	duCache.Lock()
+	if e, ok := duCache.entries[id]; ok && now.Sub(e.at) < duCacheTTL {
+		total := e.total
+		duCache.Unlock()
+		return total
+	}
+	duCache.Unlock()
 	var total uint64
-	_ = filepath.WalkDir(upper, func(_ string, entry os.DirEntry, err error) error {
+	for _, root := range roots {
+		total += dirTreeSize(root)
+	}
+	duCache.Lock()
+	for k, e := range duCache.entries {
+		if now.Sub(e.at) > 2*duCacheTTL {
+			delete(duCache.entries, k)
+		}
+	}
+	duCache.entries[id] = duEntry{total: total, at: now}
+	duCache.Unlock()
+	return total
+}
+
+func dirTreeSize(root string) uint64 {
+	var total uint64
+	_ = filepath.WalkDir(root, func(_ string, entry os.DirEntry, err error) error {
 		if err != nil || entry == nil || !entry.Type().IsRegular() {
 			return nil
 		}
-		info, err := entry.Info()
-		if err == nil {
+		if info, err := entry.Info(); err == nil {
 			total += uint64(info.Size())
 		}
 		return nil
 	})
-	s.DiskUsage = total
+	return total
 }
 
 func maxInt64(value int64) int64 {

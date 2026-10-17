@@ -231,19 +231,21 @@ type CreateContainerRequest struct {
 }
 
 type CreateHostConfig struct {
-	Binds          []string                 `json:"Binds,omitempty"`
-	PortBindings   map[string][]PortBinding `json:"PortBindings,omitempty"`
-	RestartPolicy  *RestartPolicy           `json:"RestartPolicy,omitempty"`
-	NetworkMode    string                   `json:"NetworkMode,omitempty"`
-	Privileged     bool                     `json:"Privileged,omitempty"`
-	ReadonlyRootfs bool                     `json:"ReadonlyRootfs,omitempty"`
-	DNS            []string                 `json:"Dns,omitempty"`
-	CapAdd         []string                 `json:"CapAdd,omitempty"`
-	CapDrop        []string                 `json:"CapDrop,omitempty"`
-	Memory         int64                    `json:"Memory,omitempty"`
-	NanoCPUs       int64                    `json:"NanoCpus,omitempty"`
-	DiskLimit      int64                    `json:"DiskLimit,omitempty"`
-	ExtraHosts     []string                 `json:"ExtraHosts,omitempty"`
+	Binds              []string                 `json:"Binds,omitempty"`
+	PortBindings       map[string][]PortBinding `json:"PortBindings,omitempty"`
+	RestartPolicy      *RestartPolicy           `json:"RestartPolicy,omitempty"`
+	NetworkMode        string                   `json:"NetworkMode,omitempty"`
+	Privileged         bool                     `json:"Privileged,omitempty"`
+	ReadonlyRootfs     bool                     `json:"ReadonlyRootfs,omitempty"`
+	DNS                []string                 `json:"Dns,omitempty"`
+	CapAdd             []string                 `json:"CapAdd,omitempty"`
+	CapDrop            []string                 `json:"CapDrop,omitempty"`
+	AllowDangerousCaps bool                     `json:"AllowDangerousCaps,omitempty"`
+	AllowRoot          bool                     `json:"AllowRoot,omitempty"`
+	Memory             int64                    `json:"Memory,omitempty"`
+	NanoCPUs           int64                    `json:"NanoCpus,omitempty"`
+	DiskLimit          int64                    `json:"DiskLimit,omitempty"`
+	ExtraHosts         []string                 `json:"ExtraHosts,omitempty"`
 }
 
 type CreateContainerResponse struct {

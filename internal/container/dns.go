@@ -5,6 +5,7 @@ package container
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,6 +25,28 @@ var dnsRegistry = &DNSRegistry{}
 type dnsEntry struct {
 	Name string `json:"name"`
 	IP   string `json:"ip"`
+}
+
+// isHostsSafe reports whether an IP/name pair can be written verbatim into
+// /etc/hosts: a valid IP plus a name with no whitespace, control characters
+// or line-structure characters.
+func isHostsSafe(ip, name string) bool {
+	if net.ParseIP(ip) == nil {
+		return false
+	}
+	if name == "" || len(name) > 253 {
+		return false
+	}
+	for _, r := range name {
+		if r <= ' ' || r == 0x7f {
+			return false
+		}
+		switch r {
+		case '/', '\\', '#', '=', ':', '"', '\'':
+			return false
+		}
+	}
+	return true
 }
 
 func RegisterDNSName(name, ip string) {
@@ -127,7 +150,12 @@ func EnsureContainerHosts(mergedDir, containerName, containerIP string, dns []st
 	if len(dns) > 0 {
 		resolvContent := ""
 		for _, s := range dns {
-			resolvContent += fmt.Sprintf("nameserver %s\n", s)
+			// DNS servers land verbatim in resolv.conf: only IPs pass,
+			// so a crafted entry cannot inject extra lines/directives.
+			if net.ParseIP(strings.TrimSpace(s)) == nil {
+				continue
+			}
+			resolvContent += fmt.Sprintf("nameserver %s\n", strings.TrimSpace(s))
 		}
 		resolvPath := filepath.Join(mergedDir, "etc", "resolv.conf")
 		if err := os.MkdirAll(filepath.Dir(resolvPath), 0755); err != nil {
@@ -152,7 +180,10 @@ func EnsureContainerHosts(mergedDir, containerName, containerIP string, dns []st
 		sb.WriteString(hostsContent)
 		sb.WriteString("\n# cardinal-managed names\n")
 		for _, e := range entries {
-			if e.Name != containerName {
+			// Hosts entries are shared with every container: skip anything
+			// that is not a plain IP + hostname pair, so a crafted
+			// container/host name cannot poison neighbours' /etc/hosts.
+			if e.Name != containerName && isHostsSafe(e.IP, e.Name) {
 				sb.WriteString(fmt.Sprintf("%s\t%s\n", e.IP, e.Name))
 			}
 		}

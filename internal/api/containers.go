@@ -428,6 +428,24 @@ func handleContainersCreate(w http.ResponseWriter, r *http.Request) {
 		capDrop = req.HostConfig.CapDrop
 	}
 
+	// Runtime hardening policy, same as the CLI gates: dangerous
+	// capabilities and explicit root users need acknowledgement fields.
+	// Docker's Privileged flag is refused outright — express the same
+	// intent with explicit caps instead.
+	allowDangerous, allowRoot := false, false
+	if req.HostConfig != nil {
+		allowDangerous = req.HostConfig.AllowDangerousCaps
+		allowRoot = req.HostConfig.AllowRoot
+		if req.HostConfig.Privileged {
+			writeError(w, 403, "Privileged mode is not supported: request explicit CapAdd/AllowDangerousCaps instead")
+			return
+		}
+	}
+	if err := container.ValidateRuntimePolicy(capAdd, req.User, allowDangerous, allowRoot); err != nil {
+		writeError(w, 403, err.Error())
+		return
+	}
+
 	// Resource limits
 	var memLimit int64
 	var cpuCount float64

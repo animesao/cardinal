@@ -57,6 +57,9 @@ func StartServerWithTLS(port int, host, certFile, keyFile string) error {
 	if isExternalHost(host) && authToken == "" {
 		return fmt.Errorf("refusing to expose API on %s without an authentication token; use --token or CARDINAL_TOKEN", host)
 	}
+	if authToken == "" {
+		return fmt.Errorf("refusing to serve the API without an authentication token; generate one with `openssl rand -hex 32` and pass --token or CARDINAL_TOKEN (loopback included: any local process could otherwise drive the full container API)")
+	}
 
 	mux := http.NewServeMux()
 

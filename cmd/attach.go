@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"net"
@@ -58,7 +59,7 @@ func Attach(args []string) {
 		done <- struct{}{}
 	}
 
-	go copyStream(conn, os.Stdin)
+	go forwardStdin(conn, os.Stdin)
 	go copyStream(os.Stdout, conn)
 	go func() {
 		select {
@@ -70,4 +71,28 @@ func Attach(args []string) {
 
 	<-done
 	closeConn()
+}
+
+// forwardStdin pipes user input to the console socket. The container's
+// stdin is a pipe, not a PTY, so nothing echoes typed lines back — without
+// a local echo the operator sees responses but never what they typed.
+// When stdin is a terminal the kernel already echoes keystrokes, so we only
+// echo for piped/redirected input (where there would otherwise be silence).
+// Lines go over the socket unchanged; only the local display copy is added.
+func forwardStdin(conn io.Writer, stdin *os.File) {
+	if fi, err := stdin.Stat(); err == nil && (fi.Mode()&os.ModeCharDevice) != 0 {
+		_, _ = io.Copy(conn, stdin)
+		return
+	}
+	scanner := bufio.NewScanner(stdin)
+	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if _, err := fmt.Fprintln(os.Stdout, line); err != nil {
+			return
+		}
+		if _, err := fmt.Fprintln(conn, line); err != nil {
+			return
+		}
+	}
 }

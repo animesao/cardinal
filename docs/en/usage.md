@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.3.1`
-**Project release:** `v2.3.1`
+**Documentation version:** `2.4.3`
+**Project release:** `v2.4.3`
 <!-- cardinal-version:end -->
 
 # Usage & Commands
@@ -438,12 +438,16 @@ cardinal bootstrap --install
 
 ### `cardinal stats [container]`
 
-Show live resource usage stats: CPU, memory, I/O, and PIDs. Uses cgroups v2.
+Show live resource usage stats: CPU, memory, disk, I/O, and PIDs. Uses cgroups v2.
 
 ```bash
 cardinal stats               # all running containers
 cardinal stats web           # specific container
 ```
+
+The table refreshes in place every second (ANSI cursor-up redraw, no scrolling); piped output and `TERM=dumb` scroll instead. `--no-stream` prints one snapshot and exits — note CPU% is delta-based, so a one-shot sample always reads `0.0%`.
+
+`disk_usage_bytes` sums the overlay writable layer (`overlay/<id>/upper`, or `data/upper` when a `--disk` image is mounted) **plus every attached named volume** (`<data-dir>/volumes/<name>`); bind mounts, tmpfs and NFS are excluded. Full tree walks are cached per container with a 60s TTL, so disk figures can lag bulk writes by up to a minute. The `--disk` quota itself covers only the overlay — named volumes are not throttled.
 
 ### `cardinal info`
 
@@ -539,7 +543,7 @@ cardinal run -d --dns 1.1.1.1 --dns 8.8.8.8 nginx
 
 ### Named volumes
 
-cardinal can manage named volumes stored under `~/.cardinal/volumes/`.
+cardinal manages named volumes at `<data-dir>/volumes/<name>/` (plus a `volume.json` metadata file inside), where `<data-dir>` is `/root/.cardinal` for root or `$CARDINAL_DATA_DIR` (default `~/.cardinal` for regular users). A bare `-v mydata:/path` source (no slash) resolves there too.
 
 ```bash
 # Create a volume
@@ -643,7 +647,7 @@ cardinal run -d --disk 1G nginx        # 1 GB disk limit
 cardinal run -d --disk 10G nginx       # 10 GB disk limit
 ```
 
-Creates a sparse ext4 image mounted as the overlay's writable layer. Requires `mkfs.ext4`.
+Creates a sparse ext4 image mounted as the overlay's writable layer. Requires `mkfs.ext4`. The quota covers the overlay only — named volumes (`<data-dir>/volumes/<name>`) live outside the image and are not throttled.
 
 ---
 
@@ -660,7 +664,7 @@ cardinal run -d --user 1000:1000 nginx   # UID:GID
 
 ### Capabilities
 
-By default, cardinal keeps the Docker-compatible safe capability set needed by common images (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `FSETID`, `KILL`, `SETGID`, `SETUID`, `SETPCAP`, `NET_BIND_SERVICE`, `NET_RAW`, `SYS_CHROOT`, `MKNOD`, `AUDIT_WRITE`, and `SETFCAP`). Dangerous capabilities such as `SYS_ADMIN` and `SYS_MODULE` remain dropped. This lets standard images such as `nginx:alpine` initialize their filesystems normally.
+By default, cardinal keeps a Docker-compatible safe capability set needed by common images (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `FSETID`, `KILL`, `SETGID`, `SETUID`, `SETPCAP`, `NET_BIND_SERVICE`, `NET_RAW`, `SYS_CHROOT`, `AUDIT_WRITE`, and `SETFCAP`). Unlike Docker, `MKNOD` is **not** in the default set (grant it explicitly with `--cap-add MKNOD` when the workload must create device nodes). Dangerous capabilities such as `SYS_ADMIN` and `SYS_MODULE` remain dropped unless acknowledged with `--allow-dangerous-caps`. This lets standard images such as `nginx:alpine` initialize their filesystems normally.
 
 ```bash
 # Add capabilities
@@ -698,27 +702,19 @@ cardinal run -d --sysctl net.ipv4.ip_forward=1 nginx
 
 ### Seccomp Profile
 
-cardinal applies a default seccomp profile that blocks 30+ dangerous syscalls including `mount`, `ptrace`, `reboot`, `kexec_load`, `bpf`, and `init_module`.
-
-```bash
-# Use default seccomp profile (automatic)
-cardinal run -d nginx
-
-# Use custom seccomp profile
-cardinal run -d --seccomp-profile /path/to/profile.json nginx
-```
+> **Status: planned, not enforced.** A default profile ships in-tree and
+> `--seccomp-profile` is accepted, but the filter is not applied yet (the
+> BPF compiler is unimplemented). Passing `--seccomp-profile` currently
+> fails closed with an explicit error instead of running unconfined.
+> Current syscall confinement is `no_new_privs` (always on) + capability
+> drops + read-only `/proc/sys` and `/sys`.
 
 ### AppArmor Profile
 
-cardinal applies a default AppArmor profile (`cardinal-container`) that restricts access to sensitive host paths and limits container capabilities.
-
-```bash
-# Use default AppArmor profile (automatic)
-cardinal run -d nginx
-
-# Use custom AppArmor profile
-cardinal run -d --apparmor-profile my-profile nginx
-```
+> **Status: planned, not enforced.** A profile template (`cardinal-container`)
+> ships in-tree and `--apparmor-profile` is accepted, but it is not loaded
+> or applied yet. Passing a profile currently fails closed with an explicit
+> error instead of running unconfined.
 
 ### Network Isolation
 

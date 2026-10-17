@@ -100,10 +100,14 @@ var defaultContainerCapabilities = map[string]bool{
 	"NET_BIND_SERVICE": true,
 	"NET_RAW":          true,
 	"SYS_CHROOT":       true,
-	"MKNOD":            true,
 	"AUDIT_WRITE":      true,
 	"SETFCAP":          true,
 }
+
+// NOTE: MKNOD is intentionally absent (Docker keeps it, but Docker also
+// confines devices with a device-cgroup allowlist which cardinal does not
+// apply yet). Grant explicitly with --cap-add MKNOD when the workload must
+// create device nodes (e.g. /dev/net/tun for VPN images).
 
 func requestedCapabilities(c *Container) (map[string]bool, error) {
 	keep := make(map[string]bool, len(defaultContainerCapabilities))
@@ -378,6 +382,13 @@ func InitContainer(id, merged string) error {
 			}
 			log.Warn("mount %s: %v", mount.target, err)
 		}
+	}
+
+	// Minimal /dev: the fresh devtmpfs above carries the full host device
+	// set (disks, kvm, ...). Prune it to pseudo-devices before dropping
+	// privileges — uid 0 in the container is uid 0 on the host.
+	if err := PruneDevtmpfs("/dev"); err != nil {
+		return fmt.Errorf("prune /dev: %w", err)
 	}
 
 	// Never write arbitrary host-visible kernel settings from a container

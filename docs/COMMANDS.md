@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.3.1`
-**Project release:** `v2.3.1`
+**Documentation version:** `2.4.3`
+**Project release:** `v2.4.3`
 <!-- cardinal-version:end -->
 
 # cardinal — Command verification map
@@ -39,7 +39,7 @@ invokes the kernel through `syscall`/`exec` like any container engine.
 | `ps` | state dir | `cobra`, `e2e-linux` | |
 | `inspect` | state dir | `cobra`, `e2e-linux` | `--sensitive` reveals mount sources. |
 | `logs` | container runtime dir + nsenter | `cobra`, `e2e-linux` | |
-| `stats` | cgroup v2 stat files | `cobra` | Polls cgroup files; cache-friendly. |
+| `stats` | cgroup v2 stat files + fs tree walk | `cobra` | cgroup reads plus disk tree-walks cached 60s; live ANSI redraw 1/s; `--no-stream` one-shot (CPU always 0.0%). |
 | `top` | nsenter+ps | `cobra` | |
 | `info` | `/proc` | `cobra`, `e2e-linux` | |
 | `images` | state dir | `cobra`, `e2e-linux` | |
@@ -57,7 +57,7 @@ invokes the kernel through `syscall`/`exec` like any container engine.
 | `volume` | mount utilities | `cobra`, `unit-test` (`IsProtectedHostPath`) | Bind-mount host-path blocklist. |
 | `fs` | nsenter + tar | `cobra` | ls/cat/tree/find inside container. |
 | `cp` | nsenter + tar | `cobra`, `e2e-linux` | Used in e2e smoke. |
-| `backup` | tar, optional GPG | `cobra`, `unit-test` (round-trip, scheduler, encryption) | Seven subcommands: create/list/restore/enable/disable/status/verify. |
+| `backup` | tar, optional AES-256-GCM | `cobra`, `unit-test` (round-trip, scheduler, encryption) | Nine verbs: create/list/ls/restore/enable/disable/status/verify/remove (+rm/delete aliases)/generate-key; restore supports --rebind. |
 | `cluster` | cluster state dir + multicast | `cobra` | Pure-Go; runs locally without external daemons. |
 | `fn` | FaaS state dir | `cobra`, `unit-test` (FaaS rules) | Function-as-a-Service. |
 | `service` | supervisor + healthcheck | `cobra`, `unit-test` | Long-running services. |
@@ -65,15 +65,15 @@ invokes the kernel through `syscall`/`exec` like any container engine.
 | `up` | state dir + overlayfs + cgroup | `cobra`, `unit-test` (compose parser) | Docker-Compose parse. |
 | `down` | supervisor | `cobra` | Reverse of up. |
 | `serve` | HTTP listener | `cobra`, `unit-test` (rate limit, metrics gate, isExternalHost) | Bearer-token required off-loopback. |
-| `console` / `console-serve` | unix-socket + browser | `cobra` | Web-based terminal. |
+| `console` / `console-serve` | interactive exec | `cobra` | `console` opens a local interactive shell; `console-serve` (hidden) serves attach connections. |
 | `attach` | nsenter+exec | `cobra`, `e2e-linux` | Attach stdin/stdout to running process. |
 | `supervisor` | systemd-timer or background loop | `cobra`, `e2e-linux` | Persistent restart policy enforcement. |
 | `bootstrap` | systemd-only Linux | `cobra` | Install/uninstall systemd unit. |
 | `doctor` | `/proc` | `cobra`, `e2e-linux` | Read-only host check. |
 | `security` | `/proc` + config | `cobra` | `security check` runs the security-focused subset of doctor. |
-| `system` | state dir | `cobra` | prunes images / containers / volumes. |
+| `system` | state dir | `cobra` | `prune` removes stopped containers/unused images/orphan overlays+logs (never volumes); `df` reports Images/Containers/Overlay/Volumes/Logs/Backups/Cache. |
 | `update` | network + GitHub Releases | `cobra`, `unit-test` (cosign verification path) | SHA256 mandatory; cosign opt-in via `CARDINAL_REQUIRE_SIGNATURE=1`. |
-| `init` | namespaces | `cobra` | Internal helper used by `run`. |
+| `init` (alias `init-container`) | namespaces | `cobra` | Internal helper used by `run`. (`helper-mount` is hidden entirely.) |
 | `registry` | state dir | `cobra`, `unit-test` (allowlist default/perm/strict/insecure) | Allowlist + credential management. |
 | `version` | nothing | `cobra`, `e2e-linux` | Plain text version. |
 
@@ -86,8 +86,9 @@ invokes the kernel through `syscall`/`exec` like any container engine.
 
 ## Sub-command surface
 
-`cardinal backup` advertises: create / list / restore / enable / disable /
-status / verify. Each sub-command is also a `register(commandSpec{...})`
+`cardinal backup` advertises: create / list / ls / restore / enable / disable /
+status / verify / remove / generate-key (plus `rm`/`delete` aliases and
+`restore --rebind`). Each sub-command is also a `register(commandSpec{...})`
 entry — they appear in `cardinal backup --help` in alphabetical order.
 
 `cardinal security` advertises: check.

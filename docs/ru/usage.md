@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.3.1`
-**Project release:** `v2.3.1`
+**Documentation version:** `2.4.3`
+**Project release:** `v2.4.3`
 <!-- cardinal-version:end -->
 
 # Команды и использование
@@ -448,12 +448,16 @@ cardinal bootstrap --install
 
 ### `cardinal stats [контейнер]`
 
-Использование CPU, памяти, I/O и PIDs в реальном времени. Через cgroups v2.
+Использование CPU, памяти, диска, I/O и PIDs в реальном времени. Через cgroups v2.
 
 ```bash
 cardinal stats               # все контейнеры
 cardinal stats web           # конкретный
 ```
+
+Таблица обновляется на месте каждую секунду (перерисовка ANSI, без прокрутки); при выводе в пайп и `TERM=dumb` — прокрутка. `--no-stream` выводит один снимок и завершает работу — учти, что CPU% считается по дельте, поэтому разовый снимок всегда показывает `0.0%`.
+
+`disk_usage_bytes` — это сумма writable-слоя overlay (`overlay/<id>/upper`, либо `data/upper` при смонтированном `--disk`-образе) **плюс все подключённые именованные тома** (`<data-dir>/volumes/<name>`); bind, tmpfs и NFS исключаются. Полные обходы дерева кэшируются на контейнер с TTL 60с, поэтому цифры диска могут отставать от массовых записей до минуты. Сама квота `--disk` действует только на overlay — именованные тома не троттлятся.
 
 ### `cardinal info`
 
@@ -566,7 +570,7 @@ cardinal port rm web 8080
 
 ### Именованные тома
 
-Тома хранятся в `~/.cardinal/volumes/`.
+cardinal хранит именованные тома в `<data-dir>/volumes/<name>/` (плюс файл метаданных `volume.json` внутри), где `<data-dir>` — это `/root/.cardinal` для root или `$CARDINAL_DATA_DIR` (по умолчанию `~/.cardinal` для обычных пользователей). Короткая запись `-v mydata:/path` (без слэша в источнике) тоже резолвится туда.
 
 ```bash
 # Создать том
@@ -672,7 +676,7 @@ cardinal run -d --disk 1G nginx        # 1 GB
 cardinal run -d --disk 10G nginx       # 10 GB
 ```
 
-Создаёт sparse ext4 образ, который монтируется как overlay. Требует `mkfs.ext4`.
+Создаёт sparse ext4 образ, который монтируется как overlay. Требует `mkfs.ext4`. Квота действует только на overlay — именованные тома (`<data-dir>/volumes/<name>`) живут вне образа и не троттлятся.
 
 ---
 
@@ -689,7 +693,7 @@ cardinal run -d --user 1000:1000 nginx   # UID:GID
 
 ### Capabilities
 
-По умолчанию cardinal сохраняет безопасный Docker-совместимый набор capabilities, необходимый обычным образам (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `FSETID`, `KILL`, `SETGID`, `SETUID`, `SETPCAP`, `NET_BIND_SERVICE`, `NET_RAW`, `SYS_CHROOT`, `MKNOD`, `AUDIT_WRITE` и `SETFCAP`). Опасные capabilities, такие как `SYS_ADMIN` и `SYS_MODULE`, по-прежнему отключены. Поэтому стандартные образы вроде `nginx:alpine` могут нормально подготовить файловую систему.
+По умолчанию cardinal сохраняет безопасный Docker-совместимый набор capabilities, необходимый обычным образам (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `FSETID`, `KILL`, `SETGID`, `SETUID`, `SETPCAP`, `NET_BIND_SERVICE`, `NET_RAW`, `SYS_CHROOT`, `AUDIT_WRITE` и `SETFCAP`). В отличие от Docker, `MKNOD` **не** входит в дефолт (вернуть через `--cap-add MKNOD`, если ворклоад создаёт девайс-ноды). Опасные capabilities, такие как `SYS_ADMIN` и `SYS_MODULE`, отключены без `--allow-dangerous-caps`. Поэтому стандартные образы вроде `nginx:alpine` могут нормально подготовить файловую систему.
 
 ```bash
 # Добавить capability
@@ -727,27 +731,19 @@ cardinal run -d --sysctl net.ipv4.ip_forward=1 nginx
 
 ### Профиль Seccomp
 
-cardinal применяет профиль seccomp по умолчанию, который блокирует 30+ опасных syscalls, включая `mount`, `ptrace`, `reboot`, `kexec_load`, `bpf` и `init_module`.
-
-```bash
-# Использовать профиль seccomp по умолчанию (автоматически)
-cardinal run -d nginx
-
-# Использовать кастомный профиль seccomp
-cardinal run -d --seccomp-profile /путь/к/профилю.json nginx
-```
+> **Статус: запланировано, не применяется.** Профиль по умолчанию есть в
+> дереве и `--seccomp-profile` принимается, но фильтр не применяется
+> (BPF-компилятор не реализован). Передача профиля сейчас завершается
+> явной ошибкой вместо тихого запуска без изоляции. Текущее ограничение
+> сисколлов: всегда включённый `no_new_privs` + дроп capabilities +
+> read-only `/proc/sys` и `/sys`.
 
 ### Профиль AppArmor
 
-cardinal применяет профиль AppArmor по умолчанию (`cardinal-container`), который ограничивает доступ к чувствительным путям хоста и ограничивает возможности контейнера.
-
-```bash
-# Использовать профиль AppArmor по умолчанию (автоматически)
-cardinal run -d nginx
-
-# Использовать кастомный профиль AppArmor
-cardinal run -d --apparmor-profile мой-профиль nginx
-```
+> **Статус: запланировано, не применяется.** Шаблон профиля
+> (`cardinal-container`) есть в дереве и `--apparmor-profile` принимается,
+> но профиль не загружается и не применяется. Передача профиля сейчас
+> завершается явной ошибкой вместо тихого запуска без изоляции.
 
 ### Сетевая изоляция
 
