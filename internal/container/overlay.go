@@ -3,6 +3,7 @@
 package container
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,6 +12,11 @@ import (
 
 	"cardinal/internal/log"
 )
+
+// ErrLoopUnavailable marks a disk-limit mount failure caused by the host not
+// providing loop devices (typical for LXC/OpenVZ-style VDS hosts), as opposed
+// to a broken image or a full disk.
+var ErrLoopUnavailable = errors.New("loop devices unavailable on this host")
 
 func mountOverlay(lower, upper, work, merged string) error {
 	_, err := MountOverlayWithFallback(lower, upper, work, merged)
@@ -116,7 +122,11 @@ func SetupDiskLimit(overlayBase, id string, limitBytes int64) error {
 			return fmt.Errorf("create mount point %s: %w (check disk space/inodes)", mnt, err)
 		}
 		if out, err := exec.Command("mount", "-o", "loop", imgPath, mnt).CombinedOutput(); err != nil {
-			return fmt.Errorf("mount disk: %s: %w", diagnoseDiskMount(imgPath, mnt, string(out)), err)
+			mountErr := fmt.Errorf("mount disk: %s: %w", diagnoseDiskMount(imgPath, mnt, string(out)), err)
+			if !LoopDevicesAvailable() {
+				return errors.Join(ErrLoopUnavailable, mountErr)
+			}
+			return mountErr
 		}
 		if err := os.MkdirAll(filepath.Join(mnt, "upper"), 0755); err != nil {
 			return fmt.Errorf("create %s/upper: %w", mnt, err)
@@ -126,6 +136,24 @@ func SetupDiskLimit(overlayBase, id string, limitBytes int64) error {
 		}
 	}
 	return nil
+}
+
+// LoopDevicesAvailable reports whether the host can back a loop mount at all:
+// either the loop-control node or at least one pre-created /dev/loopN exists.
+func LoopDevicesAvailable() bool {
+	return loopDevicesAvailableIn("/dev")
+}
+
+func loopDevicesAvailableIn(devDir string) bool {
+	if _, err := os.Stat(filepath.Join(devDir, "loop-control")); err == nil {
+		return true
+	}
+	for i := 0; i < 8; i++ {
+		if _, err := os.Stat(filepath.Join(devDir, fmt.Sprintf("loop%d", i))); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // diagnoseDiskMount enriches failed `mount -o loop` output with the

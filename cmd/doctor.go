@@ -89,6 +89,7 @@ func collectDiagnostics() []diagnostic {
 	checks = append(checks, checkDataDirectory()...)
 	checks = append(checks, checkRequiredCommands()...)
 	checks = append(checks, checkKernelFeatures()...)
+	checks = append(checks, checkDiskLimits()...)
 	checks = append(checks, checkRootless()...)
 	checks = append(checks, checkStorageDrivers()...)
 	checks = append(checks, checkAPIConfiguration()...)
@@ -175,6 +176,13 @@ func checkKernelFeatures() []diagnostic {
 		}
 	}
 	return checks
+}
+
+func checkDiskLimits() []diagnostic {
+	if container.LoopDevicesAvailable() {
+		return []diagnostic{{name: "disk limits", status: diagnosticOK, detail: "loop devices available"}}
+	}
+	return []diagnostic{{name: "disk limits", status: diagnosticWarn, detail: "no /dev/loop* devices; containers start without a disk quota (CARDINAL_STRICT_DISK_LIMIT=1 makes that fail)"}}
 }
 
 func checkRootless() []diagnostic {
