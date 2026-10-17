@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.5`
-**Project release:** `v2.4.5`
+**Documentation version:** `2.4.6`
+**Project release:** `v2.4.6`
 <!-- cardinal-version:end -->
 
 # Запуск контейнеров в cardinal
