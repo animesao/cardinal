@@ -9,7 +9,7 @@
 
 <p align="center">
   <!-- cardinal-version-badge:start -->
-  <img src="https://img.shields.io/badge/version-v2.4.4-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-v2.4.5-blue?style=flat-square">
   <!-- cardinal-version-badge:end -->
   <img src="https://img.shields.io/badge/go-1.26%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-Apache--2.0-green?style=flat-square">
@@ -1036,7 +1036,9 @@ Notes:
 ## Changelog
 
 <!-- cardinal-release:start -->
-**v2.4.4** - Security: 9 stdlib CVEs (`net/http`, `net/textproto`, `crypto/tls`) closed by building against Go 1.26.9 - `go.mod` now pins `toolchain go1.26.9`, and the scheduled scan, e2e, `install.ps1` and `snapcraft.yaml` all use it. `internal/image` builds again on non-Linux (the registry allowlist was behind a `//go:build linux` tag although the code is platform-neutral). Internal: the default seccomp profile is really compiled now - an `AUDIT_ARCH_*` guard, an x32 range reject on amd64 and a per-syscall deny list, with numbers taken from `unix.SYS_*` per arch; the profile switched to allow-by-default because the previous KILL-by-default allow-list omitted `futex`/`epoll_*`/`statx` and would have killed every container. Not yet enabled in container init; `--seccomp-profile` still errors instead of pretending to work.
+**v2.4.5** - Internal: the default seccomp profile is really compiled now - an `AUDIT_ARCH_*` guard, an x32 range reject on amd64 and a per-syscall deny list, with syscall numbers taken from `unix.SYS_*` in per-arch tables. The profile switched to allow-by-default because the previous KILL-by-default allow-list omitted `futex`/`epoll_*`/`statx`/`rseq` and would have killed every container. Not yet enabled in container init; `--seccomp-profile` still errors instead of pretending to work. No behaviour change in this release.
+
+**v2.4.4** - Security: 9 stdlib CVEs (`net/http`, `net/textproto`, `crypto/tls`) closed by building against Go 1.26.9 - `go.mod` now pins `toolchain go1.26.9`, and the scheduled scan, e2e, `install.ps1` and `snapcraft.yaml` all use it. `internal/image` builds again on non-Linux (the registry allowlist was behind a `//go:build linux` tag although the code is platform-neutral).
 
 **v2.4.3** - Disk limits no longer block container starts on hosts without loop devices (LXC/OpenVZ-style VDS): cardinal warns and runs without a quota; `CARDINAL_STRICT_DISK_LIMIT=1` keeps it fail-closed. `cardinal doctor` reports the capability.
 
