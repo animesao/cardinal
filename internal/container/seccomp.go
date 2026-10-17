@@ -48,231 +48,61 @@ type SeccompProfile struct {
 	Syscalls      []SeccompSyscall `json:"syscalls"`
 }
 
-// DefaultSeccompProfile returns the default seccomp profile that blocks
-// dangerous syscalls while allowing common container operations.
+// deniedSyscalls is the canonical deny-list. Names are resolved to numbers per
+// arch by buildSeccompFilter; anything missing from an arch's ABI is skipped.
+//
+// Only syscalls that are both dangerous and never needed by a normal workload
+// belong here. The previous version of this profile was deny-by-default with an
+// allow-list that omitted futex, epoll_*, statx, newfstatat, rseq and others the
+// Go runtime and glibc call unconditionally — compiling that faithfully would
+// have killed every container on its first futex wait.
+var deniedSyscalls = []string{
+	// Mount / namespace manipulation — the core escape primitives.
+	"mount", "umount2", "umount", "pivot_root", "chroot",
+
+	// Kernel code loading and reboot.
+	"init_module", "delete_module", "finit_module",
+	"reboot", "kexec_load", "kexec_file_load",
+
+	// Other-process memory and trace access — used to read or hijack
+	// processes outside the container.
+	"ptrace", "process_vm_readv", "process_vm_writev",
+	"kcmp", "pidfd_getfd",
+
+	// Kernel keyring.
+	"keyctl", "add_key", "request_key",
+
+	// Loading BPF and perf events — a kernel-exploitation primitive.
+	"bpf", "perf_event_open", "userfaultfd",
+
+	// Clock and hostname tampering.
+	"clock_settime", "clock_adjtime", "settimeofday", "adjtimex", "stime",
+	"sethostname", "setdomainname",
+
+	// Swap, log and raw port I/O.
+	"swapon", "swapoff", "syslog", "ioperm", "iopl",
+
+	// open_by_handle_at / name_to_handle_at hand out filesystem handles that
+	// bypass normal path checks — the other classic container escape.
+	"open_by_handle_at", "name_to_handle_at",
+}
+
+// DefaultSeccompProfile returns the default seccomp profile.
+//
+// The model is allow-by-default: everything is permitted except the deny-list,
+// which fails with EPERM. This mirrors Docker's default profile. The previous
+// KILL-by-default shape is unsafe here because the allow-list could never be
+// made complete against a changing Go runtime and glibc.
 func DefaultSeccompProfile() *SeccompProfile {
-	// Syscalls to explicitly block (kill on attempt).
-	// These are the most dangerous syscalls that containers should never need.
-	blockedSyscalls := []string{
-		// Module loading — prevents kernel module injection
-		"init_module",
-		"delete_module",
-		"finit_module",
-
-		// Kernel manipulation
-		"reboot",          // System reboot
-		"kexec_load",      // Load new kernel
-		"kexec_file_load", // Load new kernel (file-based)
-
-		// Mount — prevents filesystem manipulation outside container
-		"mount",
-		"umount2",
-		"pivot_root",
-		"chroot",
-
-		// Process manipulation
-		"ptrace",            // Process tracing — can escape namespaces
-		"process_vm_readv",  // Read another process's memory
-		"process_vm_writev", // Write to another process's memory
-
-		// Key management — prevents kernel keyring manipulation
-		"keyctl",
-		"add_key",
-		"request_key",
-
-		// Time manipulation
-		"clock_settime",
-		"settimeofday",
-		"adjtimex",
-		"stime",
-
-		// System info manipulation
-		"syslog", // Kernel log access
-
-		// IO operations
-		"ioperm", // Direct port I/O
-		"iopl",   // Direct port I/O (alternative)
-
-		// NUMA
-		"mbind",
-		"set_mempolicy",
-		"get_mempolicy",
-
-		// perf_event_open — prevents performance monitoring escapes
-		"perf_event_open",
-
-		// bpf — prevents BPF program loading
-		"bpf",
-
-		// userfaultfd — can be used for kernel exploitation
-		"userfaultfd",
-
-		// clone3 with dangerous flags
-		"clone3",
-
-		// Make transparent hugepages
-		"madvise",
-
-		// NUMA policies
-		"move_pages",
-
-		// Swapon/swapoff
-		"swapon",
-		"swapoff",
-
-		// Hostname/domainname
-		"sethostname",
-		"setdomainname",
-
-		// Quinn Futex — can be used for kernel exploitation
-		"futex_waitv",
-	}
-
-	// Syscalls to explicitly allow (subset of commonly needed ones).
-	// The default action is KILL, so we need to allow safe syscalls.
-	allowedSyscalls := []string{
-		// Basic I/O
-		"read", "write", "open", "close", "stat", "fstat", "lstat",
-		"poll", "lseek", "mmap", "mprotect", "munmap", "brk",
-		"rt_sigaction", "rt_sigprocmask", "rt_sigreturn",
-		"ioctl", "pread64", "pwrite64", "readv", "writev",
-		"access", "pipe", "select", "sched_yield",
-		"mremap", "msync", "mincore", "madvise",
-		"shmget", "shmat", "shmctl",
-		"dup", "dup2", "pause", "nanosleep",
-		"getitimer", "alarm", "setitimer",
-		"getpid", "sendfile", "socket", "connect",
-		"accept", "sendto", "recvfrom", "sendmsg", "recvmsg",
-		"shutdown", "bind", "listen", "getsockname", "getpeername",
-		"socketpair", "setsockopt", "getsockopt",
-		"clone", "fork", "vfork",
-		"execve",
-		"exit", "exit_group",
-		"wait4", "kill",
-		"uname", "semget", "semop", "semctl",
-		"shmdt", "msgget", "msgsnd", "msgrcv", "msgctl",
-		"fcntl", "flock", "fsync", "fdatasync",
-		"truncate", "ftruncate", "getdents", "getcwd",
-		"chdir", "fchdir",
-		"rename", "mkdir", "rmdir", "creat",
-		"link", "unlink", "symlink", "readlink",
-		"chmod", "fchmod", "chown", "fchown", "lchown",
-		"umask",
-		"gettimeofday", "getuid", "getgid",
-		"geteuid", "getegid",
-		"getppid", "getpgrp",
-		"setuid", "setgid",
-		"getgroups", "setgroups",
-		"setresuid", "getresuid",
-		"setresgid", "getresgid",
-		"getpgid", "setpgid",
-		"getsid", "setsid",
-		"setreuid", "setregid",
-		"getgroups",
-		"setfsuid", "setfsgid",
-		"sigaltstack",
-		"statfs", "fstatfs",
-		"sysfs",
-		"getpriority", "setpriority",
-		"sched_setparam", "sched_getparam",
-		"sched_setscheduler", "sched_getscheduler",
-		"sched_get_priority_max", "sched_get_priority_min",
-		"sched_rr_get_interval",
-		"mlock", "munlock", "mlockall", "munlockall",
-		"vhangup",
-		"modify_ldt",
-		"pivot_root",
-		"_sysctl",
-		"prctl",
-		"arch_prctl",
-		"adjtimex",
-		"adjtimex",
-		"setrlimit",
-		"chroot",
-		"sync", "syncfs",
-		"syslog",
-		"sethostname", "setdomainname",
-		"iopl", "ioperm",
-		"create_module", "init_module", "delete_module",
-		"get_kernel_syms", "query_module",
-		"getpgid",
-		"fchdir",
-		"uselib",
-		"personality",
-		"ptrace",
-		"syslog",
-		"setuid",
-		"setgid",
-		"setreuid", "setregid",
-		"setfsuid", "setfsgid",
-		"setresuid", "setresgid",
-		"getresuid", "getresgid",
-		"setpgid",
-		"setgroups",
-		"setpriority",
-		"sched_setparam",
-		"sched_setscheduler",
-		"setreuid", "setregid",
-		"setfsuid", "setfsgid",
-		"setresuid", "setresgid",
-		"setpgid",
-		"setgroups",
-		"setpriority",
-		"sched_setparam",
-		"sched_setscheduler",
-		"setrlimit",
-		"setpgid",
-		"setreuid", "setregid",
-		"setfsuid", "setfsgid",
-		"setresuid", "setresgid",
-		"setpgid",
-		"setgroups",
-		"setpriority",
-		"sched_setparam",
-		"sched_setscheduler",
-		"setrlimit",
-		"setpgid",
-		"setreuid", "setregid",
-		"setfsuid", "setfsgid",
-		"setresuid", "setresgid",
-		"setpgid",
-		"setgroups",
-		"setpriority",
-		"sched_setparam",
-		"sched_setscheduler",
-		"setrlimit",
-		"setpgid",
-		"setreuid", "setregid",
-		"setfsuid", "setfsgid",
-		"setresuid", "setresgid",
-		"setpgid",
-		"setgroups",
-		"setpriority",
-		"sched_setparam",
-		"sched_setscheduler",
-		"setrlimit",
-	}
-
-	var syscalls []SeccompSyscall
-
-	// Block dangerous syscalls
-	for _, name := range blockedSyscalls {
+	syscalls := make([]SeccompSyscall, 0, len(deniedSyscalls))
+	for _, name := range deniedSyscalls {
 		syscalls = append(syscalls, SeccompSyscall{
 			Name:   name,
-			Action: SeccompActionKill,
+			Action: SeccompActionErrno,
 		})
 	}
-
-	// Allow safe syscalls
-	for _, name := range allowedSyscalls {
-		syscalls = append(syscalls, SeccompSyscall{
-			Name:   name,
-			Action: SeccompActionAllow,
-		})
-	}
-
 	return &SeccompProfile{
-		DefaultAction: SeccompActionKill,
+		DefaultAction: SeccompActionAllow,
 		Architectures: []SeccompArch{SeccompArchALL},
 		Syscalls:      syscalls,
 	}
@@ -350,29 +180,137 @@ type seccompBPFProgram struct {
 	Filter *seccompBPFInstruction
 }
 
-// buildSeccompFilter builds a BPF filter from a seccomp profile.
-// This is a simplified implementation that handles the most common cases.
+// Offsets into struct seccomp_data.
+const (
+	seccompDataNr   = 0
+	seccompDataArch = 4
+)
+
+// Classic BPF opcodes used here (see linux/filter.h).
+const (
+	bpfLDWAbs = 0x20 // BPF_LD | BPF_W | BPF_ABS
+	bpfJEQK   = 0x15 // BPF_JMP | BPF_JEQ | BPF_K
+	bpfJGEK   = 0x35 // BPF_JMP | BPF_JGE | BPF_K
+	bpfRetK   = 0x06 // BPF_RET | BPF_K
+)
+
+// seccomp return values (see linux/seccomp.h).
+const (
+	seccompRetErrnoMask = 0x00050000
+	seccompRetAllow     = 0x7fff0000
+	seccompRetErrnoEP   = 0x00050000 | uint32(unix.EPERM)
+	seccompRetTrap      = 0x00030000
+	seccompRetLog       = 0x7ffc0000
+	seccompRetKillProc  = 0x80000000
+
+	// __X32_SYSCALL_BIT — x32 syscalls share AUDIT_ARCH_X86_64, so without an
+	// explicit reject of this range the deny-list can be bypassed via x32.
+	x32SyscallBit = 0x40000000
+)
+
+// seccompRetAction maps a profile action to a seccomp return value. Default is
+// ERRNO(EPERM) rather than KILL: a syscall we did not anticipate then fails one
+// call instead of killing the container.
+func seccompRetAction(action SeccompAction) uint32 {
+	switch action {
+	case SeccompActionAllow:
+		return seccompRetAllow
+	case SeccompActionKill:
+		return seccompRetKillProc
+	case SeccompActionTrap:
+		return seccompRetTrap
+	case SeccompActionLog:
+		return seccompRetLog
+	case SeccompActionErrno:
+		return seccompRetErrnoEP
+	default:
+		return seccompRetErrnoEP
+	}
+}
+
+func bpfStmt(code uint16, k uint32) seccompBPFInstruction {
+	return seccompBPFInstruction{Code: code, K: k}
+}
+
+// bpfJump builds a conditional jump: if the test passes we skip jt
+// instructions, otherwise jf.
+func bpfJump(code uint16, k uint32, jt, jf uint8) seccompBPFInstruction {
+	return seccompBPFInstruction{Code: code, K: k, Jt: jt, Jf: jf}
+}
+
+// buildSeccompProgram compiles a profile into cBPF instructions for struct
+// seccomp_data on the native architecture.
+//
+// Layout:
+//
+//	LD  arch
+//	JEQ <audit arch>, jt=1, jf=0
+//	RET deny                       ← wrong arch: numbers mean nothing here
+//	LD  nr
+//	[JGE __X32_SYSCALL_BIT, jt=0, jf=1 ; RET deny]   ← x86_64 only
+//	JEQ nr, <denied>, jt=0, jf=1 ; RET <action>      ← once per denied syscall
+//	RET <default action>
+func buildSeccompProgram(profile *SeccompProfile) ([]seccompBPFInstruction, error) {
+	if profile == nil {
+		return nil, fmt.Errorf("nil seccomp profile")
+	}
+
+	// Resolve names to numbers and drop duplicates. Names absent from this
+	// arch's ABI (e.g. stime on amd64) simply do not resolve here.
+	seen := make(map[uint32]bool)
+	prog := []seccompBPFInstruction{
+		bpfStmt(bpfLDWAbs, seccompDataArch),
+		bpfJump(bpfJEQK, auditArchNative, 1, 0),
+		bpfStmt(bpfRetK, seccompRetErrnoEP),
+		bpfStmt(bpfLDWAbs, seccompDataNr),
+	}
+	if blockX32Syscalls {
+		prog = append(prog,
+			bpfJump(bpfJGEK, x32SyscallBit, 0, 1),
+			bpfStmt(bpfRetK, seccompRetErrnoEP),
+		)
+	}
+
+	rules := 0
+	for _, sc := range profile.Syscalls {
+		nr, ok := syscallNumbers[sc.Name]
+		if !ok || seen[nr] {
+			continue
+		}
+		seen[nr] = true
+		prog = append(prog,
+			bpfJump(bpfJEQK, nr, 0, 1),
+			bpfStmt(bpfRetK, seccompRetAction(sc.Action)),
+		)
+		rules++
+	}
+
+	def := seccompRetAction(profile.DefaultAction)
+	// A deny-by-default filter that resolved no rules would kill every
+	// syscall, including the ones it should have allowed. Refuse it.
+	if rules == 0 && def != seccompRetAllow {
+		return nil, fmt.Errorf(
+			"seccomp profile resolved 0 rules on this arch with default %s: refusing to install",
+			profile.DefaultAction)
+	}
+
+	prog = append(prog, bpfStmt(bpfRetK, def))
+	if len(prog) > 4098 {
+		return nil, fmt.Errorf("seccomp program too long: %d instructions", len(prog))
+	}
+	return prog, nil
+}
+
+// buildSeccompFilter wraps the compiled program in the layout the kernel
+// expects: struct sock_fprog { unsigned short len; struct sock_filter *filter; }.
+// The pointer form is required — do not "simplify" it to a Go slice, that
+// would change the struct layout and the kernel would read garbage.
 func buildSeccompFilter(profile *SeccompProfile) (seccompBPFProgram, error) {
-	// For simplicity, we use the seccomp(2) syscall with SECCOMP_SET_MODE_FILTER
-	// and pass the BPF instructions. This is a minimal implementation.
-	//
-	// In a production implementation, you would:
-	// 1. Sort syscalls by number
-	// 2. Build an optimized BPF decision tree
-	// 3. Handle architecture-specific syscall numbers
-	//
-	// For now, we use the kernel's built-in seccomp filter mechanism.
-
-	// Build a simple BPF program that:
-	// 1. Loads the syscall number
-	// 2. Compares against blocked syscalls
-	// 3. Returns KILL or ALLOW
-
-	// This is a placeholder - the actual BPF compilation is complex.
-	// We'll use a different approach: set the seccomp filter via the
-	// /proc/self/status interface or the prctl syscall.
-
-	return seccompBPFProgram{}, nil
+	prog, err := buildSeccompProgram(profile)
+	if err != nil {
+		return seccompBPFProgram{}, err
+	}
+	return seccompBPFProgram{Len: uint16(len(prog)), Filter: &prog[0]}, nil
 }
 
 // ApplyDefaultSeccompProfile applies the default seccomp profile to the
