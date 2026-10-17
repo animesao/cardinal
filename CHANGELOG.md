@@ -5,6 +5,16 @@
 
 ## Unreleased
 
+## 2.4.2 (2026-10-17)
+
+### Fix
+
+- Ошибки disk-limit монтирования теперь объясняют себя: при падении
+  `mount -o loop` cardinal добавляет, чего именно не хватает (образ,
+  точка маунта, `/dev/loop-control`, свободный loop-девайс) вместо
+  голого `No such file or directory`. Ошибка создания каталога образа
+  тоже больше не глотается.
+
 ## 2.4.1 (2026-10-17)
 
 ### Fix
@@ -373,7 +383,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.4.1**. Detailed release notes below are maintained manually.
+> Current release: **v2.4.2**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
