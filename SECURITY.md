@@ -108,6 +108,60 @@ vendor-specific "FTP passthrough" features in their cluster stack.
     at least once per quarter; rotate the encryption key alongside node
     upgrades.
 
+## Compromised credentials in git history
+
+> **Action required on any host that ran an old `update-vps.sh`.**
+
+Commit `9030fd8` (v2.3.x, before v2.3.13) shipped a hardcoded `JWT_SECRET`
+and a hardcoded `ADMIN_PASSWORD` straight into the systemd unit heredoc in
+`update-vps.sh`, so every host that ran that script ended up with an
+identical, publicly known pair of credentials.
+
+The values are deliberately **not** reproduced here. This file is covered by
+the gitleaks scan, and quoting them verbatim would either re-trip the detector
+or force a blanket allowlist entry for the whole file — which would then hide
+any *real* secret ever added below. Retrieve them yourself if you need to audit
+a host:
+
+```bash
+git show 9030fd8 -- update-vps.sh | grep -E 'Environment=(JWT_SECRET|ADMIN_PASSWORD)'
+```
+
+These were never placeholders. They were literal defaults, identical on every
+host that ran that script, and recoverable from the public git history even
+though the script itself was fixed in v2.3.13.
+
+Consequences for any VPS that ran that script:
+
+- **`JWT_SECRET`** — anyone holding this value can mint a valid session token
+  and authenticate as any user, including admin, against the panel API.
+- **`ADMIN_PASSWORD`** — the initial admin login is publicly known.
+
+Rotate both on each affected host:
+
+```bash
+UNIT=/etc/systemd/system/cardinal-panel.service
+
+sudo sed -i \
+  -e "s|^Environment=JWT_SECRET=.*|Environment=JWT_SECRET=$(openssl rand -hex 32)|" \
+  -e "s|^Environment=ADMIN_PASSWORD=.*|Environment=ADMIN_PASSWORD=$(openssl rand -hex 16)|" \
+  "$UNIT"
+
+sudo systemctl daemon-reload && sudo systemctl restart cardinal-panel
+```
+
+Rotating `JWT_SECRET` invalidates every existing session token, so all users
+sign in again. No data is lost.
+
+Current releases are not affected: since v2.3.13 `update-vps.sh` reuses the
+unit's existing values when present and otherwise generates them with
+`openssl rand`, so no host ever shares a secret again.
+
+The weekly `gitleaks` scan still sees this historical commit. `.gitleaks.toml`
+suppresses it through an allowlist scoped to that single SHA. That allowlist
+only silences the scan — it does not make the credentials secret again, and it
+does not suppress findings in any other commit.
+
 
 ## Reporting a vulnerability
 

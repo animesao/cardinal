@@ -115,7 +115,7 @@ jobs:
       # package surfaces its name in the GH Actions UI rather than
       # being buried inside a single composite log block. CGO is
       # explicitly enabled because `-race` requires it; the default
-      # for actions/setup-go@v5 + go-version "1.26.6" is otherwise
+      # for actions/setup-go@v5 + go-version "1.26.9" is otherwise
       # CGO_ENABLED=1 on linux/amd64 runners, but we set it here to
       # defend against any future runner image change.
       - name: go test -race (per package, cgo enabled)
@@ -266,7 +266,7 @@ jobs:
       # cosign signatures alongside, not just goreleaser's outputs).
       # Use the official `goreleaser-action`. It downloads a
       # precompiled goreleaser binary (~60 MiB) instead of going
-      # through `go install`, which on Go 1.26.6 fetches an
+      # through `go install`, which on Go 1.26.9 fetches an
       # enormous transitive dependency tree (AWS, Azure, GCP,
       # gitea, gitlab, sigstore, OCI/, snap/, brew/, etc. — the
       # latest log showed 250+ downloads before the step could

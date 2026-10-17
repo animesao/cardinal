@@ -2,6 +2,14 @@ module cardinal
 
 go 1.26.0
 
+// 1.26.9 is the first release carrying the net/http, net/textproto and
+// crypto/tls fixes for GO-2026-6603/6605/6607/6608/6610/6611/6612/6613/6617.
+// The `go` line stays at 1.26.0 so the language version does not move; this
+// only raises the *toolchain* floor so a default GOTOOLCHAIN=auto build on
+// 1.26.0-1.26.8 self-upgrades instead of silently linking a vulnerable
+// standard library into the released binary.
+toolchain go1.26.9
+
 require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/creack/pty v1.1.24

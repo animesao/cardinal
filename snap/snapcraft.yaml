@@ -31,7 +31,7 @@ parts:
     override-build: |
       # Download Go directly — always use the BUILD machine's arch (amd64)
       # Cross-compile via GOARCH for arm64 targets.
-      GO_VERSION="1.26.6"
+      GO_VERSION="1.26.9"
       HOST_ARCH=$(uname -m)
       case "$HOST_ARCH" in
         x86_64)  GO_HOST_ARCH="amd64" ;;
