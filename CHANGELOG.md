@@ -5,6 +5,8 @@
 
 ## Unreleased
 
+## 2.4.4 (2026-10-17)
+
 ### Security
 
 - Scheduled security scan снова зелёный — устранены обе причины падения.
@@ -40,6 +42,27 @@
   машине. Теги сняты с `allowlist.go` и `allowlist_test.go`, так что тесты
   registry-allowlist теперь реально выполняются на всех платформах, а не
   выпадают из сборки.
+
+### Internal
+
+- Seccomp: профиль по умолчанию теперь действительно компилируется.
+  `buildSeccompFilter` был заглушкой, возвращавшей пустую BPF-программу, —
+  применить его можно было только с ошибкой, и никто его не вызывал.
+  Компилятор собирает cBPF-программу с проверкой `AUDIT_ARCH_*`, отбивкой
+  диапазона x32 на amd64 (x32 использует тот же audit-арх, что и x86_64, и
+  иначе обходил бы deny-list целиком) и одним сравнением на каждый
+  запрещённый syscall. Номера syscall'ов берутся из `unix.SYS_*` в
+  per-arch таблицах — так были найдены `SYS_UMOUNT` и `SYS_STIME`,
+  которых нет в таблице syscall'ов x86_64. Профиль переведён на
+  allow-by-default с `SCMP_ACT_ERRNO` по deny-list: прежний KILL-by-default
+  allow-list не содержал `futex`, `epoll_*`, `statx`, `newfstatat` и `rseq`,
+  поэтому его честная компиляция убила бы любой контейнер на первом же
+  ожидании futex, а девять syscall'ов были указаны одновременно как KILL и
+  как ALLOW. `clone3` и `madvise` больше не запрещаются (glibc 2.34+
+  использует `clone3` для `pthread_create`).
+  **В init пока намеренно не подключено:** непроверенный фильтр либо не
+  запрещает ничего, либо валит все контейнеры сразу. `--seccomp-profile`
+  по-прежнему честно возвращает ошибку вместо имитации поддержки.
 
 ## 2.4.3 (2026-10-17)
 
@@ -432,7 +455,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.4.3**. Detailed release notes below are maintained manually.
+> Current release: **v2.4.4**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
