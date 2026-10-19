@@ -207,7 +207,7 @@ func bindExecHelper(merged string) error {
 	if err != nil {
 		return fmt.Errorf("create %s: %w", target, err)
 	}
-	f.Close()
+	_ = f.Close()
 
 	if err := bindMountFile(self, target); err != nil {
 		return fmt.Errorf("bind mount helper: %w", err)

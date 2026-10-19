@@ -168,7 +168,9 @@ func TestStageAndLoadExecProfile(t *testing.T) {
 	if err := stageExecProfile(c, dir); err != nil {
 		t.Fatalf("stageExecProfile: %v", err)
 	}
-	path := filepath.Join(dir, filepath.Base(ExecProfilePath))
+	// stageExecProfile кладёт профиль в <merged>/cardinal/ — там же, где
+	// живут остальные утилиты cardinal внутри контейнера.
+	path := filepath.Join(dir, strings.TrimPrefix(ExecHelperDir, "/"), filepath.Base(ExecProfilePath))
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("профиль не записан: %v", err)
 	}
