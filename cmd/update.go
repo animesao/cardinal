@@ -102,19 +102,29 @@ func Update(args []string) {
 		exitFunc(1)
 	}
 
-	// Optional: hard-fail unless the release is signed by cosign.
-	// Activated when CARDINAL_REQUIRE_SIGNATURE=1 is set in the environment.
-	// This protects supply-chain integrity on production deployment hosts
-	// where TLS-only trust is not acceptable. See SECURITY.md.
-	if strings.EqualFold(os.Getenv("CARDINAL_REQUIRE_SIGNATURE"), "1") ||
-		strings.EqualFold(os.Getenv("CARDINAL_REQUIRE_SIGNATURE"), "true") {
+	// Проверка подписи cosign — ПО УМОЛЧАНИЮ.
+	//
+	// Раньше она включалась только через CARDINAL_REQUIRE_SIGNATURE=1, то
+	// есть по умолчанию выключена: контрольная сумма бралась с того же
+	// сервера, что и сам архив, поэтому взлом релиз-хоста (или зеркала)
+	// приводил к установке подделанного бинарника от root.
+	//
+	// Отключить можно явно: CARDINAL_REQUIRE_SIGNATURE=0.
+	requireSig := true
+	if v := strings.TrimSpace(os.Getenv("CARDINAL_REQUIRE_SIGNATURE")); v != "" {
+		requireSig = !(strings.EqualFold(v, "0") || strings.EqualFold(v, "false") || strings.EqualFold(v, "no"))
+	}
+	if requireSig {
 		sigURL := checksumURL + ".sig"
 		bundleURL := sigURL + ".bundle"
 		if err := verifyCosignSignature(releaseTag, archiveName, actualHex, sigURL, bundleURL); err != nil {
 			fmt.Fprintf(os.Stderr, "Signature verification failed: %v\n", err)
+			fmt.Fprintln(os.Stderr, "Hint: set CARDINAL_REQUIRE_SIGNATURE=0 to skip signature verification (not recommended).")
 			exitFunc(1)
 		}
 		fmt.Println("Signature verified.")
+	} else {
+		fmt.Println("WARNING: signature verification disabled via CARDINAL_REQUIRE_SIGNATURE=0")
 	}
 
 	// Get current binary path

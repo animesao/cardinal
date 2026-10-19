@@ -2,6 +2,7 @@ package image
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,8 +39,8 @@ var (
 
 // init seeds the in-memory list with the built-in default so the runtime
 // never accidentally blocks the official Docker Hub before policy init has
-// run. Operators who want a closed environment must enable
-// CARDINAL_REGISTRY_STRICT=1 AND pre-populate the allowlist.
+// run. Строгий режим (allowlist по умолчанию) включается сам; оператор
+// расширяет список через CARDINAL_REGISTRY_ALLOWLIST или файл allowlist.
 func init() {
 	allowlist = append(allowlist, defaultAllowlist...)
 }
@@ -170,9 +171,9 @@ func AllowlistSnapshot() []string {
 
 // CheckRegistryAllowed enforces the pull/push gate for an image reference
 // (full `name[:tag]` or bare name; the tag is stripped before extracting
-// the registry host). With CARDINAL_REGISTRY_STRICT=1 hosts outside the
-// allowlist are refused before any network contact; otherwise it is
-// a no-op returning nil.
+// the registry host). By default hosts outside the allowlist are refused
+// before any network contact; the strict gate can be turned off with
+// CARDINAL_REGISTRY_STRICT=0.
 func CheckRegistryAllowed(ref string) error {
 	name := ref
 	// Strip :tag (but never a :port, and never touch digest refs).
@@ -183,17 +184,23 @@ func CheckRegistryAllowed(ref string) error {
 	}
 	host, _ := registryHostAndRepo(name)
 	if !IsRegistryAllowed(host) {
-		return fmt.Errorf("registry %q is not in the allowlist (CARDINAL_REGISTRY_STRICT=1)", host)
+		return fmt.Errorf("registry %q is not in the allowlist (enable CARDINAL_REGISTRY_STRICT=0 to allow any registry)", host)
 	}
 	return nil
 }
 
 // IsRegistryAllowed reports whether `host` is in the current allowlist.
-// When CARDINAL_REGISTRY_STRICT=1 is unset, the function returns true for any
-// host (the allowlist then serves purely as documentation).
+//
+// ПО УМОЛЧАНИЮ allowlist строгий: разрешены только перечисленные реестры.
+// Раньше без CARDINAL_REGISTRY_STRICT=1 функция возвращала true для ЛЮБОГО
+// хоста, и allowlist служил только документацией — то есть образ можно было
+// тянуть с любого сервера, включая внутренний (SSRF через pull) или
+// скомпрометированный зеркальный реестр.
+//
+// Строгий режим можно отключить явно: CARDINAL_REGISTRY_STRICT=0.
 func IsRegistryAllowed(host string) bool {
 	host = normalizeRegistryHostname(host)
-	if os.Getenv("CARDINAL_REGISTRY_STRICT") != "1" {
+	if !registryStrict() {
 		return true
 	}
 	allowlistMu.RLock()
@@ -204,6 +211,46 @@ func IsRegistryAllowed(host string) bool {
 		}
 	}
 	return false
+}
+
+// registryStrict — включён ли строгий режим allowlist (по умолчанию да).
+func registryStrict() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("CARDINAL_REGISTRY_STRICT")))
+	if v == "" {
+		return true
+	}
+	return !(v == "0" || v == "false" || v == "no")
+}
+
+// checkRegistryHostNotInternal — SSRF-барьер для хоста реестра.
+//
+// Pull собирает URL вида https://<host>/v2/... из пользовательской ссылки
+// на образ. Без проверки ссылка вида "169.254.169.254/latest/meta-data"
+// заставляла демон обратиться к cloud-metadata или к внутреннему сервису.
+// Loopback/private/link-local диапазоны запрещены (self-hosted реестр на
+// localhost — намеренно полезный случай, его можно разрешить явно через
+// CARDINAL_ALLOW_INSECURE_REGISTRY=1).
+func checkRegistryHostNotInternal(host string) error {
+	h := strings.ToLower(strings.TrimSpace(host))
+	if h == "" {
+		return fmt.Errorf("registry host is empty")
+	}
+	if h == "localhost" || strings.HasSuffix(h, ".localhost") {
+		if IsInsecureRegistryAllowed() {
+			return nil
+		}
+		return fmt.Errorf("registry host %q is internal (set CARDINAL_ALLOW_INSECURE_REGISTRY=1 to allow)", host)
+	}
+	if ip := net.ParseIP(strings.Trim(h, "[]")); ip != nil {
+		if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsPrivate() {
+			if IsInsecureRegistryAllowed() {
+				return nil
+			}
+			return fmt.Errorf("registry host %q is an internal address (set CARDINAL_ALLOW_INSECURE_REGISTRY=1 to allow)", host)
+		}
+		return nil
+	}
+	return nil
 }
 
 // IsInsecureRegistryAllowed reports whether pulling from a plain-http or

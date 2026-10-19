@@ -134,6 +134,10 @@ type ContainerConfig struct {
 	Secrets      []SecretRef        `toml:"secrets,omitempty"`
 	Configs      []ConfigRef        `toml:"configs,omitempty"`
 	DependsOn    DependsOnConfig    `toml:"depends_on,omitempty"`
+	// Privileged — из compose-файла. Режим НЕ поддерживается: значение
+	// сохраняется только для того, чтобы предупредить оператора, а не
+	// промолчать о проигнорированной опции.
+	Privileged bool `toml:"privileged,omitempty" yaml:"privileged,omitempty"`
 }
 
 type Config struct {

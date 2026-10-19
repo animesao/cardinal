@@ -191,10 +191,18 @@ func PullWithPlatformContext(ctx context.Context, ref, platformOS, platformArch 
 		return img, nil
 	}
 
-	// Registry allowlist gate: with CARDINAL_REGISTRY_STRICT=1 pulls from
-	// hosts outside the allowlist are refused before any network contact.
-	// Without STRICT the helper is a no-op returning nil.
+	// Registry allowlist gate: по умолчанию pulls from hosts outside the
+	// allowlist are refused before any network contact. The strict gate can
+	// be turned off with CARDINAL_REGISTRY_STRICT=0.
 	if err := CheckRegistryAllowed(name); err != nil {
+		return nil, err
+	}
+
+	// SSRF-барьер: хост реестра не должен указывать во внутреннюю сеть.
+	// Даже с allowlist'ом в него может попасть запись, добавленная
+	// оператором или через переменную окружения.
+	host, _ := registryHostAndRepo(name)
+	if err := checkRegistryHostNotInternal(host); err != nil {
 		return nil, err
 	}
 

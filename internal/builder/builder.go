@@ -392,8 +392,13 @@ func (bs *buildState) handleRun(inst Instruction, buildEnv []string, buildTmp st
 	// Execute command in chroot
 	var cmd *exec.Cmd
 	if _, err := os.Stat(mergedDir); err == nil {
+		// --mount-proc обязателен: без него в новом pid namespace остаётся
+		// procfs хоста, где PID 1 — это init хоста, а значит /proc/1/root
+		// указывает на КОРЕНЬ ХОСТА. RUN-шаг из недоверенного Dockerfile
+		// читал бы /proc/1/root/etc/shadow и писал бы в /proc/1/root/tmp.
+		// Свежий procfs внутри namespace закрывает оба пути.
 		cmd = exec.Command("unshare",
-			"--fork", "--pid", "--mount", "--ipc", "--uts", "--",
+			"--fork", "--pid", "--mount", "--mount-proc", "--ipc", "--uts", "--",
 			"chroot", mergedDir,
 			shell[0], "-c", cmdStr,
 		)

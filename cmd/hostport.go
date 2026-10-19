@@ -15,42 +15,26 @@ import (
 // port would silently steal the iptables DNAT rule from the first
 // container (see network.AddPortForwarding → removeExistingDNAT), so the
 // caller must reject it instead of proceeding.
+//
+// Общая логика живёт в internal/container (там же её использует HTTP API),
+// здесь — тонкая обёртка для CLI.
 func findPortOwner(hostPort int, protocol, selfID, selfName string) (*container.Container, *container.PortMap) {
-	others, err := container.List(true)
-	if err != nil {
+	owner := container.FindPortOwner(hostPort, protocol, selfID, selfName)
+	if owner == nil {
 		return nil, nil
 	}
-	for _, o := range others {
-		if selfID != "" && o.ID == selfID {
-			continue
-		}
-		if selfName != "" && o.Name == selfName {
-			continue
-		}
-		if pm := o.FindPort(hostPort, protocol); pm != nil {
-			return o, pm
-		}
-	}
-	return nil, nil
+	return owner.Container, owner.Mapping
 }
 
 // rejectCrossContainerPortConflicts exits when any requested host port is
 // already mapped by another cardinal container.
 func rejectCrossContainerPortConflicts(ports []container.PortMap, selfID, selfName string) {
-	for _, p := range ports {
-		if p.HostPort == 0 {
-			continue
-		}
-		proto := p.Protocol
-		if proto == "" {
-			proto = "tcp"
-		}
-		if owner, held := findPortOwner(p.HostPort, proto, selfID, selfName); owner != nil {
-			fmt.Fprintf(os.Stderr, "Error: host port %d/%s is already mapped by container %q (%d -> %d/%s)\n",
-				p.HostPort, proto, owner.Name, held.HostPort, held.ContainerPort, held.Protocol)
-			fmt.Fprintln(os.Stderr, "Hint: one host port serves one container; pick another host port (e.g. -p 8081:80) or remove the existing mapping first")
-			exitFunc(1)
-		}
+	if conflict := container.CheckPortConflicts(ports, selfID, selfName); conflict != nil {
+		fmt.Fprintf(os.Stderr, "Error: host port %d/%s is already mapped by container %q (%d -> %d/%s)\n",
+			conflict.HostPort, conflict.Protocol, conflict.OwnerName,
+			conflict.ContainerPort, conflict.ContainerPort, conflict.Protocol)
+		fmt.Fprintln(os.Stderr, "Hint: one host port serves one container; pick another host port (e.g. -p 8081:80) or remove the existing mapping first")
+		exitFunc(1)
 	}
 }
 

@@ -342,6 +342,14 @@ Examples:
 
 	helperMount := register(commandSpec{"helper-mount", "Privileged overlay mount helper (internal, via sudo)", HelperMount, ""})
 	helperMount.Hidden = true
+
+	// Внутренний helper exec'а: запускается внутри контейнера и применяет
+	// к процессу capability-набор, пользователя, no_new_privs и seccomp
+	// контейнера перед exec'ом целевой команды. Регистрируется напрямую
+	// (не через register), чтобы extractRemoteFlags не вырезал из аргументов
+	// целевой команды --host/--token.
+	allCommands = append(allCommands, newExecHelperCommand())
+
 	for _, c := range allCommands {
 		if c.Use == "init" {
 			c.Aliases = append(c.Aliases, "init-container")
