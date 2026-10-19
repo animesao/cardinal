@@ -543,6 +543,11 @@ jobs:
             dist/cardinal_*_arm64.pkg.tar.zst
             dist/cardinal_*_amd64.AppImage
             dist/SHA256SUMS.txt
+            # Подпись манифеста: без неё в релизе `cardinal update` не может
+            # проверить подпись (клиент требует её по умолчанию). Файлы
+            # появляются, только если настроен COSIGN_PRIVATE_KEY.
+            dist/SHA256SUMS.txt.sig
+            dist/SHA256SUMS.txt.cert
             dist/cardinal_*_checksums.txt
             cardinal-sbom.spdx.json
           fail_on_unmatched_files: false
