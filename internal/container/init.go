@@ -344,6 +344,24 @@ func InitContainer(id, merged string) error {
 	if err := syscall.Chdir(merged); err != nil {
 		return fmt.Errorf("chdir to merged: %w", err)
 	}
+
+	// Готовим helper exec и профиль безопасности ДО pivot_root: здесь ещё
+	// виден корень хоста (нужен для bind-mount бинарника и для чтения
+	// пользовательского профиля seccomp), а после pivot_root корня хоста
+	// больше нет.
+	//
+	// Без этого exec-путь выполнял команды с полным набором capability
+	// демона и без seccomp — этого хватало для выхода из контейнера через
+	// mknod + mount блочного устройства хоста.
+	if err := bindExecHelper(merged); err != nil {
+		// Не фатально: контейнер запустится, но exec в него будет
+		// отклонён с понятной ошибкой (см. ensureExecHelper).
+		log.Warn("provision exec helper: %v", err)
+	}
+	if err := stageExecProfile(c, merged); err != nil {
+		log.Warn("stage exec profile: %v", err)
+	}
+
 	putOld := filepath.Join(merged, ".old_root")
 	if err := os.MkdirAll(putOld, 0700); err != nil {
 		return fmt.Errorf("mkdir .old_root: %w", err)

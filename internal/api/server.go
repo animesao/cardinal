@@ -108,7 +108,7 @@ func StartServerWithTLS(port int, host, certFile, keyFile string) error {
 	fmt.Printf("  curl %s://%s/images/json\n", scheme, addr)
 
 	server := &http.Server{
-		Handler:           corsMiddleware(rateLimiter(authMiddleware(jsonContentType(mux)))),
+		Handler:           hostGuardMiddleware(host, corsMiddleware(rateLimiter(authMiddleware(jsonContentType(mux))))),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      60 * time.Second,
@@ -164,6 +164,15 @@ func corsMiddleware(next http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
+			// Запрос с ЧУЖИМ Origin отклоняем, а не просто не отдаём
+			// CORS-заголовки. Раньше «простые» кросс-сайтовые запросы
+			// (POST /containers/{id}/start, POST /system/prune) выполнялись,
+			// просто без возможности прочитать ответ: браузер отправляет
+			// их без preflight. Для локального API это drive-by CSRF.
+			if origin != "" && !isAllowedCORSOrigin(origin) {
+				writeError(w, http.StatusForbidden, "Forbidden: cross-origin request rejected")
+				return
+			}
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -176,6 +185,37 @@ func corsMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(w, r)
+	})
+}
+
+// hostGuardMiddleware отклоняет запросы, чей Host не соответствует
+// слушающему адресу (DNS-rebinding: атакующая страница подменяет DNS на
+// 127.0.0.1 и обращается к API, обходя проверку Origin).
+//
+// Проверка действует, только когда API слушает loopback: при внешнем
+// бинде Host может быть любым именем, и отбрасывать его нельзя.
+func hostGuardMiddleware(bindHost string, next http.Handler) http.Handler {
+	loopbackOnly := !isExternalHost(bindHost)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !loopbackOnly {
+			next.ServeHTTP(w, r)
+			return
+		}
+		host := r.Host
+		if host == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		name := host
+		if h, _, err := net.SplitHostPort(host); err == nil {
+			name = h
+		}
+		name = strings.Trim(name, "[]")
+		if name == "localhost" || name == "127.0.0.1" || name == "::1" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		writeError(w, http.StatusForbidden, "Forbidden: invalid Host header")
 	})
 }
 
@@ -324,6 +364,26 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 
 func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, ErrorResponse{Message: msg})
+}
+
+// validContainerName — имя контейнера: буквы, цифры, точка, дефис и
+// подчёркивание, до 63 символов. Имя попадает в /etc/hosts и DNS
+// контейнера, поэтому произвольные символы недопустимы.
+func validContainerName(name string) bool {
+	if name == "" || len(name) > 63 {
+		return false
+	}
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z',
+			r >= 'A' && r <= 'Z',
+			r >= '0' && r <= '9',
+			r == '.', r == '-', r == '_':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func handlePing(w http.ResponseWriter, r *http.Request) {

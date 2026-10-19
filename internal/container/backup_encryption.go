@@ -5,6 +5,7 @@ package container
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/pbkdf2"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -13,6 +14,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"cardinal/internal/state"
 )
 
 const (
@@ -27,22 +30,52 @@ const (
 
 	// GCMTagSize is the size of the GCM authentication tag.
 	GCMTagSize = 16
+
+	// backupFormatV2 — маркер нового формата шифрования:
+	// соль + nonce + ciphertext. Старый формат (nonce + ciphertext, ключ
+	// из одного SHA-256) читается по-прежнему.
+	backupFormatV2 = "CARDBAK2"
+
+	// backupSaltSize — размер соли для вывода ключа (KDF).
+	backupSaltSize = 16
+
+	// pbkdf2Iterations — число итераций PBKDF2-HMAC-SHA256 (OWASP: 600k).
+	pbkdf2Iterations = 600000
 )
 
 // BackupEncryptor provides encryption/decryption for backup files.
 type BackupEncryptor struct {
-	key []byte
+	// raw — исходный материал ключа (как задал оператор). Реальный ключ
+	// AES выводится из него через KDF с солью, соль хранится в файле.
+	raw []byte
 }
 
 // NewBackupEncryptor creates a new BackupEncryptor with the given key.
+//
+// Реальный ключ AES выводится из материала через PBKDF2-HMAC-SHA256 со
+// случайной солью (соль — в заголовке файла). Раньше не-32-байтовый ключ
+// кодировался ОДНИМ SHA-256: GCM аутентифицирован, но стойкость ключа
+// определялась KDF, а перебор паролей шёл на полной скорости SHA-256.
 func NewBackupEncryptor(key []byte) (*BackupEncryptor, error) {
-	if len(key) != 32 { // AES-256
-		// Derive a 32-byte key from the provided key using SHA-256
-		hash := sha256.Sum256(key)
-		key = hash[:]
+	if len(key) == 0 {
+		return nil, fmt.Errorf("empty encryption key")
 	}
+	return &BackupEncryptor{raw: key}, nil
+}
 
-	return &BackupEncryptor{key: key}, nil
+// derive выводит ключ AES из материала с заданной солью.
+func (e *BackupEncryptor) derive(salt []byte) ([]byte, error) {
+	return pbkdf2.Key(sha256.New, string(e.raw), salt, pbkdf2Iterations, 32)
+}
+
+// legacyKey воспроизводит старую схему вывода ключа (один SHA-256),
+// чтобы старые зашифрованные бэкапы оставались читаемыми.
+func (e *BackupEncryptor) legacyKey() []byte {
+	if len(e.raw) == 32 {
+		return e.raw
+	}
+	h := sha256.Sum256(e.raw)
+	return h[:]
 }
 
 // NewBackupEncryptorFromEnv creates a BackupEncryptor from the CARDINAL_BACKUP_KEY env var.
@@ -86,12 +119,27 @@ func SaveEncryptionKey(key []byte) error {
 }
 
 func getKeyFilePath() string {
-	return EncryptionKeyFile
+	// Ключ лежит в каталоге состояния (0700), а не в текущем рабочем
+	// каталоге: раньше путь был относительным, и файл ключа оказывался
+	// там, откуда запустили cardinal (репозиторий, общая папка, образ
+	// контейнера) — то есть ключ уезжал в бэкапы и архивы.
+	return filepath.Join(state.DataDir(), EncryptionKeyFile)
 }
 
 // Encrypt encrypts the input data using AES-256-GCM.
+//
+// Формат: "CARDBAK2" || salt(16) || nonce(12) || ciphertext+tag.
+// Старый формат (nonce || ciphertext) тоже читается — см. Decrypt.
 func (e *BackupEncryptor) Encrypt(data []byte) ([]byte, error) {
-	block, err := aes.NewCipher(e.key)
+	salt := make([]byte, backupSaltSize)
+	if _, err := rand.Read(salt); err != nil {
+		return nil, fmt.Errorf("generate salt: %w", err)
+	}
+	key, err := e.derive(salt)
+	if err != nil {
+		return nil, fmt.Errorf("derive key: %w", err)
+	}
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("create cipher: %w", err)
 	}
@@ -106,14 +154,45 @@ func (e *BackupEncryptor) Encrypt(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("generate nonce: %w", err)
 	}
 
-	// Encrypt and append nonce
-	ciphertext := gcm.Seal(nonce, nonce, data, nil)
-	return ciphertext, nil
+	ciphertext := gcm.Seal(nil, nonce, data, nil)
+	out := make([]byte, 0, len(backupFormatV2)+len(salt)+len(nonce)+len(ciphertext))
+	out = append(out, backupFormatV2...)
+	out = append(out, salt...)
+	out = append(out, nonce...)
+	out = append(out, ciphertext...)
+	return out, nil
 }
 
 // Decrypt decrypts the input data using AES-256-GCM.
+//
+// Понимает оба формата: новый (с солью) и старый (ключ из одного SHA-256).
 func (e *BackupEncryptor) Decrypt(data []byte) ([]byte, error) {
-	block, err := aes.NewCipher(e.key)
+	if len(data) >= len(backupFormatV2) && string(data[:len(backupFormatV2)]) == backupFormatV2 {
+		rest := data[len(backupFormatV2):]
+		if len(rest) < backupSaltSize+GCMNonceSize {
+			return nil, fmt.Errorf("ciphertext too short")
+		}
+		salt := rest[:backupSaltSize]
+		key, err := e.derive(salt)
+		if err != nil {
+			return nil, fmt.Errorf("derive key: %w", err)
+		}
+		block, err := aes.NewCipher(key)
+		if err != nil {
+			return nil, fmt.Errorf("create cipher: %w", err)
+		}
+		gcm, err := cipher.NewGCM(block)
+		if err != nil {
+			return nil, fmt.Errorf("create GCM: %w", err)
+		}
+		nonce := rest[backupSaltSize : backupSaltSize+GCMNonceSize]
+		ciphertext := rest[backupSaltSize+GCMNonceSize:]
+		return gcm.Open(nil, nonce, ciphertext, nil)
+	}
+
+	// Старый формат: nonce || ciphertext, ключ — один SHA-256.
+	key := e.legacyKey()
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("create cipher: %w", err)
 	}

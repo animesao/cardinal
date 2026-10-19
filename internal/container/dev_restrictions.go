@@ -197,10 +197,14 @@ func RestrictMountOperations() error {
 	// For additional safety, we can set the no_new_privs flag
 	// which prevents gaining new privileges through setuid binaries
 
-	// Set PR_SET_NO_NEW_PRIVS
+	// Set PR_SET_NO_NEW_PRIVS.
+	//
+	// Константа была 0x38 (= 56, PR_SET_MDWE) вместо 38 (= 0x26,
+	// PR_SET_NO_NEW_PRIVS — см. init.go). prctl отверг бы такой вызов
+	// с EINVAL, то есть ограничение молча не применялось.
 	if _, _, errno := syscall.Syscall6(
 		syscall.SYS_PRCTL,
-		0x38, // PR_SET_NO_NEW_PRIVS
+		PR_SET_NO_NEW_PRIVS,
 		1,
 		0, 0, 0, 0,
 	); errno != 0 {

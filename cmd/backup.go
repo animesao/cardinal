@@ -496,6 +496,29 @@ func performAutomaticBackup(c *container.Container) error {
 		_ = os.Remove(output)
 		return fmt.Errorf("write backup checksum: %w", err)
 	}
+	// --encrypted-backup: автоматические бэкапы тоже шифруются.
+	//
+	// Раньше флаг сохранялся в состоянии контейнера, но НИГДЕ не
+	// читался: автобэкапы писались открытым текстом, и оператор, включивший
+	// шифрование, получал архивы с данными арендатора в открытом виде.
+	if c.EncryptedBackup {
+		enc, err := container.NewBackupEncryptorFromEnv()
+		if err != nil {
+			_ = os.Remove(output)
+			_ = os.Remove(backupChecksumPath(output))
+			return fmt.Errorf("encrypt automatic backup: %w", err)
+		}
+		if err := enc.EncryptFile(output); err != nil {
+			_ = os.Remove(output)
+			_ = os.Remove(backupChecksumPath(output))
+			return fmt.Errorf("encrypt automatic backup: %w", err)
+		}
+		// Контрольная сумма считается по уже зашифрованному файлу.
+		_ = os.Remove(backupChecksumPath(output))
+		if err := writeBackupChecksum(output); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not write encrypted checksum: %v\n", err)
+		}
+	}
 	if err := pruneAutomaticBackups(c); err != nil {
 		return fmt.Errorf("prune backups: %w", err)
 	}

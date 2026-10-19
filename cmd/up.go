@@ -184,6 +184,13 @@ func Up(args []string) {
 			continue
 		}
 
+	// privileged: true НЕ поддерживается и раньше просто игнорировался —
+		// оператор думал, что контейнер привилегированный. Теперь говорим
+		// об этом явно.
+		if cc.Privileged {
+			fmt.Fprintf(os.Stderr, "container %q: privileged mode is NOT supported and was ignored — use explicit --cap-add with allow_dangerous_caps if you really need it\n", name)
+		}
+
 		// Wait for dependencies
 		if len(cc.DependsOn) > 0 {
 			for dep, cond := range cc.DependsOn {

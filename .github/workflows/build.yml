@@ -108,6 +108,17 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
 
+      - name: gitleaks (secret scan)
+        # Секреты в репозитории — самая дорогая находка аудита: токен
+        # демона в .py/.toml/.env живёт в бэкапах и архивах, .gitignore
+        # его не спасает. Сканируем историю и рабочее дерево.
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+        with:
+          args: detect --source=. --redact --no-banner --exit-code=1
+
       - name: shellcheck install scripts
         run: |
           sudo apt-get update -qq

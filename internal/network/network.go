@@ -362,11 +362,21 @@ func removeExistingDNAT(chain string, hostPort int, protocol string) {
 	if err != nil {
 		return
 	}
+	// Правила разных протоколов не должны путаться: раньше параметр
+	// protocol вообще не использовался, поэтому UDP-маппинг порта N
+	// удалял существующее TCP-правило для того же порта (и наоборот).
+	proto := strings.ToLower(strings.TrimSpace(protocol))
+	if proto == "" {
+		proto = "tcp"
+	}
 	for _, line := range strings.Split(string(out), "\n") {
 		if !strings.HasPrefix(line, "-A "+chain) {
 			continue
 		}
 		if !strings.Contains(line, fmt.Sprintf("--dport %d", hostPort)) {
+			continue
+		}
+		if !strings.Contains(line, "-p "+proto) {
 			continue
 		}
 		if !strings.Contains(line, "-j DNAT") {
