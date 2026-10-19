@@ -115,9 +115,13 @@ func Update(args []string) {
 		requireSig = !(strings.EqualFold(v, "0") || strings.EqualFold(v, "false") || strings.EqualFold(v, "no"))
 	}
 	if requireSig {
-		sigURL := checksumURL + ".sig"
-		bundleURL := sigURL + ".bundle"
-		if err := verifyCosignSignature(releaseTag, archiveName, actualHex, sigURL, bundleURL); err != nil {
+		// Подписывается манифест SHA256SUMS.txt — именно его кладёт
+		// в релиз релизный воркфлоу. Раньше проверка искала подпись
+		// рядом с per-file чексуммами, которых в релизе нет, и пиннила
+		// workflow release.yml, которого в репозитории тоже нет: проверка
+		// не могла пройти ни при каких условиях.
+		manifestURL := fmt.Sprintf("%s/releases/download/%s/SHA256SUMS.txt", releaseURL, releaseTag)
+		if err := verifyCosignSignature(releaseTag, manifestURL, manifestURL+".sig"); err != nil {
 			fmt.Fprintf(os.Stderr, "Signature verification failed: %v\n", err)
 			fmt.Fprintln(os.Stderr, "Hint: set CARDINAL_REQUIRE_SIGNATURE=0 to skip signature verification (not recommended).")
 			exitFunc(1)
@@ -437,53 +441,70 @@ func compareVersions(a, b string) int {
 	return 0
 }
 
-// verifyCosignSignature performs an out-of-band cosign verification.
+// verifyCosignSignature performs an out-of-band cosign verification of the
+// release manifest.
 //
-// The release workflow publishes:
+// The release workflow signs SHA256SUMS.txt:
 //
-//	<binary>.sha256         — `sha256sum`-formatted digest (already verified above)
-//	<binary>.sha256.sig     — cosign signature over the .sha256 file
+//	SHA256SUMS.txt      — манифест контрольных сумм всех артефактов
+//	SHA256SUMS.txt.sig  — подпись cosign над манифестом
+//	SHA256SUMS.txt.cert — сертификат OIDC (когда подпись по ключу)
 //
-// We re-fetch the .sha256 file (so cosign verifies the same content the
-// client will rely on) and delegate verification to cosign. Cosign 1.x+
-// supports certificate-based identity pinning which lets us bind the
-// signature to a specific GitHub Actions workflow ref (defense against
-// arbitrary key compromise). The cert URL pattern is documented in
-// https://docs.sigstore.dev/cosign/verify/.
-func verifyCosignSignature(releaseTag, binaryName, _ string, sigURL, _ string) error {
+// Проверяем манифест, а не архив: манифест покрывает все артефакты релиза
+// сразу, и подписывать надо ровно его.
+//
+// Два способа проверки:
+//   - CARDINAL_COSIGN_PUBKEY — путь к файлу открытого ключа в системе.
+//     Ключ лежит в репозитории, поэтому взлом релиз-хоста не позволяет
+//     подделать подпись.
+//   - иначе — по идентичности сертификата OIDC: она привязывает подпись к
+//     конкретному запуску релизного воркфлоу, так что украденный ключ сам
+//     по себе не подходит.
+func verifyCosignSignature(releaseTag, manifestURL, sigURL string) error {
+	// Сначала проверяем, что подпись вообще есть: чаще всего релиз просто
+	// не подписан (ключ в CI не настроен), и об этом надо сказать прямо,
+	// а не «не найден cosign».
+	if _, err := fetchURLBytes(sigURL); err != nil {
+		return fmt.Errorf("release %s is not signed (no signature at %s): %w", releaseTag, sigURL, err)
+	}
+
 	cosign, err := exec.LookPath("cosign")
 	if err != nil {
 		return fmt.Errorf("cosign binary not found in PATH; install from https://docs.sigstore.dev/cosign/installation to enable signature verification")
 	}
 
-	// Re-fetch the upstream .sha256 file (cosign verifies an artifact by
-	// path; we use the .sha256 file because that's what the workflow signs).
-	checksumURL := sigURL[:len(sigURL)-len(".sig")]
-	checksumBytes, err := fetchURLBytes(checksumURL)
+	// Качаем манифест заново: подписывался именно он.
+	manifestBytes, err := fetchURLBytes(manifestURL)
 	if err != nil {
-		return fmt.Errorf("could not re-fetch %s: %w", checksumURL, err)
+		return fmt.Errorf("could not re-fetch %s: %w", manifestURL, err)
 	}
-	tmp, err := os.CreateTemp("", "cardinal-verify-*.sha256")
+	tmp, err := os.CreateTemp("", "cardinal-verify-*.txt")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(tmp.Name())
-	if _, err := tmp.Write(checksumBytes); err != nil {
+	if _, err := tmp.Write(manifestBytes); err != nil {
 		return err
 	}
 	_ = tmp.Close()
 
-	// Pin the certificate to the release workflow ref so a stolen key alone
-	// cannot re-sign a malicious build from a different workflow run.
-	idRegex := fmt.Sprintf("^https://github.com/animesao/cardinal/.github/workflows/release.yml@refs/tags/%s$",
-		regexpQuoteMeta(releaseTag))
+	args := []string{"verify-blob", "--signature", sigURL}
 
-	cmd := exec.Command(cosign, "verify-blob",
-		"--signature", sigURL,
-		"--certificate-identity-regexp", idRegex,
-		"--certificate-oidc-issuer", "https://token.actions.githubusercontent.com",
-		tmp.Name(),
-	)
+	if pubkey := strings.TrimSpace(os.Getenv("CARDINAL_COSIGN_PUBKEY")); pubkey != "" {
+		args = append(args, "--key", pubkey)
+	} else {
+		// Привязываем подпись к конкретному запуску релизного воркфлоу:
+		// украденный ключ сам по себе не подходит.
+		idRegex := fmt.Sprintf("^https://github\\.com/animesao/cardinal/\\.github/workflows/build\\.yml@refs/tags/%s$",
+			regexpQuoteMeta(releaseTag))
+		args = append(args,
+			"--certificate-identity-regexp", idRegex,
+			"--certificate-oidc-issuer", "https://token.actions.githubusercontent.com",
+		)
+	}
+	args = append(args, tmp.Name())
+
+	cmd := exec.Command(cosign, args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cosign verify-blob failed: %w (output: %s)", err, strings.TrimSpace(string(out)))
