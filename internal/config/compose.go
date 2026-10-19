@@ -193,6 +193,7 @@ func LoadCompose(path string) (*Config, error) {
 			CapDrop:      svc.CapDrop,
 			Sysctls:      svc.Sysctls,
 			DNS:          toStringSlice(svc.DNS),
+			Privileged:   svc.Privileged,
 		}
 
 		if svc.ContainerName != "" {
