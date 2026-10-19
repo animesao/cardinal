@@ -108,16 +108,23 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
 
+      - name: checkout full history (for the secret scan)
+        # Полная история обязательна: в shallow-клоне `git log -p -1`
+        # показывает всё дерево как только что добавленное, и примеры в
+        # документации ловятся как секреты. С историей diff настоящий.
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: gitleaks (secret scan)
         # Секреты в репозитории — самая дорогая находка аудита: токен
         # демона в .py/.toml/.env живёт в бэкапах и архивах, .gitignore
-        # его не спасает. Сканируем историю и рабочее дерево.
+        # его не спасает. Полное сканирование истории — в scheduled.yml,
+        # здесь — то, что попало в текущий push.
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
-        with:
-          args: detect --source=. --redact --no-banner --exit-code=1
 
       - name: shellcheck install scripts
         run: |
