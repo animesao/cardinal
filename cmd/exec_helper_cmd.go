@@ -39,6 +39,16 @@ func newExecHelperCommand() *cobra.Command {
 		DisableFlagParsing: true,
 		Args:               cobra.ArbitraryArgs,
 		Run: func(c *cobra.Command, args []string) {
+			// DisableFlagParsing отключает и штатный --help: обрабатываем
+			// его сами. Иначе `cardinal exec-helper --help` ушёл бы в
+			// helper и вызвал os.Exit(1) — это убивает тестовый процесс
+			// (smoke-тест гоняет --help по всем командам).
+			for _, a := range args {
+				if a == "--help" || a == "-h" || a == "help" {
+					_ = c.Help()
+					return
+				}
+			}
 			if len(args) == 0 {
 				execHelperUsage()
 				exitFunc(2)

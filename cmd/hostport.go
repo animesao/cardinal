@@ -10,24 +10,11 @@ import (
 	"cardinal/internal/portmap"
 )
 
-// findPortOwner returns the first container (other than selfID/selfName)
-// that already maps hostPort/proto. A second mapping for the same host
-// port would silently steal the iptables DNAT rule from the first
-// container (see network.AddPortForwarding → removeExistingDNAT), so the
-// caller must reject it instead of proceeding.
-//
-// Общая логика живёт в internal/container (там же её использует HTTP API),
-// здесь — тонкая обёртка для CLI.
-func findPortOwner(hostPort int, protocol, selfID, selfName string) (*container.Container, *container.PortMap) {
-	owner := container.FindPortOwner(hostPort, protocol, selfID, selfName)
-	if owner == nil {
-		return nil, nil
-	}
-	return owner.Container, owner.Mapping
-}
-
 // rejectCrossContainerPortConflicts exits when any requested host port is
 // already mapped by another cardinal container.
+//
+// Общая логика живёт в internal/container — там же её использует HTTP API,
+// поэтому CLI и API не могут разойтись.
 func rejectCrossContainerPortConflicts(ports []container.PortMap, selfID, selfName string) {
 	if conflict := container.CheckPortConflicts(ports, selfID, selfName); conflict != nil {
 		fmt.Fprintf(os.Stderr, "Error: host port %d/%s is already mapped by container %q (%d -> %d/%s)\n",
