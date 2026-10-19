@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.6`
-**Project release:** `v2.4.6`
+**Documentation version:** `2.4.7`
+**Project release:** `v2.4.7`
 <!-- cardinal-version:end -->
 
 # cardinal: Руководство по бэкапам

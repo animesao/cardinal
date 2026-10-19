@@ -9,7 +9,7 @@
 
 <p align="center">
   <!-- cardinal-version-badge:start -->
-  <img src="https://img.shields.io/badge/version-v2.4.6-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-v2.4.7-blue?style=flat-square">
   <!-- cardinal-version-badge:end -->
   <img src="https://img.shields.io/badge/go-1.26%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-Apache--2.0-green?style=flat-square">
@@ -1036,6 +1036,8 @@ Notes:
 ## Changelog
 
 <!-- cardinal-release:start -->
+**v2.4.7** - Security: `cardinal exec` no longer runs the command with the daemon's credentials. The container's own profile - capability set without `SYS_ADMIN` and `MKNOD`, the container user, `no_new_privs` and the seccomp filter - is applied inside the container before the command starts, which closes the `mknod` + `mount` escape. The daemon's environment (`CARDINAL_TOKEN`, `CARDINAL_BACKUP_KEY`, `DOCKER_PASSWORD`) no longer reaches tenant containers. `POST /containers/create` rejects a conflicting host port (409) instead of stealing the DNAT rule of another container, the API rejects foreign `Origin` and `Host` headers, the registry allowlist is strict by default (`CARDINAL_REGISTRY_STRICT=0` to relax), release signatures are verified by default (`CARDINAL_REQUIRE_SIGNATURE=0` to skip), the backup key is derived with PBKDF2 over a per-archive salt, and `cardinal build` gets a fresh procfs so a RUN step cannot reach `/proc/1/root`. Behaviour change: containers started before this release need one restart before `cardinal exec` works again.
+
 **v2.4.6** - **Behaviour change:** every container now gets a seccomp filter. `mount`, `pivot_root`, `chroot`, `bpf`, `ptrace`, `keyctl` and friends return EPERM inside the container; everything else is untouched (allow-by-default). `--cap-add` does not lift it - set `CARDINAL_SECCOMP=0` for containers that genuinely need `mount`/`chroot`. Fail-closed: if the filter cannot be installed the container refuses to start.
 
 **v2.4.5** - Internal: the default seccomp profile is really compiled now - an `AUDIT_ARCH_*` guard, an x32 range reject on amd64 and a per-syscall deny list, with syscall numbers taken from `unix.SYS_*` in per-arch tables. The profile switched to allow-by-default because the previous KILL-by-default allow-list omitted `futex`/`epoll_*`/`statx`/`rseq` and would have killed every container. Not yet enabled in container init; `--seccomp-profile` still errors instead of pretending to work. No behaviour change in this release.
