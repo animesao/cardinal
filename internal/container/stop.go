@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"cardinal/internal/log"
+	"cardinal/internal/network"
 	"cardinal/internal/state"
 )
 
@@ -181,6 +182,15 @@ func (c *Container) finalizeStopState() {
 	c.dataMu.Unlock()
 	if err := c.Save(); err != nil {
 		log.Warn("save stopped container %s: %v", c.Name, err)
+	}
+	// Снимаем изоляцию сети и пишем событие в журнал аудита (если включены).
+	if c.Isolated {
+		if err := network.UnisolateContainer(c.ID); err != nil {
+			log.Warn("remove network isolation for %s: %v", c.ID, err)
+		}
+	}
+	if c.AuditLogging {
+		LogContainerEvent(AuditEventStop, c, true, nil)
 	}
 	EmitEvent(EventStop, c)
 }

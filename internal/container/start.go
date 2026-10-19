@@ -213,6 +213,31 @@ func (c *Container) startInternal() error {
 	}
 	EmitEvent(EventStart, c)
 
+	// --isolated: контейнер не видит остальные контейнеры ноды.
+	//
+	// Раньше флаг принимался, сохранялся в состоянии и НИГДЕ не
+	// применялся: network.IsolateContainer не имела ни одного вызова.
+	// Оператор получал ложное обещание изоляции тенантов.
+	if c.Isolated && c.NetworkMode != "host" {
+		if err := network.IsolateContainer(c.ID); err != nil {
+			log.Warn("apply network isolation for %s: %v", c.ID, err)
+		} else {
+			log.Info("network isolation applied for %s", c.ID)
+		}
+	}
+
+	// --audit-log: пишем события жизненного цикла в журнал аудита.
+	//
+	// Раньше флаг сохранялся, но InitAuditLogger/LogContainerEvent не
+	// вызывались нигде: журнал аудита НЕ ВЕЛСЯ вообще.
+	if c.AuditLogging {
+		if err := InitAuditLogger(); err != nil {
+			log.Warn("init audit logger: %v", err)
+		} else {
+			LogContainerEvent(AuditEventStart, c, true, nil)
+		}
+	}
+
 	if c.Detach {
 		ctx, cancel := context.WithCancel(context.Background())
 		c.cancelHealth = cancel
