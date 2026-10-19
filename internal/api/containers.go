@@ -368,6 +368,19 @@ func handleContainersCreate(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} // Parse volumes from HostConfig.Binds
+
+	// Конфликт host-портов: опубликованный порт может принадлежать только
+	// одному контейнеру, иначе второй молча перехватывает DNAT-правило
+	// первого (network.AddPortForwarding удаляет старое правило). CLI это
+	// проверял, API — нет, а через API работают wings и панель.
+	if conflict := container.CheckPortConflicts(ports, "", name); conflict != nil {
+		writeError(w, http.StatusConflict, fmt.Sprintf(
+			"host port %d/%s is already mapped by container %q (%d -> %d/%s): one host port serves one container",
+			conflict.HostPort, conflict.Protocol, conflict.OwnerName,
+			conflict.ContainerPort, conflict.ContainerPort, conflict.Protocol))
+		return
+	}
+
 	var volumes []container.VolumeMount
 	if req.HostConfig != nil {
 		for _, bind := range req.HostConfig.Binds {
@@ -981,6 +994,13 @@ func handleContainerRename(w http.ResponseWriter, r *http.Request, c *container.
 	newName := r.URL.Query().Get("name")
 	if newName == "" {
 		writeError(w, 400, "name parameter required")
+		return
+	}
+	// Имя попадает в /etc/hosts контейнера и в DNS-регистрацию, поэтому
+	// ограничиваем алфавит: иначе можно было засунуть в имя пробелы,
+	// слэши и управляющие символы.
+	if !validContainerName(newName) {
+		writeError(w, 400, "invalid container name (letters, digits, dot, dash, underscore; max 63 chars)")
 		return
 	}
 	oldName := c.Name

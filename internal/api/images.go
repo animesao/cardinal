@@ -187,11 +187,46 @@ func handleImagePush(w http.ResponseWriter, r *http.Request, ref string) {
 	password := authMap["password"]
 
 	if err := image.Push(ref, username, password); err != nil {
-		writeError(w, http.StatusBadGateway, fmt.Sprintf("push %s: %v", ref, err))
+		// Текст ошибки может содержать ответ реестра, а тот — эхо
+		// переданных кредов. Отдаём только сводку, без тела ответа
+		// реестра.
+		writeError(w, http.StatusBadGateway, fmt.Sprintf("push %s failed: %s", ref, redactRegistryError(err)))
 		return
 	}
 
 	writeJSON(w, http.StatusOK, OKResponse{Message: "pushed " + ref})
+}
+
+// redactRegistryError убирает из текста ошибки возможные креды.
+func redactRegistryError(err error) string {
+	msg := err.Error()
+	for _, marker := range []string{"password", "passwd", "token", "secret", "authorization"} {
+		low := strings.ToLower(msg)
+		for i := 0; ; {
+			j := strings.Index(low[i:], marker)
+			if j < 0 {
+				break
+			}
+			start := i + j
+			// Значение после маркера (до запятой/пробела/двоеточия).
+			valStart := start + len(marker)
+			for valStart < len(msg) && (msg[valStart] == '=' || msg[valStart] == ':' || msg[valStart] == ' ') {
+				valStart++
+			}
+			valEnd := valStart
+			for valEnd < len(msg) && msg[valEnd] != ',' && msg[valEnd] != ' ' && msg[valEnd] != ';' && msg[valEnd] != '"' {
+				valEnd++
+			}
+			if valEnd > valStart {
+				msg = msg[:valStart] + "[REDACTED]" + msg[valEnd:]
+				low = strings.ToLower(msg)
+				i = valStart + len("[REDACTED]")
+				continue
+			}
+			i = start + len(marker)
+		}
+	}
+	return msg
 }
 
 func handleImageTag(w http.ResponseWriter, r *http.Request, ref string) {
