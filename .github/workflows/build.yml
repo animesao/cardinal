@@ -23,9 +23,11 @@ name: build
 #   2. test              go test -race + coverage + fuzz smoke
 #   3. build matrix      linux/amd64 and linux/arm64 with -trimpath,
 #                        -buildid= reproducible flags + sha256 sidecars
-#   4. sbom              SPDX-JSON via anchore/sbom-action (continue-on-error)
-#   5. cosign            optional; only if COSIGN_PRIVATE_KEY is set
-#   6. release           tag-only: attach every artefact, publish notes
+#   4. cosign            optional; only if COSIGN_PRIVATE_KEY is set
+#   5. release           tag-only: attach every artefact, publish notes
+#   6. sbom              SPDX-JSON via anchore/sbom-action (continue-on-error);
+#                        runs AFTER the release is published, because the action
+#                        attaches the file to an existing release only
 #
 # Action versions are pinned to a known-good major. Dependabot is asked
 # to ignore major-bumps via .github/dependabot.yml so this file does
@@ -451,13 +453,6 @@ jobs:
             --output-certificate   dist/SHA256SUMS.txt.cert \
             dist/SHA256SUMS.txt
 
-      - name: Generate SBOM (SPDX-JSON)
-        uses: anchore/sbom-action@v0
-        with:
-          format: spdx-json
-          artifact-name: cardinal-sbom.spdx.json
-        continue-on-error: true
-
       - name: Build release notes
         id: notes
         if: startsWith(github.ref, 'refs/tags/v')
@@ -551,6 +546,29 @@ jobs:
             dist/cardinal_*_checksums.txt
             cardinal-sbom.spdx.json
           fail_on_unmatched_files: false
+        continue-on-error: true
+
+      # SBOM генерируем ПОСЛЕ публикации релиза — и это не случайность.
+      #
+      # anchore/sbom-action прикрепляет SBOM к релизу через
+      # `gh release upload`, а такая команда требует, чтобы релиз уже
+      # существовал. Пока релиз не создан, действие молча ничего не
+      # прикрепляет (ошибка съедается continue-on-error) — и релиз
+      # остаётся без SBOM. Так и случилось с v2.4.8: шаг отработал
+      # успешно, а `cardinal-sbom.spdx.json` в релизе не появился.
+      # SBOM попадал в релиз только при повторном прогоне тега, когда
+      # релиз к тому моменту уже был создан.
+      #
+      # Шаг стоит после публикации, поэтому релиз всегда существует и
+      # SBOM прикрепляется детерминированно. Файл при этом кладётся
+      # экшеном во временный каталог, а не в корень воркспейса, поэтому
+      # глоб `cardinal-sbom.spdx.json` в списке файлов релиза не
+      # срабатывает — загрузку делает само действие.
+      - name: Generate SBOM (SPDX-JSON)
+        uses: anchore/sbom-action@v0
+        with:
+          format: spdx-json
+          artifact-name: cardinal-sbom.spdx.json
         continue-on-error: true
 
       # Belt-and-braces fallback: every nfpm package and archive
