@@ -422,6 +422,26 @@ jobs:
           fi
 
           sha256sum "${APPIMAGE_FILE}" | tee "${APPIMAGE_FILE}.sha256"
+
+          # AppImage собирается ПОСЛЕ того, как собран манифест, поэтому
+          # в SHA256SUMS.txt его не было: подпись манифеста не покрывала
+          # этот артефакт, а у пользователя не оставалось ничем его
+          # проверить — только скачать и запустить. Дописываем строку в том
+          # же формате, что и остальные записи манифеста (хеш, два
+          # пробела, имя файла без пути).
+          #
+          # Шаг идёт до подписи манифеста, поэтому подпись покрывает и
+          # AppImage тоже.
+          # Формат строки задаём явно, а не тем, что напечатает sha256sum:
+          # разные реализации печатают `<hash>  файл` или `<hash> *файл`
+          # (звёздочка — признак бинарного режима), а манифест должен
+          # читаться и `sha256sum -c`, и клиентом одинаково.
+          #
+          # Хеш считаем до `cd dist`: внутри subshell путь
+          # `dist/<файл>` уже не существует.
+          APPSUM=$(sha256sum "${APPIMAGE_FILE}" | awk '{print $1}')
+          ( cd dist && printf '%s  %s\n' "$APPSUM" "$(basename "${APPIMAGE_FILE}")" >> SHA256SUMS.txt )
+
           echo "AppImage built: ${APPIMAGE_FILE} ($(du -h "${APPIMAGE_FILE}" | cut -f1))"
 
       # GitHub Actions does not allow the `secrets` context inside
@@ -537,6 +557,9 @@ jobs:
             dist/cardinal_*_amd64.pkg.tar.zst
             dist/cardinal_*_arm64.pkg.tar.zst
             dist/cardinal_*_amd64.AppImage
+            # Побайтовая сумма AppImage отдельным файлом — чтобы её можно
+            # было сверить, не скачивая весь манифест.
+            dist/cardinal_*_amd64.AppImage.sha256
             dist/SHA256SUMS.txt
             # Подпись манифеста: без неё в релизе `cardinal update` не может
             # проверить подпись (клиент требует её по умолчанию). Файлы
