@@ -1,9 +1,7 @@
-//go:build linux
-
 package cmd
 
 import (
-	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -17,25 +15,22 @@ import (
 // пройти ни при каких условиях, а проверка включена по умолчанию —
 // `cardinal update` был бы сломан у всех.
 func TestReleaseSignatureTargetsManifest(t *testing.T) {
-	const (
-		releaseURL = "https://github.com/animesao/cardinal"
-		repoOwner  = "animesao"
-		repoName   = "cardinal"
-	)
-
-	for _, version := range []string{"2.4.7", "2.4.8"} {
+	for _, version := range []string{"2.4.7", "2.4.8", "2.5.0"} {
 		tag := "v" + version
-		manifestURL := fmt.Sprintf("%s/releases/download/%s/SHA256SUMS.txt", releaseURL, tag)
+		manifestURL := releaseManifestURL(tag)
 		sigURL := manifestURL + ".sig"
 
 		if !strings.HasSuffix(manifestURL, "/SHA256SUMS.txt") {
-			t.Fatalf("%s: подписывается манифест SHA256SUMS.txt, а не %s", version, manifestURL)
+			t.Errorf("%s: подписывается манифест SHA256SUMS.txt, а не %s", version, manifestURL)
 		}
 		if !strings.HasSuffix(sigURL, ".sig") {
-			t.Fatalf("%s: подпись должна лежать рядом с манифестом: %s", version, sigURL)
+			t.Errorf("%s: подпись должна лежать рядом с манифестом: %s", version, sigURL)
 		}
 		if strings.Contains(manifestURL, "checksums.txt") {
 			t.Errorf("%s: подписываться должен манифест, а не per-file чексуммы: %s", version, manifestURL)
+		}
+		if !strings.Contains(manifestURL, "/releases/download/"+tag+"/") {
+			t.Errorf("%s: манифест должен качаться из релиза с тегом %s: %s", version, tag, manifestURL)
 		}
 	}
 }
@@ -44,17 +39,32 @@ func TestReleaseSignatureTargetsManifest(t *testing.T) {
 // должна указывать на существующий воркфлоу: подпись делает build.yml,
 // а не release.yml (такого в репозитории нет).
 func TestSignatureIdentityPointsAtRealWorkflow(t *testing.T) {
-	tag := "v2.4.7"
-	idRegex := fmt.Sprintf("^https://github\\.com/animesao/cardinal/\\.github/workflows/build\\.yml@refs/tags/%s$",
-		regexpQuoteMeta(tag))
+	const tag = "v2.4.8"
 
-	if strings.Contains(idRegex, "release.yml") {
-		t.Fatalf("идентичность указывает на несуществующий workflow: %s", idRegex)
+	idRegex := cosignIdentityRegexp(tag)
+	re, err := regexp.Compile(idRegex)
+	if err != nil {
+		t.Fatalf("идентичность собралась в невалидный regexp %q: %v", idRegex, err)
 	}
-	if !strings.Contains(idRegex, "build.yml") {
-		t.Fatalf("идентичность должна указывать на build.yml: %s", idRegex)
+
+	good := "https://github.com/animesao/cardinal/.github/workflows/build.yml@refs/tags/v2.4.8"
+	if !re.MatchString(good) {
+		t.Errorf("идентичность %q должна принимать %q", idRegex, good)
 	}
-	if !strings.Contains(idRegex, regexpQuoteMeta(tag)) {
-		t.Fatalf("идентичность должна быть привязана к тегу %s: %s", tag, idRegex)
+
+	bad := []string{
+		// несуществующий воркфлоу
+		"https://github.com/animesao/cardinal/.github/workflows/release.yml@refs/tags/v2.4.8",
+		// другой тег
+		"https://github.com/animesao/cardinal/.github/workflows/build.yml@refs/tags/v2.4.7",
+		// другой репозиторий
+		"https://github.com/animesao/evil/.github/workflows/build.yml@refs/tags/v2.4.8",
+		// ветка вместо тега
+		"https://github.com/animesao/cardinal/.github/workflows/build.yml@refs/heads/main",
+	}
+	for _, id := range bad {
+		if re.MatchString(id) {
+			t.Errorf("идентичность %q не должна принимать %q", idRegex, id)
+		}
 	}
 }

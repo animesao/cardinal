@@ -120,7 +120,7 @@ func Update(args []string) {
 		// рядом с per-file чексуммами, которых в релизе нет, и пиннила
 		// workflow release.yml, которого в репозитории тоже нет: проверка
 		// не могла пройти ни при каких условиях.
-		manifestURL := fmt.Sprintf("%s/releases/download/%s/SHA256SUMS.txt", releaseURL, releaseTag)
+		manifestURL := releaseManifestURL(releaseTag)
 		if err := verifyCosignSignature(releaseTag, manifestURL, manifestURL+".sig"); err != nil {
 			fmt.Fprintf(os.Stderr, "Signature verification failed: %v\n", err)
 			fmt.Fprintln(os.Stderr, "Hint: set CARDINAL_REQUIRE_SIGNATURE=0 to skip signature verification (not recommended).")
@@ -495,8 +495,7 @@ func verifyCosignSignature(releaseTag, manifestURL, sigURL string) error {
 	} else {
 		// Привязываем подпись к конкретному запуску релизного воркфлоу:
 		// украденный ключ сам по себе не подходит.
-		idRegex := fmt.Sprintf("^https://github\\.com/animesao/cardinal/\\.github/workflows/build\\.yml@refs/tags/%s$",
-			regexpQuoteMeta(releaseTag))
+		idRegex := cosignIdentityRegexp(releaseTag)
 		args = append(args,
 			"--certificate-identity-regexp", idRegex,
 			"--certificate-oidc-issuer", "https://token.actions.githubusercontent.com",
@@ -510,21 +509,6 @@ func verifyCosignSignature(releaseTag, manifestURL, sigURL string) error {
 		return fmt.Errorf("cosign verify-blob failed: %w (output: %s)", err, strings.TrimSpace(string(out)))
 	}
 	return nil
-}
-
-// regexpQuoteMeta is a tiny dependency-free implementation of regexp.QuoteMeta
-// so cmd/update.go does not have to import the regexp package for one symbol.
-func regexpQuoteMeta(s string) string {
-	const special = `\.+*?()|[]{}^$`
-	var b strings.Builder
-	b.Grow(len(s) * 2)
-	for _, r := range s {
-		if strings.ContainsRune(special, r) {
-			b.WriteRune('\\')
-		}
-		b.WriteRune(r)
-	}
-	return b.String()
 }
 
 // fetchChecksumForFile downloads a multi-line checksums file and returns the

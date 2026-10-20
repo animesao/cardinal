@@ -4,12 +4,6 @@
 //
 // The actual command-line dispatch is implemented in cobra.go (NewRoot,
 // Execute, applyLogOptions) and cobra_commands.go (per-command wrappers
-// around the legacy free functions). This file holds only the package-level
-// URL constants that other command files rely on.
+// around the legacy free functions). The package-level URL constants live in
+// release.go, which is platform-independent.
 package cmd
-
-var (
-	repoURL          = "https://raw.githubusercontent.com/animesao/cardinal"
-	releaseURL       = "https://github.com/animesao/cardinal"
-	blueprintRepoURL = "https://raw.githubusercontent.com/cardinal-organization/cardinal-blueprints"
-)
