@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.7`
-**Project release:** `v2.4.7`
+**Documentation version:** `2.4.8`
+**Project release:** `v2.4.8`
 <!-- cardinal-version:end -->
 
 # Compose / Развёртывание
