@@ -180,7 +180,7 @@ DIAGNOSTICS & SYSTEM
   cardinal info                      System information
   cardinal events                    Stream events (--since)
   cardinal system df                 Show disk usage by images, containers, volumes
-  cardinal system prune              Remove unused data
+  cardinal system prune              Remove unused containers, images and volumes
   cardinal version                   Print version
   cardinal update                    Self-update (--check for dry run)
   cardinal bootstrap                 Install systemd unit (--install/-i, --remove/-r)

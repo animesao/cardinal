@@ -9,7 +9,7 @@
 
 <p align="center">
   <!-- cardinal-version-badge:start -->
-  <img src="https://img.shields.io/badge/version-v2.4.9-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-v2.4.10-blue?style=flat-square">
   <!-- cardinal-version-badge:end -->
   <img src="https://img.shields.io/badge/go-1.26%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-Apache--2.0-green?style=flat-square">
@@ -245,7 +245,7 @@ cardinal backup enable web --interval 6h --retention 14  # Scheduled backups
 cardinal backup status web                       # Show backup settings
 cardinal backup disable web                      # Disable scheduled backups
 cardinal system df                               # Show disk usage by images, containers, volumes
-cardinal system prune                            # Remove unused containers and images
+cardinal system prune                            # Remove unused containers, images and volumes
 cardinal info                                    # System information
 cardinal commit web my-image:v1                  # Create image from container
 ```
@@ -1036,6 +1036,8 @@ Notes:
 ## Changelog
 
 <!-- cardinal-release:start -->
+**v2.4.10** - `cardinal system prune` now removes unused volumes as well as containers, images and overlay directories. Volumes outlive their containers, so a node with no containers kept its volumes forever: `system prune` reported "Nothing to prune" while the disk was full and SQLite refused every write with "database or disk is full". A volume that is still mounted by a container is never removed.
+
 **v2.4.9** - The runtime is built with Go 1.26.10, the first release carrying the `crypto/x509` fix for GO-2026-6809 (distrust of compromised intermediate certificates). Go 1.26.9 carried the vulnerability, so a runtime built with it stayed exposed when validating certificate chains. `go.mod` and every build workflow now pin 1.26.10. Update a node with `sudo cardinal update`.
 
 **v2.4.8** - Fix: `cardinal update` no longer fails on the signature check. Verification was on by default but looked for a signature next to the per-file checksums (`cardinal_<ver>_checksums.txt.sig`, which the release does not contain) and pinned the certificate identity to `release.yml`, a workflow that does not exist in the repository - the release is signed by `build.yml`, and the signature lives next to the `SHA256SUMS.txt` manifest. Both are fixed: the manifest itself is verified (it covers every release artifact at once) and the identity points at `build.yml`, bound to the tag. The signature and certificate are now uploaded to the release (they were created and dropped before). When a release is unsigned the error says so instead of "cosign binary not found". New `CARDINAL_COSIGN_PUBKEY` points at an on-disk public key - it lives in the repository, so a compromised release host cannot forge a signature and `cosign` is not needed on the host. Signature verification stays on by default; set `CARDINAL_REQUIRE_SIGNATURE=0` for unsigned releases (the check runs before the new binary is written to disk and before the installed binary is replaced).

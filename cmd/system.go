@@ -16,7 +16,7 @@ func System(args []string) {
 		fmt.Println("Usage: cardinal system <command>")
 		fmt.Println("Commands:")
 		fmt.Println("  df       Show disk usage by images, containers, and volumes")
-		fmt.Println("  prune    Remove unused containers and images")
+		fmt.Println("  prune    Remove unused containers, images and volumes")
 		exitFunc(1)
 	}
 

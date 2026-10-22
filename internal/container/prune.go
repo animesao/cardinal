@@ -30,6 +30,12 @@ func SystemPrune() error {
 		}
 	}
 
+	// Тома переживают удаление контейнера: контейнер уходит, а его тома
+	// остаются сиротами и продолжают занимать место. Без их чистки
+	// `cardinal system prune` на ноде без контейнеров освобождал ноль
+	// байт, и диск уходил в «database or disk is full».
+	removedVolumes := pruneUnusedVolumes()
+
 	images, err := image.ListImages()
 	if err != nil {
 		return err
@@ -70,7 +76,7 @@ func SystemPrune() error {
 
 	pruneEmptyLogs()
 
-	if removedContainers == 0 && removedImages == 0 {
+	if removedContainers == 0 && removedImages == 0 && removedVolumes == 0 {
 		fmt.Println("Nothing to prune")
 	} else {
 		if removedContainers > 0 {
@@ -79,9 +85,43 @@ func SystemPrune() error {
 		if removedImages > 0 {
 			fmt.Printf("Removed %d image(s)\n", removedImages)
 		}
+		if removedVolumes > 0 {
+			fmt.Printf("Removed %d volume(s)\n", removedVolumes)
+		}
 	}
 
 	return nil
+}
+
+// pruneUnusedVolumes удаляет тома, на которые не ссылается ни один
+// контейнер. RemoveVolume сам отказывается трогать занятый том, поэтому
+// проверка тут - только чтобы не тратить время на заведомо занятые.
+func pruneUnusedVolumes() int {
+	volumes, err := ListVolumes()
+	if err != nil {
+		log.Error("Error listing volumes: %v", err)
+		return 0
+	}
+	containers, _ := List(true)
+	inUse := make(map[string]bool)
+	for _, c := range containers {
+		for _, v := range c.Volumes {
+			inUse[state.ResolveVolume(v.Source)] = true
+		}
+	}
+
+	pruned := 0
+	for _, v := range volumes {
+		if inUse[VolumeDir(v.Name)] {
+			continue
+		}
+		if err := RemoveVolume(v.Name); err != nil {
+			log.Error("Error removing volume %s: %v", v.Name, err)
+			continue
+		}
+		pruned++
+	}
+	return pruned
 }
 
 func pruneEmptyLogs() {

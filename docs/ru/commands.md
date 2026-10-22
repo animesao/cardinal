@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.9`
-**Project release:** `v2.4.9`
+**Documentation version:** `2.4.10`
+**Project release:** `v2.4.10`
 <!-- cardinal-version:end -->
 
 # Полный справочник CLI cardinal
@@ -575,7 +575,7 @@ Defaults `fn deploy`: port `8080`, handler `/handler`, timeout `30` секунд
 
 ### `cardinal system prune`
 
-Удалить неиспользуемые контейнеры и образы по правилам runtime.
+Удалить неиспользуемые контейнеры, образы и тома по правилам runtime. Тома переживают удаление контейнера, поэтому без их чистки нода без контейнеров оставалась с занятым диском.
 
 ### `cardinal system df`
 

@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.9`
-**Project release:** `v2.4.9`
+**Documentation version:** `2.4.10`
+**Project release:** `v2.4.10`
 <!-- cardinal-version:end -->
 
 # Usage & Commands
@@ -1077,7 +1077,7 @@ Events: `start`, `stop`, `kill`, `oom`, `healthcheck_failed`, etc.
 
 ### `cardinal system prune`
 
-Remove unused containers and images.
+Remove unused containers, images and volumes.
 
 ```bash
 cardinal system prune

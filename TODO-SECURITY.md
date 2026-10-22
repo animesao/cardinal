@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.9`
-**Project release:** `v2.4.9`
+**Documentation version:** `2.4.10`
+**Project release:** `v2.4.10`
 <!-- cardinal-version:end -->
 
 # TODO — устранение находок аудита безопасности cardinal (16.10.2026)

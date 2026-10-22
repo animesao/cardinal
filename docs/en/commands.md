@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.9`
-**Project release:** `v2.4.9`
+**Documentation version:** `2.4.10`
+**Project release:** `v2.4.10`
 <!-- cardinal-version:end -->
 
 # cardinal CLI Command Reference
@@ -575,7 +575,7 @@ Blueprint `info` accepts a full name or a matching prefix. `-y` skips installati
 
 ### `cardinal system prune`
 
-Remove unused containers and images according to the runtime's cleanup rules.
+Remove unused containers, images and volumes according to the runtime's cleanup rules.
 
 ### `cardinal system df`
 

@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.9`
-**Project release:** `v2.4.9`
+**Documentation version:** `2.4.10`
+**Project release:** `v2.4.10`
 <!-- cardinal-version:end -->
 
 # Команды и использование
@@ -1104,7 +1104,7 @@ cardinal events --since "2026-07-07 12:00:00"  # события с указан�
 
 ### `cardinal system prune`
 
-Удалить неиспользуемые контейнеры и образы.
+Удалить неиспользуемые контейнеры, образы и тома.
 
 ```bash
 cardinal system prune

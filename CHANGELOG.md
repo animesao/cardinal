@@ -5,6 +5,31 @@
 
 ## Unreleased
 
+## 2.4.10 (2026-10-22)
+
+### Fixed
+
+- **`cardinal system prune` не освобождал тома.** Тома переживают удаление
+  контейнера: контейнер уходит, а его тома остаются сиротами. `system prune`
+  чистил контейнеры, образы, overlay и пустые логи, но тома не трогал
+  вовсе - отдельная команда `cardinal volume prune` существовала, но в общий
+  prune не входила.
+
+  На практике это выглядело так: нода без контейнеров держала 2.5 ГБ в
+  `/root/.cardinal/volumes`, `cardinal system prune` рапортовал «Nothing to
+  prune», а диск при этом был заполнен на 100% и SQLite отдавал «database or
+  disk is full» на любую запись (импорт блюпринта, логин, удаление записи).
+
+  Теперь `system prune` удаляет и тома, на которые не ссылается ни один
+  контейнер. Занятый том удалить нельзя: `RemoveVolume` перепроверяет
+  использование контейнерами.
+
+### Added
+
+- Тесты на чистку томов: сирота удаляется, том в контейнере остаётся, нода
+  без контейнеров чистится целиком.
+
+
 ## 2.4.9 (2026-10-22)
 
 ### Security
@@ -717,7 +742,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.4.9**. Detailed release notes below are maintained manually.
+> Current release: **v2.4.10**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
