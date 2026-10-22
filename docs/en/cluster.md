@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.8`
-**Project release:** `v2.4.8`
+**Documentation version:** `2.4.9`
+**Project release:** `v2.4.9`
 <!-- cardinal-version:end -->
 
 # Cluster Orchestration

@@ -5,6 +5,28 @@
 
 ## Unreleased
 
+## 2.4.9 (2026-10-22)
+
+### Security
+
+- **Go 1.26.10 — закрыт GO-2026-6809.** Сборка рантайма переведена на
+  Go 1.26.10: это первый релиз с исправлением `crypto/x509` (недоверенные
+  скомпрометированные промежуточные сертификаты). В Go 1.26.9 уязвимость
+  присутствовала, поэтому рантайм на ней оставался под уязвимостью к
+  проверке цепочек сертификатов.
+
+  Затронуты `go.mod` (`toolchain go1.26.10`) и все сборочные воркфлоу:
+  `build.yml`, `e2e.yml`, `scheduled.yml`.
+
+  Обновление на узле:
+
+      sudo cardinal update
+
+### Changed
+
+- Требование Go в сборке: 1.26.10 вместо 1.26.9.
+
+
 ## 2.4.8 (2026-10-20)
 
 ### Fixed
@@ -695,7 +717,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.4.8**. Detailed release notes below are maintained manually.
+> Current release: **v2.4.9**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
