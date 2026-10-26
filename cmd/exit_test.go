@@ -144,3 +144,33 @@ func TestHasLongHelpArgument(t *testing.T) {
 		}
 	}
 }
+
+func TestHasRunHelpArgument(t *testing.T) {
+	for _, tc := range []struct {
+		in   []string
+		want bool
+	}{
+		{[]string{"--help"}, true},
+		{[]string{"help"}, true},
+		{[]string{"--workdir", "web", "--help"}, true},
+		{[]string{"-dit", "--help"}, true},
+		{[]string{"-d", "-n", "web", "--help"}, true},
+		// -h is the hostname flag for run, not help.
+		{[]string{"-h"}, false},
+		{[]string{"-h", "web", "alpine"}, false},
+		// Once the image appears, everything belongs to the container.
+		{[]string{"alpine", "--help"}, false},
+		{[]string{"alpine", "help"}, false},
+		{[]string{"-h", "/"}, false},
+		// The e2e smoke command: httpd's own -h / is not a help request.
+		{[]string{"-d", "-n", "e2e-bridge", "-p", "18083:80", "alpine:latest", "httpd", "-f", "-p", "80", "-h", "/"}, false},
+		{[]string{"--", "alpine", "--help"}, false},
+		{[]string{"--image", "alpine", "--help"}, true},
+		{[]string{"--image", "alpine", "sh", "-c", "echo --help"}, false},
+		{nil, false},
+	} {
+		if got := hasRunHelpArgument(tc.in); got != tc.want {
+			t.Errorf("hasRunHelpArgument(%q) = %v; want %v", tc.in, got, tc.want)
+		}
+	}
+}

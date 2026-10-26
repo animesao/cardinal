@@ -14,6 +14,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -89,7 +90,13 @@ func register(spec commandSpec) *cobra.Command {
 			// `run` and `serve`) never let cobra consume --help. Handle
 			// the long help form here before forwarding arguments to the
 			// stdlib FlagSet, whose default behaviour calls os.Exit(0).
-			if hasLongHelpArgument(args) {
+			// `run` needs its own predicate because -h is the container
+			// hostname flag there, not a help shorthand.
+			wantsHelp := hasLongHelpArgument(args)
+			if spec.use == "run" {
+				wantsHelp = hasRunHelpArgument(args)
+			}
+			if wantsHelp {
 				_ = c.Help()
 				return
 			}
@@ -373,6 +380,62 @@ func hasLongHelpArgument(args []string) bool {
 		}
 	}
 	return false
+}
+
+// hasRunHelpArgument reports whether `cardinal run` should print help.
+//
+// It differs from hasLongHelpArgument in two ways. First, -h is not help for
+// `run`: it is the container hostname flag, and container commands commonly
+// use it themselves (for example `httpd -f -p 80 -h /`). Second, scanning
+// stops once the container command starts, so everything after the image —
+// including `help` or `--help` — is forwarded to the container.
+//
+// A token is treated as the image once it is a positional argument that was
+// not consumed as the value of the preceding flag. Boolean run flags are
+// listed here so their following token is still recognised as the image;
+// keep runBoolFlag in sync with the fs.Bool registrations in Run.
+func hasRunHelpArgument(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			return false
+		}
+		if arg == "--help" || arg == "help" {
+			return true
+		}
+		if !strings.HasPrefix(arg, "-") || arg == "-" {
+			return false
+		}
+		name := strings.TrimLeft(arg, "-")
+		if strings.IndexByte(name, '=') >= 0 {
+			continue
+		}
+		if !runBoolFlag(name) && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+			i++
+		}
+	}
+	return false
+}
+
+// runBoolFlag reports whether name is a boolean flag of `cardinal run`
+// (including combined shorthands such as -dit). Non-boolean and unknown flags
+// are assumed to consume the following token when it does not start with "-".
+func runBoolFlag(name string) bool {
+	switch name {
+	case "d", "i", "t", "rm", "replace", "readonly", "no-new-privs",
+		"isolated", "encrypted-backup", "audit-log",
+		"allow-dangerous-caps", "allow-root":
+		return true
+	}
+	if name == "" {
+		return false
+	}
+	for _, ch := range name {
+		if ch != 'd' && ch != 'i' && ch != 't' {
+			return false
+		}
+	}
+	return true
 }
 
 // versionCommand is the cobra-shaped implementation of `cardinal version`.

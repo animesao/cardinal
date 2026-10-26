@@ -54,7 +54,10 @@ Cobra never sees those arguments.
 - `serve` and `run` keep their legacy stdlib flag parsing. The serve token must
   reach that parser; do not route it through the remote extractor.
 - `hasLongHelpArgument` makes `--help`/`-h` work for commands that bypass cobra
-  parsing. Subcommands such as `backup create` use the same delegation pattern.
+  parsing. `run` uses `hasRunHelpArgument` instead: `-h` is the container
+  hostname flag there, and scanning stops at the image/container command so
+  container flags such as `httpd -h /` are forwarded verbatim. Subcommands such
+  as `backup create` use the same delegation pattern.
 - `SilenceErrors` is set on registered commands. `Execute()` prints the final
   error and exits 1; do not add a second printer.
 - Legacy handlers may call `os.Exit` directly. New code should return errors

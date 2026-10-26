@@ -30,6 +30,14 @@ func (s *stringSlice) Set(v string) error {
 
 func reorderRunFlags(args []string, fs *flag.FlagSet) []string {
 	var flags, positional []string
+	imageFlagSet := false
+	for _, arg := range args {
+		if arg == "--image" || strings.HasPrefix(arg, "--image=") {
+			imageFlagSet = true
+			break
+		}
+	}
+	seenImage := imageFlagSet
 	i := 0
 	for i < len(args) {
 		if args[i] == "--" {
@@ -38,6 +46,13 @@ func reorderRunFlags(args []string, fs *flag.FlagSet) []string {
 		}
 		if !strings.HasPrefix(args[i], "-") {
 			positional = append(positional, args[i])
+			if seenImage {
+				// The container command has started; everything after it,
+				// including flags such as -p or -h, belongs to the container.
+				positional = append(positional, args[i+1:]...)
+				break
+			}
+			seenImage = true
 			i++
 			continue
 		}
