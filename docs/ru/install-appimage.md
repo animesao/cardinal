@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.11`
-**Project release:** `v2.4.11`
+**Documentation version:** `2.4.12`
+**Project release:** `v2.4.12`
 <!-- cardinal-version:end -->
 
 # Установка cardinal через AppImage

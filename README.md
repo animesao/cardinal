@@ -9,7 +9,7 @@
 
 <p align="center">
   <!-- cardinal-version-badge:start -->
-  <img src="https://img.shields.io/badge/version-v2.4.11-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-v2.4.12-blue?style=flat-square">
   <!-- cardinal-version-badge:end -->
   <img src="https://img.shields.io/badge/go-1.26%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-Apache--2.0-green?style=flat-square">
@@ -1036,6 +1036,8 @@ Notes:
 ## Changelog
 
 <!-- cardinal-release:start -->
+**v2.4.12** - Version and tag alignment release. `VERSION` now reads `2.4.12` and the annotated `v2.4.12` tag points at this commit, so the tag-consistency gate, release artefacts, and the checksum manifest all agree on the declared version. The previous `v2.4.12` tag pointed at the `v2.4.11` release commit and would have failed `tag matches VERSION`. No runtime changes.
+
 **v2.4.11** - Published ports bound to `127.0.0.1` now work. `-p 127.0.0.1:8080:80` created the DNAT rule but the kernel dropped loopback-sourced packets on the bridge interface, and reverse NAT sent replies back to `127.0.0.1` into the INPUT filters. The runtime now installs a scoped POSTROUTING MASQUERADE (`-s 127.0.0.0/8 -d <bridge subnet>`) plus `net.ipv4.conf.<bridge>.route_localnet=1` for that bridge, with both INPUT guards exempting `ESTABLISHED,RELATED` and still failing closed; `CARDINAL_ROUTE_LOCALNET=1` remains an optional global opt-in. `cardinal run` no longer reorders or drops container arguments that follow the image, so `cardinal run alpine echo --help` reaches the container intact. Go dependencies were bumped (`prometheus/client_golang` 1.25.0, `x/sys` 0.49.0), GitHub Actions moved to the Node 24 majors (`checkout@v7`, `setup-go@v7`, `upload-artifact@v7`, `download-artifact@v8`), and the stale npm Dependabot entry that failed every run with `dependency_file_not_found` was removed.
 
 **v2.4.10** - `cardinal system prune` now removes unused volumes as well as containers, images and overlay directories. Volumes outlive their containers, so a node with no containers kept its volumes forever: `system prune` reported "Nothing to prune" while the disk was full and SQLite refused every write with "database or disk is full". A volume that is still mounted by a container is never removed.

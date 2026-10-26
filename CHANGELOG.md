@@ -5,6 +5,17 @@
 
 ## Unreleased
 
+## 2.4.12 (2026-10-26)
+
+### Changed
+
+- Версия проекта поднята до `2.4.12`, маркеры версии в документации
+  синхронизированы через `scripts/sync-docs-version.sh`.
+- Тег `v2.4.12` переставлен на коммит с `VERSION=2.4.12`. Предыдущий тег
+  указывал на `2.4.11`, поэтому не проходил проверку `tag matches VERSION`
+  и не мог собрать релиз с правильной версией. Функциональных изменений в
+  этой версии нет.
+
 ## 2.4.11 (2026-10-26)
 
 ### Fixed
@@ -783,7 +794,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.4.11**. Detailed release notes below are maintained manually.
+> Current release: **v2.4.12**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)
