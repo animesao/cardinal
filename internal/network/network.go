@@ -18,9 +18,10 @@ func EnsureSysctl() {
 	if err := exec.Command("sysctl", "-w", "net.ipv4.ip_forward=1").Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: sysctl ip_forward: %v\n", err)
 	}
-	// route_localnet lets forwarded packets target 127/8 — i.e. containers
-	// could reach host-loopback services (including a tokenless API).
-	// Off by default; opt in only with CARDINAL_ROUTE_LOCALNET=1.
+	// route_localnet on the bridge is scoped by ensureLocalhostRouting and
+	// guarded in INPUT; it is what makes 127.0.0.1 published ports work.
+	// This global opt-in is broader (every interface) and is only needed for
+	// unusual routing that sends 127/8 outside a cardinal bridge.
 	routeLocalnet := os.Getenv("CARDINAL_ROUTE_LOCALNET") == "1"
 	if routeLocalnet {
 		if err := exec.Command("sysctl", "-w", "net.ipv4.conf.all.route_localnet=1").Run(); err != nil {
@@ -221,6 +222,14 @@ func EnsureBridge() error {
 		}
 	}
 
+	// Published ports reached through 127.0.0.1 need the container's reply
+	// delivered to the host's loopback socket. The kernel treats a packet
+	// arriving from the bridge with a 127/8 destination as a martian unless
+	// route_localnet is enabled for that interface, so turn it on for the
+	// bridge only and pair it with an INPUT guard that drops bridge traffic
+	// to 127/8 unless it is a tracked published-port reply.
+	ensureLocalhostRouting(BridgeName)
+
 	if err := exec.Command("iptables", "-C", "FORWARD", "-i", BridgeName, "-j", "ACCEPT").Run(); err != nil {
 		if err := exec.Command("iptables", "-A", "FORWARD", "-i", BridgeName, "-j", "ACCEPT").Run(); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: iptables FORWARD -i: %v\n", err)
@@ -232,10 +241,11 @@ func EnsureBridge() error {
 		}
 	}
 
-	// Egress guard: containers must not reach host-loopback services or
-	// cloud metadata endpoints through the gateway. Dropped before the
-	// blanket ACCEPTs above (insert at head, idempotent via -C check).
-	// The bridge subnet itself (gateway/DNS) stays reachable.
+	// Egress guard: containers must not reach cloud metadata endpoints or
+	// loopback services through the gateway. With route_localnet on the
+	// bridge, 127/8 traffic is delivered locally and stopped by the INPUT
+	// guard in ensureLocalhostRouting; the FORWARD rules stay as defense in
+	// depth and cover 169.254.0.0/16.
 	for _, dst := range []string{"127.0.0.0/8", "169.254.0.0/16"} {
 		if err := exec.Command("iptables", "-C", "FORWARD",
 			"-i", BridgeName, "-d", dst, "-j", "DROP").Run(); err != nil {
@@ -246,6 +256,40 @@ func EnsureBridge() error {
 		}
 	}
 	return nil
+}
+
+// localhostInputGuard returns the INPUT rule that keeps route_localnet safe:
+// bridge traffic to 127/8 is dropped unless conntrack sees an established or
+// related flow. The host-to-container DNAT reply is part of such a flow, so
+// published ports keep working, while a container opening a new connection to
+// a host-loopback service is dropped.
+func localhostInputGuard(bridge string) []string {
+	return []string{
+		"-i", bridge, "-d", "127.0.0.0/8",
+		"-m", "conntrack", "!", "--ctstate", "ESTABLISHED,RELATED",
+		"-j", "DROP",
+	}
+}
+
+func ensureLocalhostRouting(bridge string) {
+	rule := localhostInputGuard(bridge)
+	if err := exec.Command("iptables", append([]string{"-C", "INPUT"}, rule...)...).Run(); err != nil {
+		if err := exec.Command("iptables", append([]string{"-I", "INPUT", "1"}, rule...)...).Run(); err != nil {
+			// Never enable route_localnet without the guard: that would
+			// expose host-loopback services to containers.
+			fmt.Fprintf(os.Stderr, "Warning: iptables loopback input guard %s: %v (route_localnet stays off)\n", bridge, err)
+			return
+		}
+	}
+	if err := exec.Command("sysctl", "-w", "net.ipv4.conf."+bridge+".route_localnet=1").Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: sysctl route_localnet %s: %v\n", bridge, err)
+	}
+}
+
+func removeLocalhostRouting(bridge string) {
+	_ = exec.Command("sysctl", "-w", "net.ipv4.conf."+bridge+".route_localnet=0").Run()
+	rule := localhostInputGuard(bridge)
+	_ = exec.Command("iptables", append([]string{"-D", "INPUT"}, rule...)...).Run()
 }
 
 func networkShortID(id string) string {

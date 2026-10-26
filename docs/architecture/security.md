@@ -200,8 +200,17 @@ Cluster peer RPCs read the token from `SetAPIToken` or `CARDINAL_TOKEN`.
   unspecified, and `.localhost` registry hosts unless
   `CARDINAL_ALLOW_INSECURE_REGISTRY=1`.
 - Plain-HTTP registries require the same opt-in.
-- Bridge networks drop egress to `127.0.0.0/8` and `169.254.0.0/16`;
-  `route_localnet` stays off unless explicitly enabled.
+- Bridge networks drop egress to `169.254.0.0/16` in FORWARD and to
+  `127.0.0.0/8` in an INPUT guard.
+- `route_localnet` is enabled only on cardinal bridge interfaces, not globally,
+  so replies to `127.0.0.1:<published-port>` are delivered. The INPUT guard
+  drops bridge traffic to `127.0.0.0/8` unless conntrack reports
+  `ESTABLISHED,RELATED`, so containers cannot open new connections to
+  host-loopback services. If the guard cannot be installed, `route_localnet`
+  stays off for that bridge.
+- `CARDINAL_ROUTE_LOCALNET=1` is a broader opt-in that sets
+  `net.ipv4.conf.all.route_localnet=1`. It is not needed for published ports
+  and widens loopback routing outside the guarded bridge path.
 
 ## Auditing and diagnostics
 

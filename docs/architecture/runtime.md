@@ -140,8 +140,14 @@ setup themselves need syscalls that the default profile denies.
 Default bridge:
 
 - bridge `cardinal0`, CIDR `10.0.2.0/24`, gateway `10.0.2.1`;
-- `EnsureBridge` creates the bridge, MASQUERADE rule, FORWARD accepts, and
-  egress drops for `127.0.0.0/8` and `169.254.0.0/16`;
+- `EnsureBridge` creates the bridge, MASQUERADE rule, FORWARD accepts, and the
+  link-local egress drop for `169.254.0.0/16`;
+- `route_localnet` is enabled per bridge interface
+  (`net.ipv4.conf.<bridge>.route_localnet`), not globally, so the container's
+  reply to a host `127.0.0.1:<published-port>` connection can be delivered. The
+  guard is installed first: an INPUT rule drops bridge traffic to
+  `127.0.0.0/8` unless conntrack reports `ESTABLISHED,RELATED`, so containers
+  still cannot open new connections to host-loopback services;
 - IP allocations are tracked in `<data-dir>/networks/ips.json`;
 - each container gets a veth pair (`ve<id>` / `vc<id>`), moved into its netns;
 - published ports use iptables DNAT, with a `socat` fallback when the firewall

@@ -249,6 +249,7 @@ func ensureNetworkFirewall(n *UserNetwork) error {
 		}
 		masqAdded = true
 	}
+	ensureLocalhostRouting(n.Bridge)
 
 	addedForward := make([][]string, 0, 2)
 	rollback := func() {
@@ -328,6 +329,7 @@ func removeNetworkFirewall(n *UserNetwork) {
 		return
 	}
 	_ = exec.Command("iptables", "-t", "nat", "-D", "POSTROUTING", "-s", n.Subnet, "!", "-o", n.Bridge, "-j", "MASQUERADE").Run()
+	removeLocalhostRouting(n.Bridge)
 	_ = exec.Command("iptables", "-D", "FORWARD", "-i", n.Bridge, "-j", "ACCEPT").Run()
 	_ = exec.Command("iptables", "-D", "FORWARD", "-o", n.Bridge, "-j", "ACCEPT").Run()
 }

@@ -234,17 +234,32 @@ jobs:
       # Full user-facing flow: run -p + curl into the container. Bridge NAT
       # depends on the runner's iptables/namespace stack, which has been
       # fragile before — advisory only, must not block releases.
+      #
+      # nginx:alpine is used instead of alpine's busybox httpd: Alpine ships
+      # httpd in busybox-extras, not in the base image, so `alpine httpd`
+      # exits with ENOENT and never listens. The trailing `nginx -g ...` also
+      # covers the CLI regression where post-image container flags were
+      # re-parsed as cardinal options.
       - name: Smoke 6 — bridge port forward serves traffic (experimental)
         continue-on-error: true
         run: |
           log="$DIAG_DIR/06-bridge-forward.log"
           set -Euo pipefail
-          sudo -E ./cardinal-e2e run -d -n e2e-bridge -p 18083:80 alpine:latest httpd -f -p 80 -h / >"$log" 2>&1
+          sudo -E ./cardinal-e2e run -d -n e2e-bridge -p 18083:80 nginx:alpine nginx -g 'daemon off;' >"$log" 2>&1
           ok=0
           for i in $(seq 1 30); do
             if curl -fsS --max-time 3 http://127.0.0.1:18083/ >>"$log" 2>&1; then ok=1; break; fi
             sleep 1
           done
+          if [ "$ok" != "1" ]; then
+            # Capture the live rules before `rm` tears them down: this is the
+            # difference between "the container never listened" and "the
+            # DNAT/reply path is wrong".
+            sudo -E ./cardinal-e2e ps >>"$log" 2>&1 || true
+            sudo iptables -t nat -S >>"$log" 2>&1 || true
+            sudo iptables -S FORWARD >>"$log" 2>&1 || true
+            sudo ip -d link show cardinal0 >>"$log" 2>&1 || true
+          fi
           sudo -E ./cardinal-e2e logs e2e-bridge >>"$log" 2>&1 || true
           sudo -E ./cardinal-e2e rm -f e2e-bridge >>"$log" 2>&1 || true
           if [ "$ok" != "1" ]; then
