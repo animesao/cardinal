@@ -222,12 +222,13 @@ func EnsureBridge() error {
 		}
 	}
 
-	// Published ports reached through 127.0.0.1 need the container's reply
-	// delivered to the host's loopback socket. The kernel treats a packet
-	// arriving from the bridge with a 127/8 destination as a martian unless
-	// route_localnet is enabled for that interface, so turn it on for the
-	// bridge only and pair it with an INPUT guard that drops bridge traffic
-	// to 127/8 unless it is a tracked published-port reply.
+	// Published ports reached through 127.0.0.1 need two things: the
+	// container must see a non-loopback source, otherwise it routes the reply
+	// to its own loopback, and the host must accept the de-NATed reply whose
+	// destination is 127.0.0.1. Source-NAT the loopback flow to the gateway
+	// and enable route_localnet on the bridge only, with INPUT guards that
+	// keep containers from using the same relaxation to reach host loopback.
+	ensureLocalhostMasquerade(BridgeCIDR)
 	ensureLocalhostRouting(BridgeName)
 
 	if err := exec.Command("iptables", "-C", "FORWARD", "-i", BridgeName, "-j", "ACCEPT").Run(); err != nil {
@@ -258,24 +259,55 @@ func EnsureBridge() error {
 	return nil
 }
 
-// localhostInputGuard returns the INPUT rule that keeps route_localnet safe:
-// bridge traffic to 127/8 is dropped unless conntrack sees an established or
-// related flow. The host-to-container DNAT reply is part of such a flow, so
-// published ports keep working, while a container opening a new connection to
-// a host-loopback service is dropped.
-func localhostInputGuard(bridge string) []string {
-	return []string{
-		"-i", bridge, "-d", "127.0.0.0/8",
-		"-m", "conntrack", "!", "--ctstate", "ESTABLISHED,RELATED",
-		"-j", "DROP",
+// localhostMasqueradeRule is the POSTROUTING rule that source-NATs a
+// host-loopback connection to a bridge subnet. The container then replies to
+// the gateway instead of 127.0.0.1 (which would stay inside the container).
+// Only packets already bearing a loopback source and a bridge destination
+// match, so this does not open a path to the host.
+func localhostMasqueradeRule(subnet string) []string {
+	return []string{"-s", "127.0.0.0/8", "-d", subnet, "-j", "MASQUERADE"}
+}
+
+func ensureLocalhostMasquerade(subnet string) {
+	rule := localhostMasqueradeRule(subnet)
+	if err := exec.Command("iptables", append([]string{"-t", "nat", "-C", "POSTROUTING"}, rule...)...).Run(); err == nil {
+		return
+	}
+	if err := exec.Command("iptables", append([]string{"-t", "nat", "-A", "POSTROUTING"}, rule...)...).Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: iptables localhost MASQUERADE %s: %v\n", subnet, err)
+	}
+}
+
+func removeLocalhostMasquerade(subnet string) {
+	rule := localhostMasqueradeRule(subnet)
+	_ = exec.Command("iptables", append([]string{"-t", "nat", "-D", "POSTROUTING"}, rule...)...).Run()
+}
+
+// localhostInputGuards returns the INPUT rules that keep route_localnet safe:
+// one rejects spoofed loopback sources, the other drops bridge traffic to
+// 127/8 unless conntrack sees an established or related flow. Both guards
+// exempt tracked flows: reverse NAT restores the published-port reply to
+// `127.0.0.1 -> 127.0.0.1`, so a state-less guard would drop it too. A
+// container opening a new connection to a host-loopback service is NEW and
+// therefore still dropped.
+func localhostInputGuards(bridge string) [][]string {
+	return [][]string{
+		{"-i", bridge, "-s", "127.0.0.0/8",
+			"-m", "conntrack", "!", "--ctstate", "ESTABLISHED,RELATED",
+			"-j", "DROP"},
+		{"-i", bridge, "-d", "127.0.0.0/8",
+			"-m", "conntrack", "!", "--ctstate", "ESTABLISHED,RELATED",
+			"-j", "DROP"},
 	}
 }
 
 func ensureLocalhostRouting(bridge string) {
-	rule := localhostInputGuard(bridge)
-	if err := exec.Command("iptables", append([]string{"-C", "INPUT"}, rule...)...).Run(); err != nil {
+	for _, rule := range localhostInputGuards(bridge) {
+		if err := exec.Command("iptables", append([]string{"-C", "INPUT"}, rule...)...).Run(); err == nil {
+			continue
+		}
 		if err := exec.Command("iptables", append([]string{"-I", "INPUT", "1"}, rule...)...).Run(); err != nil {
-			// Never enable route_localnet without the guard: that would
+			// Never enable route_localnet without the guards: that would
 			// expose host-loopback services to containers.
 			fmt.Fprintf(os.Stderr, "Warning: iptables loopback input guard %s: %v (route_localnet stays off)\n", bridge, err)
 			return
@@ -288,8 +320,9 @@ func ensureLocalhostRouting(bridge string) {
 
 func removeLocalhostRouting(bridge string) {
 	_ = exec.Command("sysctl", "-w", "net.ipv4.conf."+bridge+".route_localnet=0").Run()
-	rule := localhostInputGuard(bridge)
-	_ = exec.Command("iptables", append([]string{"-D", "INPUT"}, rule...)...).Run()
+	for _, rule := range localhostInputGuards(bridge) {
+		_ = exec.Command("iptables", append([]string{"-D", "INPUT"}, rule...)...).Run()
+	}
 }
 
 func networkShortID(id string) string {

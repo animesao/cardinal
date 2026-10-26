@@ -258,6 +258,8 @@ jobs:
             sudo -E ./cardinal-e2e ps >>"$log" 2>&1 || true
             sudo iptables -t nat -S >>"$log" 2>&1 || true
             sudo iptables -S FORWARD >>"$log" 2>&1 || true
+            sudo iptables -S INPUT >>"$log" 2>&1 || true
+            sudo sysctl net.ipv4.conf.cardinal0.route_localnet >>"$log" 2>&1 || true
             sudo ip -d link show cardinal0 >>"$log" 2>&1 || true
           fi
           sudo -E ./cardinal-e2e logs e2e-bridge >>"$log" 2>&1 || true
