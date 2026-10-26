@@ -139,6 +139,9 @@ jobs:
       - name: docs version marker
         run: sh scripts/sync-docs-version.sh --check
 
+      - name: docs relative links
+        run: python3 scripts/check-docs-links.py
+
       - name: scripts/audit.sh
         # We deliberately do NOT pass --strict here: --strict exits
         # non-zero whenever there are any WARN-level findings, and our

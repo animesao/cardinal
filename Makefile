@@ -75,8 +75,12 @@ fuzz:
 docs:
 	sh scripts/sync-docs-version.sh
 
+docs-links:
+	python3 scripts/check-docs-links.py
+
 docs-check:
 	sh scripts/sync-docs-version.sh --check
+	python3 scripts/check-docs-links.py
 
 deb: build
 	./scripts/build-deb.sh

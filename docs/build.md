@@ -7,7 +7,7 @@
 
 ## Requirements
 
-- Go 1.25+ (the module targets `go 1.25.0`; CI and release tooling pin the latest patched Go release, currently 1.26.6)
+- Go 1.26+ (the module targets `go 1.26.0`; CI and release tooling pin `1.26.10`)
 - Linux runtime checks: `cardinal doctor` and `cardinal security check`
 - Linux for container execution features
 - Optional: `git` for version injection and release metadata
@@ -45,12 +45,11 @@ The Makefile builds the regular Linux artifacts (`amd64` and `arm64`):
 make build
 ```
 
-The release workflow additionally builds an `armv6` artifact, native packages
-for all three target architectures, Snap packages for `amd64` and `arm64`, and
-AppImage artifacts for `amd64` and `arm64`. Every release artifact has a
-SHA-256 checksum. A standard AppImage is not published for true ARMv6 because
-the official AppImage runtime does not support that CPU baseline; ARMv6 uses
-the raw binary and `.tar.gz` archive.
+The release workflow builds the regular Linux `amd64` and `arm64` artifacts.
+Goreleaser produces `.deb`, `.rpm`, `.pkg.tar.zst`, and `.apk` packages for
+those two architectures, and the workflow builds an `amd64` AppImage. Every
+release artifact has a SHA-256 checksum. Current workflows do not publish Snap
+packages or ARMv6 release artifacts; ARMv6 remains a manual cross-build target.
 
 ## Tests and checks
 
@@ -93,33 +92,28 @@ The repository has four workflows. CI also runs `govulncheck` against the Go dep
 
 
 
-- **CI** (`.github/workflows/ci.yml`) runs golangci-lint and `go vet`, then builds
-  Linux `amd64` and `arm64`. The full test suite runs on native amd64 only.
-  The matrix has `fail-fast: false`, so an architecture failure does not cancel
-  the other architecture job.
-- **Build & Release** (`.github/workflows/build.yml`) runs validation before any
-  version bump or publish. It increments `VERSION`, creates a version tag, checks
-  out that tag, builds Linux `amd64`, `arm64`, and `armv6`, creates native
-  `.deb`, `.rpm`, `.pkg.tar.zst`, and `.apk` packages for each architecture,
-  creates Snap packages and AppImages for `amd64` and `arm64`, adds checksums,
-  and publishes a GitHub release. The generated `.snap` files are attached to
-  the GitHub release but are not uploaded to the Snap Store.
-- **Linux E2E** (`.github/workflows/e2e.yml`) is a manual privileged Ubuntu smoke test. It pulls Alpine, runs a namespace-isolated command, exercises restart recovery, and creates/verifies a backup. It is intentionally manual because it requires host kernel, mount, namespace, and networking capabilities.
-- **Release** (`.github/workflows/release.yml`) is a manual, amd64-only release
-  workflow for major/minor/patch/automatic version bumps and runs the same
-  validation gates before mutating `VERSION`, `main`, or tags. Use
-  **Build & Release** for the complete multi-architecture package and AppImage
-  matrix. It also attaches the amd64 Snap and its checksum to the GitHub
-  release; neither release workflow uploads Snap packages to the Snap Store.
-  Build/release workflows use the same serialized concurrency group so
-  simultaneous runs do not race on `VERSION`, `main`, or tags. Run only one
-  release workflow at a time; prefer **Build & Release** for normal releases
-  because it is the canonical multi-architecture publisher.
+- **Build** (`.github/workflows/build.yml`) is the single main pipeline. It runs
+  `tag-consistency`, lint (`golangci-lint`, `go vet`, `govulncheck`,
+  `shellcheck`, docs version/link checks, `scripts/audit.sh`), tests (race,
+  coverage, fuzz smoke), and builds Linux `amd64`/`arm64`. Tag pushes run
+  goreleaser for the package matrix, build an amd64 AppImage, optionally sign
+  checksums with cosign, attach an SBOM, and publish the GitHub release.
+- **Linux E2E** (`.github/workflows/e2e.yml`) is a manual privileged Ubuntu smoke
+  test. It pulls Alpine, runs a namespace-isolated command, exercises restart
+  recovery, and creates/verifies a backup. It is manual because it needs host
+  kernel, mount, namespace, and networking capabilities.
+- **Scheduled security scan** (`.github/workflows/scheduled.yml`) runs
+  `govulncheck` and `scripts/audit.sh` daily plus a full-history gitleaks scan
+  weekly. It rewrites nothing; findings require a reviewed follow-up PR.
+- **branch-guard** (`.github/workflows/branch-guard.yml`) is an advisory PR
+  check for the branching model in `CONTRIBUTING.md`. It fails the check with an
+  explanation but does not push, rewrite history, or replace branch protection.
 
-The automated version commit uses `[skip ci]`; the Build & Release artifacts are
-built from the version tag created by the same workflow. The sync script updates current version markers, the README release pointer, and
-an explicit current-release pointer in `CHANGELOG.md` automatically; detailed
-release notes remain manually maintained so historical entries are not overwritten.
+Tag pushes require `VERSION` to match the tag (`tag-consistency`); the workflow
+does not rewrite `VERSION` or create a version commit. The sync script updates
+current version markers, the README release pointer, and an explicit
+current-release pointer in `CHANGELOG.md` automatically; detailed release notes
+remain manually maintained so historical entries are not overwritten.
 
 ## Goreleaser
 
@@ -146,9 +140,10 @@ upx --best cardinal
 ./cardinal info
 ```
 
-For a Linux binary, perform the runtime test on a matching Linux host. For cross-built arm64/armv6 artifacts, verify checksums and transfer them to the
-matching target architecture before execution. AppImages are available for
-amd64 and arm64; use the raw binary or `.tar.gz` on true ARMv6 hosts.
+For a Linux binary, perform the runtime test on a matching Linux host. For
+cross-built arm64 artifacts, verify checksums and transfer them to the matching
+target architecture before execution. The current workflow publishes an
+`amd64` AppImage; use the raw binary or `.tar.gz` on other architectures.
 
 ## Update check
 
