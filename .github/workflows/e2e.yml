@@ -51,10 +51,10 @@ jobs:
       DIAG_DIR: /tmp/cardinal-e2e-diag
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: setup-go (1.26.10)
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: "1.26.10"
           cache: true
@@ -277,7 +277,7 @@ jobs:
       # can read the binary's real output without a re-run.
       - name: Upload diagnostic bundle
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cardinal-e2e-diag-${{ github.run_id }}
           path: /tmp/cardinal-e2e-diag

@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: a pushed tag must match VERSION
         # v2.3.4 and v2.4.4 were both cut without bumping VERSION, which left
@@ -90,9 +90,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26.10"
           cache: true
@@ -114,7 +114,7 @@ jobs:
         # Полная история обязательна: в shallow-клоне `git log -p -1`
         # показывает всё дерево как только что добавленное, и примеры в
         # документации ловятся как секреты. С историей diff настоящий.
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -159,9 +159,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26.10"
           cache: true
@@ -170,7 +170,7 @@ jobs:
       # package surfaces its name in the GH Actions UI rather than
       # being buried inside a single composite log block. CGO is
       # explicitly enabled because `-race` requires it; the default
-      # for actions/setup-go@v5 + go-version "1.26.10" is otherwise
+      # for actions/setup-go@v7 + go-version "1.26.10" is otherwise
       # CGO_ENABLED=1 on linux/amd64 runners, but we set it here to
       # defend against any future runner image change.
       - name: go test -race (per package, cgo enabled)
@@ -225,7 +225,7 @@ jobs:
           done
 
       - name: upload coverage artefact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ github.run_id }}
           path: coverage.out
@@ -241,9 +241,9 @@ jobs:
       matrix:
         goarch: [amd64, arm64]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26.10"
           cache: true
@@ -262,14 +262,14 @@ jobs:
           sha256sum dist/cardinal-linux-${ARCH} | tee dist/cardinal-linux-${ARCH}.sha256
 
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cardinal-linux-${{ matrix.goarch }}
           path: dist/cardinal-linux-${{ matrix.goarch }}
           retention-days: 90
 
       - name: Upload sha256 sidecar
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cardinal-linux-${{ matrix.goarch }}.sha256
           path: dist/cardinal-linux-${{ matrix.goarch }}.sha256
@@ -289,12 +289,12 @@ jobs:
     if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped')
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Download all artefacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
 
@@ -620,7 +620,7 @@ jobs:
 
       - name: Upload full release artefacts (npm/deb/rpm/apk/pkg.tar.zst)
         if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cardinal-release-${{ env.SAFE_REF_NAME }}
           path: |

@@ -3,9 +3,8 @@ version: 2
 # Dependabot configuration.
 #
 # The github-actions group is intentionally **minor-and-patch only**.
-# Major bump PRs have broken the workflows before (e.g. setup-go v7
-# changed its cache: interface), so we let a human review those by
-# keeping them off the auto-PR conveyor belt.
+# Major bump PRs have broken the workflows before, so we let a human
+# review them by keeping them off the auto-PR conveyor belt.
 
 updates:
   - package-ecosystem: "gomod"
@@ -38,9 +37,9 @@ updates:
       - "dependencies"
       - "ci"
     ignore:
-      # Block all major action upgrades; they tend to change syntax
-      # (setup-go v7 deprecated the cache: input, etc.) so the
-      # human-in-the-loop upgrade needs to land with code changes.
+      # Block all major action upgrades; they change internals and can
+      # alter defaults, so the human-in-the-loop upgrade lands with a
+      # reviewed workflow diff.
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
     groups:
