@@ -46,11 +46,3 @@ updates:
       actions-minor-and-patch:
         update-types: ["minor", "patch"]
         patterns: ["*"]
-
-  - package-ecosystem: "npm"
-    directory: "/compose-examples"
-    schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 3
-    labels:
-      - "dependencies"
