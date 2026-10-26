@@ -9,7 +9,7 @@
 
 <p align="center">
   <!-- cardinal-version-badge:start -->
-  <img src="https://img.shields.io/badge/version-v2.4.10-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-v2.4.11-blue?style=flat-square">
   <!-- cardinal-version-badge:end -->
   <img src="https://img.shields.io/badge/go-1.26%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-Apache--2.0-green?style=flat-square">
@@ -1036,6 +1036,8 @@ Notes:
 ## Changelog
 
 <!-- cardinal-release:start -->
+**v2.4.11** - Published ports bound to `127.0.0.1` now work. `-p 127.0.0.1:8080:80` created the DNAT rule but the kernel dropped loopback-sourced packets on the bridge interface, and reverse NAT sent replies back to `127.0.0.1` into the INPUT filters. The runtime now installs a scoped POSTROUTING MASQUERADE (`-s 127.0.0.0/8 -d <bridge subnet>`) plus `net.ipv4.conf.<bridge>.route_localnet=1` for that bridge, with both INPUT guards exempting `ESTABLISHED,RELATED` and still failing closed; `CARDINAL_ROUTE_LOCALNET=1` remains an optional global opt-in. `cardinal run` no longer reorders or drops container arguments that follow the image, so `cardinal run alpine echo --help` reaches the container intact. Go dependencies were bumped (`prometheus/client_golang` 1.25.0, `x/sys` 0.49.0), GitHub Actions moved to the Node 24 majors (`checkout@v7`, `setup-go@v7`, `upload-artifact@v7`, `download-artifact@v8`), and the stale npm Dependabot entry that failed every run with `dependency_file_not_found` was removed.
+
 **v2.4.10** - `cardinal system prune` now removes unused volumes as well as containers, images and overlay directories. Volumes outlive their containers, so a node with no containers kept its volumes forever: `system prune` reported "Nothing to prune" while the disk was full and SQLite refused every write with "database or disk is full". A volume that is still mounted by a container is never removed.
 
 **v2.4.9** - The runtime is built with Go 1.26.10, the first release carrying the `crypto/x509` fix for GO-2026-6809 (distrust of compromised intermediate certificates). Go 1.26.9 carried the vulnerability, so a runtime built with it stayed exposed when validating certificate chains. `go.mod` and every build workflow now pin 1.26.10. Update a node with `sudo cardinal update`.

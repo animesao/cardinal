@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.10`
-**Project release:** `v2.4.10`
+**Documentation version:** `2.4.11`
+**Project release:** `v2.4.11`
 <!-- cardinal-version:end -->
 
 # Compose / Deployment

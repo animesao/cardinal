@@ -5,6 +5,47 @@
 
 ## Unreleased
 
+## 2.4.11 (2026-10-26)
+
+### Fixed
+
+- **Опубликованные порты на `127.0.0.1` теперь действительно открываются.**
+  Проброс вида `-p 127.0.0.1:8080:80` создавал правило DNAT, но трафик до
+  контейнера не доходил: ядро отбрасывало пакеты с loopback-адресом на
+  bridge-интерфейсе, а обратный NAT возвращал ответы на `127.0.0.1` и они
+  упирались в INPUT-фильтры. Теперь создаются оба согласованных правила:
+  scoped POSTROUTING MASQUERADE (`-s 127.0.0.0/8 -d <подсеть bridge>`) и
+  `net.ipv4.conf.<bridge>.route_localnet=1` для конкретного bridge. Оба
+  INPUT-guard'а пропускают `ESTABLISHED,RELATED`, поэтому ответы reverse NAT
+  не блокируются, а сами guard'ы по-прежнему fail closed. Глобальный
+  `CARDINAL_ROUTE_LOCALNET=1` остался необязательным расширенным opt-in.
+
+- **`cardinal run` больше не теряет аргументы после образа.** Парсер
+  переставлял флаги cardinal в начало команды и заодно мог утащить аргументы
+  контейнера. Теперь аргументы после имени образа сохраняются в исходном
+  порядке, если их нельзя однозначно трактовать как флаги cardinal. Команды
+  вида `cardinal run alpine echo --help` доходят до контейнера как есть.
+
+### Changed
+
+- Обновлены Go-зависимости: `github.com/prometheus/client_golang` 1.24.1 →
+  1.25.0 и `golang.org/x/sys` 0.48.0 → 0.49.0.
+- GitHub Actions переведены на Node 24: `checkout@v7`, `setup-go@v7`,
+  `upload-artifact@v7`, `download-artifact@v8`. Входные параметры, которые
+  используются в workflow, не изменились.
+
+### Removed
+
+- Удалена устаревшая npm-запись из `.github/dependabot.yml`: каталога
+  `/compose-examples` и файлов `package.json` в репозитории нет, из-за чего
+  каждый запуск Dependabot падал с `dependency_file_not_found`. Остались
+  только экосистемы `gomod` и `github-actions`.
+
+### Docs
+
+- Добавлена карта контекста для AI-агентов (`AGENTS.md`, `docs/ai/`) и
+  проверка относительных ссылок `scripts/check-docs-links.py` в CI.
+
 ## 2.4.10 (2026-10-22)
 
 ### Fixed
@@ -742,7 +783,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.4.10**. Detailed release notes below are maintained manually.
+> Current release: **v2.4.11**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

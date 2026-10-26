@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.10`
-**Project release:** `v2.4.10`
+**Documentation version:** `2.4.11`
+**Project release:** `v2.4.11`
 <!-- cardinal-version:end -->
 
 # Known issues and documentation drift
@@ -9,7 +9,7 @@ This file records places where documentation and code disagree, plus known
 technical gaps. It is a register, not a roadmap. Label each item with the fact
 status from the root `AGENTS.md` and point to evidence.
 
-Last audited: 2026-10-26, commit `9283b88`, `VERSION=2.4.10`.
+Last audited: 2026-10-26, commit `64bf22f`, `VERSION=2.4.11`.
 
 ## Documentation drift
 
@@ -93,7 +93,7 @@ Last audited: 2026-10-26, commit `9283b88`, `VERSION=2.4.10`.
 
 ### D-08 — README version blocks are outside the generic marker check
 
-- **Status:** Open check gap; values currently match `2.4.10`.
+- **Status:** Open check gap; values currently match `2.4.11`.
 - **Documents:** the top `cardinal-version` block in `README.md`,
   `docs/README.md`, and `contrib/gentoo/README.md`, `contrib/nix/README.md`,
   `contrib/void/README.md`.
@@ -234,7 +234,7 @@ Last audited: 2026-10-26, commit `9283b88`, `VERSION=2.4.10`.
 - **Action:** document TLS for any non-loopback deployment; consider requiring
   TLS for external binds.
 
-## Static audit warnings at 2.4.10
+## Static audit warnings at 2.4.11
 
 `sh scripts/audit.sh` reports `FAIL: 0`, `WARN: 5`:
 

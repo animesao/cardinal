@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.10`
-**Project release:** `v2.4.10`
+**Documentation version:** `2.4.11`
+**Project release:** `v2.4.11`
 <!-- cardinal-version:end -->
 
 # Build and release
@@ -16,7 +16,7 @@ commands so a future maintainer can re-run them.
   1.26.10 is the first release with the `crypto/x509` fix for GO-2026-6809, and
   1.26.9 carried the `net/http`, `net/textproto`, and `crypto/tls` fixes for
   GO-2026-6603/6605/6607/6608/6610/6611/6612/6613/6617.
-- `VERSION` is the release source of truth. Current value: `2.4.10`.
+- `VERSION` is the release source of truth. Current value: `2.4.11`.
 - The module is `cardinal`; the entry point is `main.go` → `cmd.Execute()`.
 - Runtime packages are Linux-only (`//go:build linux`). Windows and macOS
   checkouts are for editing and cross-compilation, not execution.
@@ -45,7 +45,7 @@ exist. See [`known-issues.md`](../status/known-issues.md).
 | `docs-links` | `python3 scripts/check-docs-links.py` |
 | `docs-check` | Version-marker check plus the relative-link check |
 | `deb` | Build binaries, then `scripts/build-deb.sh` |
-| `release` | `deb`, then report `dist/cardinal_2.4.10_amd64.deb` |
+| `release` | `deb`, then report `dist/cardinal_2.4.11_amd64.deb` |
 | `clean` | Remove `cardinal*`, `dist/`, `coverage.out` |
 
 Build flags in the Makefile and goreleaser:
@@ -150,7 +150,7 @@ Do not hand-edit the text between the markers. Run
 Because `README.md` is excluded from the generic scan, its top marker block is
 not checked by `--check`; the badge and release block are checked by dedicated
 functions. The current `README.md`, `docs/README.md`, and the three
-`contrib/*/README.md` marker blocks match `2.4.10`, but they remain a manual
+`contrib/*/README.md` marker blocks match `2.4.11`, but they remain a manual
 sync point. See `D-08` in [`known-issues.md`](../status/known-issues.md).
 
 ## Static audit
@@ -162,7 +162,7 @@ runtime hardening, installers, CI/CD, manifests, and documentation. Exit codes:
 - `1` — at least one FAIL;
 - `2` — at least one WARN under `--strict`.
 
-Current state at `2.4.10`: `FAIL: 0`, `WARN: 5` — docs password placeholder,
+Current state at `2.4.11`: `FAIL: 0`, `WARN: 5` — docs password placeholder,
 `install.ps1`, AppImage verification, stale coverage, and manual `SYS_MODULE`
 review.
 
