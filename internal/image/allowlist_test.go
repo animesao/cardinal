@@ -116,3 +116,30 @@ func TestNormalizeRegistryHostname(t *testing.T) {
 		}
 	}
 }
+
+func TestCheckRegistryHostNotInternal(t *testing.T) {
+	t.Setenv("CARDINAL_ALLOW_INSECURE_REGISTRY", "0")
+
+	badHosts := []string{
+		"127.0.0.1",
+		"127.0.0.1:5000",
+		"169.254.169.254",
+		"10.0.0.1",
+		"192.168.1.1",
+		"localhost",
+		"test.localhost",
+		"[::1]",
+	}
+	for _, h := range badHosts {
+		if err := checkRegistryHostNotInternal(h); err == nil {
+			t.Errorf("checkRegistryHostNotInternal(%q) expected error for internal host, got nil", h)
+		}
+	}
+
+	t.Setenv("CARDINAL_ALLOW_INSECURE_REGISTRY", "1")
+	for _, h := range badHosts {
+		if err := checkRegistryHostNotInternal(h); err != nil {
+			t.Errorf("checkRegistryHostNotInternal(%q) with opt-in expected nil, got %v", h, err)
+		}
+	}
+}

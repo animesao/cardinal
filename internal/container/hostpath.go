@@ -25,7 +25,21 @@ var (
 	protectedMu      sync.RWMutex
 	allowedHostPaths []string // overrides added by the user at runtime.
 	hostPolicyInited bool
+
+	sensitiveCredentialsDirs = []string{".ssh", ".aws", ".kube", ".docker", ".gnupg", ".netrc"}
 )
+
+func hasSensitiveCredentialsDir(path string) bool {
+	clean := filepath.Clean(path)
+	for _, part := range strings.Split(clean, string(filepath.Separator)) {
+		for _, sens := range sensitiveCredentialsDirs {
+			if part == sens {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 // IsProtectedHostPath reports whether the absolute, symlink-resolved path
 // lives under a directory that should never be bind-mounted into a
@@ -59,6 +73,22 @@ func IsProtectedHostPath(path string) bool {
 
 	protectedMu.RLock()
 	defer protectedMu.RUnlock()
+
+	// Check if the path targets a sensitive credentials directory (e.g. ~/.ssh, /home/user/.aws).
+	// Such directories must remain blocked even if a parent path is allowlisted, unless the
+	// exact path itself was explicitly placed in CARDINAL_ALLOWED_HOST_PATHS.
+	if hasSensitiveCredentialsDir(resolved) {
+		explicitlyAllowed := false
+		for _, allowed := range allowedHostPaths {
+			if resolved == filepath.Clean(allowed) {
+				explicitlyAllowed = true
+				break
+			}
+		}
+		if !explicitlyAllowed {
+			return true
+		}
+	}
 
 	for _, allowed := range allowedHostPaths {
 		if resolved == allowed || strings.HasPrefix(resolved, filepath.Clean(allowed)+string(filepath.Separator)) {

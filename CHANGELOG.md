@@ -5,6 +5,32 @@
 
 ## Unreleased
 
+## 2.4.13 (2026-10-28)
+
+### Security
+
+- **Registry SSRF and DNS Rebinding Mitigation**:
+  `checkRegistryHostNotInternal` in `internal/image/allowlist.go` now resolves
+  registry hostnames via DNS and checks all resolved IP addresses, refusing
+  connections to loopback (`127.0.0.1`), private subnets, and cloud-metadata
+  addresses (`169.254.169.254`) unless `CARDINAL_ALLOW_INSECURE_REGISTRY=1` is explicitly set.
+
+- **Sensitive Credentials Isolation in Bind Mounts**:
+  `IsProtectedHostPath` in `internal/container/hostpath.go` now ensures sensitive
+  credential directories (`.ssh`, `.aws`, `.kube`, `.docker`, `.gnupg`, `.netrc`)
+  remain blocked from container mounting even if an ancestor path was allowlisted
+  in `CARDINAL_ALLOWED_HOST_PATHS`, preventing accidental credential exposure.
+
+- **Bounded Client Timeouts for Cluster Peer RPCs**:
+  Replaced unbound `http.DefaultClient` with dedicated timeout-enforced HTTP
+  clients in `internal/orchestrator/cluster.go` for node join, leave, and
+  heartbeats, ensuring unreachable peers do not stall cluster coordination loops.
+
+- **FaaS Response Size and Timeout Bounds**:
+  `forwardToFunction` in `internal/orchestrator/faas.go` now enforces a 30-second
+  client timeout and a 32 MB response size cap via `io.LimitReader`, preventing
+  unbounded memory allocation and denial-of-service risks from rogue functions.
+
 ## 2.4.12 (2026-10-26)
 
 ### Changed
@@ -794,7 +820,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.4.12**. Detailed release notes below are maintained manually.
+> Current release: **v2.4.13**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

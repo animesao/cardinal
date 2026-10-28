@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.12`
-**Project release:** `v2.4.12`
+**Documentation version:** `2.4.13`
+**Project release:** `v2.4.13`
 <!-- cardinal-version:end -->
 
 # API and orchestration

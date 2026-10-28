@@ -222,6 +222,10 @@ func registryStrict() bool {
 	return !(v == "0" || v == "false" || v == "no")
 }
 
+func isInternalIP(ip net.IP) bool {
+	return ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsPrivate()
+}
+
 // checkRegistryHostNotInternal — SSRF-барьер для хоста реестра.
 //
 // Pull собирает URL вида https://<host>/v2/... из пользовательской ссылки
@@ -241,14 +245,32 @@ func checkRegistryHostNotInternal(host string) error {
 		}
 		return fmt.Errorf("registry host %q is internal (set CARDINAL_ALLOW_INSECURE_REGISTRY=1 to allow)", host)
 	}
-	if ip := net.ParseIP(strings.Trim(h, "[]")); ip != nil {
-		if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsPrivate() {
+
+	hostOnly := h
+	if sh, _, err := net.SplitHostPort(h); err == nil {
+		hostOnly = sh
+	}
+	hostOnly = strings.Trim(hostOnly, "[]")
+
+	if ip := net.ParseIP(hostOnly); ip != nil {
+		if isInternalIP(ip) {
 			if IsInsecureRegistryAllowed() {
 				return nil
 			}
 			return fmt.Errorf("registry host %q is an internal address (set CARDINAL_ALLOW_INSECURE_REGISTRY=1 to allow)", host)
 		}
 		return nil
+	}
+
+	if ips, err := net.LookupIP(hostOnly); err == nil {
+		for _, ip := range ips {
+			if isInternalIP(ip) {
+				if IsInsecureRegistryAllowed() {
+					return nil
+				}
+				return fmt.Errorf("registry host %q resolves to internal address %s (set CARDINAL_ALLOW_INSECURE_REGISTRY=1 to allow)", host, ip.String())
+			}
+		}
 	}
 	return nil
 }

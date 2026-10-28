@@ -404,6 +404,12 @@ func scaleDownFunction(ctx context.Context, fn *Function) {
 	RecordScaleDown(fn.Name, "function", time.Since(start).Seconds(), nil)
 }
 
+var faasHTTPClient = &http.Client{
+	Timeout: 30 * time.Second,
+}
+
+const maxFunctionResponseSize = 32 << 20 // 32 MB
+
 func forwardToFunction(ctx context.Context, fn *Function, payload []byte) ([]byte, error) {
 	containers := functionContainers[fn.Name]
 	if len(containers) == 0 {
@@ -431,13 +437,13 @@ func forwardToFunction(ctx context.Context, fn *Function, payload []byte) ([]byt
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := faasHTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("forward request to %s: %w", targetURL, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	result, err := io.ReadAll(resp.Body)
+	result, err := io.ReadAll(io.LimitReader(resp.Body, maxFunctionResponseSize))
 	if err != nil {
 		return nil, fmt.Errorf("read response: %w", err)
 	}

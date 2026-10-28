@@ -89,3 +89,24 @@ func TestIsProtectedHostPath_RejectsRelative(t *testing.T) {
 		t.Errorf("empty path must be flagged as protected")
 	}
 }
+
+func TestIsProtectedHostPath_CredentialsBlockedEvenUnderAllowlistedParent(t *testing.T) {
+	t.Setenv("CARDINAL_ALLOWED_HOST_PATHS", "/data/shared")
+	t.Cleanup(func() {
+		protectedMu.Lock()
+		allowedHostPaths = nil
+		hostPolicyInited = false
+		protectedMu.Unlock()
+	})
+	InitHostPathPolicy()
+
+	if IsProtectedHostPath("/data/shared/work") {
+		t.Errorf("expected /data/shared/work to be allowed")
+	}
+	if !IsProtectedHostPath("/data/shared/.ssh") {
+		t.Errorf("expected /data/shared/.ssh to remain protected even under allowlisted parent")
+	}
+	if !IsProtectedHostPath("/data/shared/.aws/credentials") {
+		t.Errorf("expected /data/shared/.aws/credentials to remain protected")
+	}
+}

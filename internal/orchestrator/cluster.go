@@ -27,6 +27,13 @@ var (
 	tokenLock    sync.RWMutex
 	clusterConf  *ClusterConfig
 	clusterToken string
+
+	clusterHTTPClient = &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	clusterFastHTTPClient = &http.Client{
+		Timeout: 5 * time.Second,
+	}
 )
 
 // SetAPIToken configures the token used for authenticated peer requests.
@@ -163,7 +170,7 @@ func JoinCluster(peerAddr string, bindAddr string, bindPort int) error {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	setClusterAuth(req)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := clusterHTTPClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("join request to %s: %w", peerAddr, err)
 	}
@@ -234,7 +241,7 @@ func LeaveCluster() error {
 		}
 		req.Header.Set("Content-Type", "application/json")
 		setClusterAuth(req)
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := clusterFastHTTPClient.Do(req)
 		if err == nil {
 			_ = resp.Body.Close()
 		}
@@ -442,7 +449,7 @@ func propagateHeartbeat(nodeID string) {
 		}
 		req.Header.Set("Content-Type", "application/json")
 		setClusterAuth(req)
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := clusterFastHTTPClient.Do(req)
 		if err == nil {
 			_ = resp.Body.Close()
 		}
@@ -488,7 +495,7 @@ func sendHeartbeat() {
 		}
 		req.Header.Set("Content-Type", "application/json")
 		setClusterAuth(req)
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := clusterFastHTTPClient.Do(req)
 		if err == nil {
 			_ = resp.Body.Close()
 		}
