@@ -606,6 +606,9 @@ func InitContainer(id, merged string) error {
 					if walkErr != nil {
 						return walkErr
 					}
+					if info.Mode()&os.ModeSymlink != 0 {
+						return nil
+					}
 					return os.Chown(path, uid, gid)
 				}); err != nil {
 					log.Warn("chown volume contents %s: %v", target, err)
@@ -618,6 +621,9 @@ func InitContainer(id, merged string) error {
 			if err := filepath.Walk(target, func(path string, info os.FileInfo, walkErr error) error {
 				if walkErr != nil {
 					return walkErr
+				}
+				if info.Mode()&os.ModeSymlink != 0 {
+					return nil
 				}
 				return os.Chmod(path, 0777)
 			}); err != nil {

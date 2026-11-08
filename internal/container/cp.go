@@ -21,10 +21,19 @@ func (c *Container) CopyFromContainer(srcPath string, w io.Writer) error {
 		"-t", strconv.Itoa(c.PID),
 		"-m", "-p", "-i", "-r",
 		"--",
-		"tar", "-cf", "-", "-C", "/", strings.TrimPrefix(srcPath, "/"),
+	}
+	if err := c.ensureExecHelper(); err == nil {
+		args = append(args, ExecHelperPath, "exec-helper", "--", "tar", "-cf", "-", "-C", "/", strings.TrimPrefix(srcPath, "/"))
+	} else {
+		args = append(args, "tar", "-cf", "-", "-C", "/", strings.TrimPrefix(srcPath, "/"))
 	}
 
 	cmd := exec.Command("nsenter", args...)
+	cmd.Env = []string{
+		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		"HOME=/root",
+		"TERM=xterm",
+	}
 	cmd.Stdout = w
 	cmd.Stderr = os.Stderr
 
@@ -58,10 +67,20 @@ func (c *Container) CopyToContainer(dstPath string, r io.Reader) error {
 		"-t", strconv.Itoa(c.PID),
 		"-m", "-p", "-r",
 		"--",
-		"sh", "-c", fmt.Sprintf("mkdir -p -- %s && tar -x -C %s", escapePath(extractDir), escapePath(extractDir)),
+	}
+	shCmd := fmt.Sprintf("mkdir -p -- %s && tar -x -C %s", escapePath(extractDir), escapePath(extractDir))
+	if err := c.ensureExecHelper(); err == nil {
+		args = append(args, ExecHelperPath, "exec-helper", "--", "sh", "-c", shCmd)
+	} else {
+		args = append(args, "sh", "-c", shCmd)
 	}
 
 	cmd := exec.Command("nsenter", args...)
+	cmd.Env = []string{
+		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		"HOME=/root",
+		"TERM=xterm",
+	}
 	cmd.Stdin = r
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

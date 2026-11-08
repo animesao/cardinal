@@ -947,17 +947,30 @@ func (c *Container) execHealthcheck(cmd string, timeout time.Duration) error {
 	if err := c.validateNamespaceTarget(); err != nil {
 		return err
 	}
-	args := []string{"-t", strconv.Itoa(c.PID), "-m", "-p", "-i", "-n", "-r", "--", "sh", "-c", cmd}
-	ecmd := exec.Command("nsenter", args...)
-	done := make(chan error, 1)
-	go func() { done <- ecmd.Run() }()
-	select {
-	case err := <-done:
-		return err
-	case <-time.After(timeout):
-		_ = ecmd.Process.Kill()
-		return fmt.Errorf("healthcheck timed out after %v", timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	args := []string{"-t", strconv.Itoa(c.PID), "-m", "-p", "-i", "-n", "-r", "--"}
+	if err := c.ensureExecHelper(); err == nil {
+		args = append(args, ExecHelperPath, "exec-helper", "--", "sh", "-c", cmd)
+	} else {
+		args = append(args, "sh", "-c", cmd)
 	}
+
+	ecmd := exec.CommandContext(ctx, "nsenter", args...)
+	ecmd.Env = []string{
+		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		"HOME=/root",
+		"TERM=xterm",
+	}
+
+	if err := ecmd.Run(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("healthcheck timed out after %v", timeout)
+		}
+		return err
+	}
+	return nil
 }
 
 func (c *Container) cleanupNetwork() {

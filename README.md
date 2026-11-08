@@ -1,6 +1,6 @@
 <!-- cardinal-version:start -->
-**Documentation version:** `2.4.10`
-**Project release:** `v2.4.10`
+**Documentation version:** `2.4.14`
+**Project release:** `v2.4.14`
 <!-- cardinal-version:end -->
 
 <p align="center">
@@ -9,7 +9,7 @@
 
 <p align="center">
   <!-- cardinal-version-badge:start -->
-  <img src="https://img.shields.io/badge/version-v2.4.13-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/version-v2.4.14-blue?style=flat-square">
   <!-- cardinal-version-badge:end -->
   <img src="https://img.shields.io/badge/go-1.26%2B-00ADD8?style=flat-square&logo=go">
   <img src="https://img.shields.io/badge/license-Apache--2.0-green?style=flat-square">
@@ -1036,6 +1036,8 @@ Notes:
 ## Changelog
 
 <!-- cardinal-release:start -->
+**v2.4.14** - Security hardening release. Added unprivileged `exec-helper` execution with `context.WithTimeout`, clean environment, and capability dropping for container healthchecks (`execHealthcheck`) and container copy commands (`CopyFromContainer`, `CopyToContainer`), preventing host root execution leaks and container escapes. Volume permission adjustment walks in `InitContainer` now skip symbolic links to guard against symlink path traversal attacks. Bumped Go language version to 1.26.10.
+
 **v2.4.13** - Security hardening release. Added SSRF and DNS rebinding protections to registry host validation (`checkRegistryHostNotInternal` verifies resolved IPs against private, loopback, and metadata ranges). `IsProtectedHostPath` ensures sensitive credential directories (`.ssh`, `.aws`, `.kube`, `.docker`, `.gnupg`, `.netrc`) remain blocked from container bind mounts even when parent folders are allowlisted. Bounded timeouts applied across cluster peer RPCs and heartbeats, avoiding stalls from unresponsive nodes. `forwardToFunction` in FaaS now caps response sizes at 32 MB and sets a 30-second timeout, guarding against memory exhaustion DoS.
 
 **v2.4.12** - Version and tag alignment release. `VERSION` now reads `2.4.12` and the annotated `v2.4.12` tag points at this commit, so the tag-consistency gate, release artefacts, and the checksum manifest all agree on the declared version. The previous `v2.4.12` tag pointed at the `v2.4.11` release commit and would have failed `tag matches VERSION`. No runtime changes.

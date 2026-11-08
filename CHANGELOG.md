@@ -5,6 +5,29 @@
 
 ## Unreleased
 
+## 2.4.14 (2026-11-08)
+
+### Security
+
+- **Healthcheck Execution Hardening**:
+  `execHealthcheck` in `internal/container/start.go` now routes container healthcheck
+  commands through `exec-helper` with `context.WithTimeout`, dropped capabilities, and
+  cleansed daemon environment variables, preventing host root execution leaks and potential
+  container escape via compromised shells.
+
+- **Container Copy (`cp`) Privilege Isolation**:
+  `CopyFromContainer` and `CopyToContainer` in `internal/container/cp.go` now enforce
+  capability dropping and unprivileged context execution through `exec-helper`, preventing
+  host takeover attacks via tampered container `/bin/tar` or `/bin/sh` binaries.
+
+- **Symlink Traversal Prevention in Volume Permissions**:
+  `InitContainer` in `internal/container/init.go` now explicitly ignores symlink entries
+  during volume `Chown`/`Chmod` recursive traversal, ensuring permissions adjustments cannot
+  be redirected to target files outside the mounted volume.
+
+- **Go Toolchain and Language Alignment**:
+  `go.mod` language version bumped to `go 1.26.10` with refreshed dependencies and vendor manifests.
+
 ## 2.4.13 (2026-10-28)
 
 ### Security
@@ -820,7 +843,7 @@
 - Accept canonical and compatibility JSON field names for startup scripts.
 
 <!-- cardinal-current-release:start -->
-> Current release: **v2.4.13**. Detailed release notes below are maintained manually.
+> Current release: **v2.4.14**. Detailed release notes below are maintained manually.
 <!-- cardinal-current-release:end -->
 
 ## 1.25.3 (2026-08-17)

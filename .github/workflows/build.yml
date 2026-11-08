@@ -337,7 +337,7 @@ jobs:
         with:
           # Tag pushes only — the goreleaser-action reads
           # github.tag_name by default; keep the default behaviour.
-          version: v2.4.5
+          version: '~> v2'
           args: release --clean --skip=publish --skip=announce --timeout 30m
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
